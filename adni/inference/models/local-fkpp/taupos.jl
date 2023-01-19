@@ -1,5 +1,5 @@
 using Pkg
-cd("/home/chaggar/Projects/model-selection")
+cd("/home/chaggar/Projects/local-fkpp")
 Pkg.activate(".")
 
 using Connectomes
@@ -157,4 +157,4 @@ m();
 # serialize(projectdir("adni/hierarchical-inference/local-fkpp/chains/hier-local-prior-taupos-uniform-2000.jls"), prior)
 n_chains = 4
 pst = sample(m, Turing.NUTS(0.8, metricT=AdvancedHMC.DenseEuclideanMetric), MCMCThreads(), 2_000, n_chains)
-serialize(projectdir("adni/hierarchical-inference/local-fkpp/chains/hier-local-pst-taupos-uniform-$(n_chains)x2000-c99-ln.jls"), pst)
+serialize(projectdir("adni/chains/local-fkpp/pst-taupos-uniform-$(n_chains)x2000.jls"), pst)
