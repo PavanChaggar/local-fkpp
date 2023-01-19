@@ -1,5 +1,6 @@
 [deps]
 ADNIDatasets = "3276ce4d-5fec-4d11-86fe-35d359dbefae"
+AdvancedHMC = "0bf59076-c3b1-5ca4-86bd-e02cd72cde3d"
 BenchmarkTools = "6e4b80f9-dd63-53aa-95a3-0cdb28fa8baf"
 CSV = "336ed68f-0bac-5ca0-87d4-7b16caf5d00b"
 CairoMakie = "13f3f980-e62b-5c42-98c6-ff1f3baf88f0"
