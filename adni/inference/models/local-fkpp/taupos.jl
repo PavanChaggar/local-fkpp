@@ -120,13 +120,13 @@ end
 @model function localfkpp(data, prob, initial_conditions, times, n)
     σ ~ InverseGamma(2, 3)
     
-    Pm ~ truncated(Normal(0, 1), 0, Inf)
+    Pm ~ truncated(Normal(0, 1), 0, 5)
     Ps ~ LogNormal(0, 1)
 
     Am ~ Normal(0, 1)
     As ~ LogNormal(0, 1)
 
-    ρ ~ filldist(truncated(Normal(Pm, Ps), 0, Inf), n)
+    ρ ~ filldist(truncated(Normal(Pm, Ps), 0, 5), n)
     α ~ filldist(Normal(Am, As), n)
     
     ensemble_prob = EnsembleProblem(prob, 
@@ -159,7 +159,7 @@ m();
 # serialize(projectdir("adni/hierarchical-inference/local-fkpp/chains/hier-local-prior-taupos-uniform-2000.jls"), prior)
 n_chains = 4
 pst = sample(m, 
-             Turing.NUTS(0.8, metricT=AdvancedHMC.DenseEuclideanMetric), 
+             Turing.NUTS(0.8), #, metricT=AdvancedHMC.DenseEuclideanMetric), 
              MCMCSerial(), 
              2_000, 
              n_chains,
