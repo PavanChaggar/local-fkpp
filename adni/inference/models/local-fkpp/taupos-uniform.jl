@@ -3,6 +3,7 @@ cd("/home/chaggar/Projects/model-selection")
 Pkg.activate(".")
 
 using Connectomes
+using ADNIDatasets
 using CSV, DataFrames
 using DrWatson: projectdir
 using DifferentialEquations
@@ -14,8 +15,7 @@ using Serialization
 using DelimitedFiles, LinearAlgebra
 using Random
 using LinearAlgebra
-include(projectdir("adni/adni.jl"))
-include(projectdir("adni/braak-regions.jl"))
+include(projectdir("functions.jl"))
 
 #-------------------------------------------------------------------------------
 # Connectome and ROIs
@@ -35,7 +35,7 @@ neo = findall(x -> x ∈ neo_regions, cortex.Label)
 #-------------------------------------------------------------------------------
 # Data 
 #-----------------------------------------------------------------------------
-sub_data_path = projectdir("data/adni-data/AV1451_Diagnosis-STATUS-STIME-braak-regions.csv")
+sub_data_path = projectdir("adni/data/AV1451_Diagnosis-STATUS-STIME-braak-regions.csv")
 alldf = CSV.read(sub_data_path, DataFrame)
 
 posdf = filter(x -> x.STATUS == "POS", alldf)
@@ -43,12 +43,7 @@ posdf = filter(x -> x.STATUS == "POS", alldf)
 dktdict = Connectomes.node2FS()
 dktnames = [dktdict[i] for i in cortex.ID]
 
-data = ADNIDataSet(posdf, dktnames; min_scans=3)
-
-function regional_mean(data, rois, sub)
-    subsuvr = calc_suvr(data, sub)
-    mean(subsuvr[rois,end])
-end
+data = ADNIDataset(posdf, dktnames; min_scans=3)
 
 # Ask Jake where we got these cutoffs from? 
 mtl_cutoff = 1.375
@@ -63,7 +58,7 @@ tau_neg = findall(x -> x ∉ tau_pos, 1:50)
 n_pos = length(tau_pos)
 n_neg = length(tau_neg)
 
-gmm_moments = CSV.read(projectdir("data/adni-data/component_moments.csv"), DataFrame)
+gmm_moments = CSV.read(projectdir("adni/data/component_moments.csv"), DataFrame)
 #gmm_moments2 = CSV.read(projectdir("data/adni-data/component_moments-bothcomps.csv"), DataFrame)
 ubase, upath = get_dkt_moments(gmm_moments, dktnames)
 u0 = mean.(ubase)
@@ -73,7 +68,7 @@ cc = quantile.(upath, .99)
 #-------------------------------------------------------------------------------
 L = laplacian_matrix(c)
 
-function NetworkExFKPP(du, u, p, t; L = L, u0 = u0, cc = cc)
+function NetworkLocalFKPP(du, u, p, t; L = L, u0 = u0, cc = cc)
     du .= -p[1] * L * (u .- u0) .+ p[2] .* (u .- u0) .* ((cc .- u0) .- (u .- u0))
 end
 
@@ -97,7 +92,7 @@ vecsubdata = reduce(vcat, reduce(hcat, subdata))
 initial_conditions = [sd[:,1] for sd in subdata]
 times =  [get_times(data, i) for i in tau_pos]
 
-prob = ODEProblem(NetworkExFKPP, 
+prob = ODEProblem(NetworkLocalFKPP, 
                   initial_conditions[1], 
                   (0.,15.), 
                   [1.0,1.0])
@@ -120,7 +115,7 @@ end
 #-------------------------------------------------------------------------------
 # Inference 
 #-------------------------------------------------------------------------------
-@model function exfkpp(data, prob, initial_conditions, times, n)
+@model function localfkpp(data, prob, initial_conditions, times, n)
     σ ~ InverseGamma(2, 3)
     
     Pm ~ Uniform(0, 5)
@@ -156,7 +151,7 @@ end
 #setadbackend(:zygote)
 Random.seed!(1234); 
 
-m = exfkpp(vecsubdata, prob, initial_conditions, times, n_pos);
+m = localfkpp(vecsubdata, prob, initial_conditions, times, n_pos);
 m();
 
 # prior = sample(m, Prior(), 2_000)
