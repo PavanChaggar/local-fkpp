@@ -10,6 +10,7 @@ using DifferentialEquations
 using DiffEqSensitivity
 using Zygote
 using Turing
+using AdvancedHMC
 using Distributions
 using Serialization
 using DelimitedFiles, LinearAlgebra
