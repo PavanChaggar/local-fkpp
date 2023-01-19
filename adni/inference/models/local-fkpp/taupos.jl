@@ -118,13 +118,13 @@ end
 @model function localfkpp(data, prob, initial_conditions, times, n)
     σ ~ InverseGamma(2, 3)
     
-    Pm ~ Uniform(0, 5)
+    Pm ~ truncated(Normal(0, 1), 0, Inf)
     Ps ~ LogNormal(0, 1)
 
-    Am ~ Uniform(-5, 5)
+    Am ~ Normal(0, 1)
     As ~ LogNormal(0, 1)
 
-    ρ ~ filldist(truncated(Normal(Pm, Ps), 0, 5), n)
+    ρ ~ filldist(truncated(Normal(Pm, Ps), 0, Inf), n)
     α ~ filldist(Normal(Am, As), n)
     
     ensemble_prob = EnsembleProblem(prob, 
@@ -141,7 +141,7 @@ end
     if !allequal([sol.retcode for sol in ensemble_sol]) 
         Turing.@addlogprob! -Inf
         println("failed")
-        return nothing
+        return
     end
     vecsol = reduce(vcat, ensemble_sol)
 
@@ -154,8 +154,7 @@ Random.seed!(1234);
 m = localfkpp(vecsubdata, prob, initial_conditions, times, n_pos);
 m();
 
-# prior = sample(m, Prior(), 2_000)
 # serialize(projectdir("adni/hierarchical-inference/local-fkpp/chains/hier-local-prior-taupos-uniform-2000.jls"), prior)
 n_chains = 4
-pst = sample(m, NUTS(0.8), MCMCSerial(), 2_000, n_chains)
+pst = sample(m, Turing.NUTS(0.8, metricT=AdvancedHMC.DenseEuclideanMetric), MCMCThreads(), 2_000, n_chains)
 serialize(projectdir("adni/hierarchical-inference/local-fkpp/chains/hier-local-pst-taupos-uniform-$(n_chains)x2000-c99-ln.jls"), pst)

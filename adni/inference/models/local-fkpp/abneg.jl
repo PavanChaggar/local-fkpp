@@ -1,5 +1,5 @@
 using Pkg
-cd("/home/chaggar/Projects/model-selection")
+cd("/home/chaggar/Projects/local-fkpp")
 Pkg.activate(".")
 
 using Connectomes
@@ -14,7 +14,6 @@ using Serialization
 using DelimitedFiles, LinearAlgebra
 using Random
 using LinearAlgebra
-include(projectdir("adni/adni.jl"))
 include(projectdir("adni/braak-regions.jl"))
 
 #-------------------------------------------------------------------------------
