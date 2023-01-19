@@ -157,5 +157,10 @@ m();
 
 # serialize(projectdir("adni/hierarchical-inference/local-fkpp/chains/hier-local-prior-taupos-uniform-2000.jls"), prior)
 n_chains = 4
-pst = sample(m, Turing.NUTS(0.8, metricT=AdvancedHMC.DenseEuclideanMetric), MCMCThreads(), 2_000, n_chains)
+pst = sample(m, 
+             Turing.NUTS(0.8, metricT=AdvancedHMC.DenseEuclideanMetric), 
+             MCMCThreads(), 
+             2_000, 
+             n_chains,
+             progress=false)
 serialize(projectdir("adni/chains/local-fkpp/pst-taupos-uniform-$(n_chains)x2000.jls"), pst)
