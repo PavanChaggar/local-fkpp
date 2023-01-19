@@ -18,6 +18,7 @@ using Random
 using LinearAlgebra
 include(projectdir("functions.jl"))
 
+Turing.setprogress!(false)
 #-------------------------------------------------------------------------------
 # Connectome and ROIs
 #-------------------------------------------------------------------------------
