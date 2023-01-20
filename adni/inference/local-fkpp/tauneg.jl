@@ -1,22 +1,24 @@
 using Pkg
-cd("/home/chaggar/Projects/model-selection")
+cd("/home/chaggar/Projects/local-fkpp")
 Pkg.activate(".")
 
 using Connectomes
+using ADNIDatasets
 using CSV, DataFrames
 using DrWatson: projectdir
 using DifferentialEquations
 using DiffEqSensitivity
 using Zygote
 using Turing
+using AdvancedHMC
 using Distributions
 using Serialization
 using DelimitedFiles, LinearAlgebra
 using Random
 using LinearAlgebra
-include(projectdir("adni/adni.jl"))
-include(projectdir("adni/braak-regions.jl"))
+include(projectdir("functions.jl"))
 
+Turing.setprogress!(false)
 #-------------------------------------------------------------------------------
 # Connectome and ROIs
 #-------------------------------------------------------------------------------
@@ -35,7 +37,7 @@ neo = findall(x -> x ∈ neo_regions, cortex.Label)
 #-------------------------------------------------------------------------------
 # Data 
 #-------------------------------------------------------------------------------
-sub_data_path = projectdir("data/adni-data/AV1451_Diagnosis-STATUS-STIME-braak-regions.csv")
+sub_data_path = projectdir("adni/data/AV1451_Diagnosis-STATUS-STIME-braak-regions.csv")
 alldf = CSV.read(sub_data_path, DataFrame)
 
 posdf = filter(x -> x.STATUS == "POS", alldf)
@@ -43,7 +45,7 @@ posdf = filter(x -> x.STATUS == "POS", alldf)
 dktdict = Connectomes.node2FS()
 dktnames = [dktdict[i] for i in cortex.ID]
 
-data = ADNIDataSet(posdf, dktnames; min_scans=3)
+data = ADNIDataset(posdf, dktnames; min_scans=3)
 
 function regional_mean(data, rois, sub)
     subsuvr = calc_suvr(data, sub)
@@ -62,7 +64,7 @@ tau_neg = findall(x -> x ∉ tau_pos, 1:50)
 n_pos = length(tau_pos)
 n_neg = length(tau_neg)
 
-gmm_moments = CSV.read(projectdir("data/adni-data/component_moments.csv"), DataFrame)
+gmm_moments = CSV.read(projectdir("adni/data/component_moments.csv"), DataFrame)
 ubase, upath = get_dkt_moments(gmm_moments, dktnames)
 u0 = mean.(ubase)
 cc = quantile.(upath, .99)
@@ -72,7 +74,7 @@ cc = quantile.(upath, .99)
 #-------------------------------------------------------------------------------
 L = laplacian_matrix(c)
 
-function NetworkExFKPP(du, u, p, t; L = L, u0 = u0, cc = cc)
+function NetworkLocalFKPP(du, u, p, t; L = L, u0 = u0, cc = cc)
     du .= -p[1] * L * (u .- u0) .+ p[2] .* (u .- u0) .* ((cc .- u0) .- (u .- u0))
 end
 
@@ -87,7 +89,7 @@ function output_func(sol,i)
 end
 
 subsuvr = [calc_suvr(data, i) for i in tau_neg]
-_subdata = [normalise(sd, u0) for sd in subsuvr]
+_subdata = [normalise(sd, u0, cc) for sd in subsuvr]
 
 blsd = [sd .- u0 for sd in _subdata]
 nonzerosubs = findall(x -> sum(x) < 2, [sum(sd, dims=1) .== 0 for sd in blsd])
@@ -101,7 +103,7 @@ times = _times[nonzerosubs]
 
 n_neg = length(nonzerosubs)
 
-prob = ODEProblem(NetworkExFKPP, 
+prob = ODEProblem(NetworkLocalFKPP, 
                   initial_conditions[1], 
                   (0.,maximum(reduce(vcat, times))), 
                   [1.0,1.0])
@@ -124,16 +126,16 @@ end
 #-------------------------------------------------------------------------------
 # Inference 
 #-------------------------------------------------------------------------------
-@model function exfkpp(data, prob, initial_conditions, times, n)
-    σ ~ InverseGamma(2, 3)
+@model function localfkpp(data, prob, initial_conditions, times, n)
+    σ ~ LogNormal(0, 1)
+    
+    Pm ~ LogNormal(0, 0.5)
+    Ps ~ LogNormal(0, 0.5)
 
-    Pm ~ Uniform(0, 5)
-    Ps ~ LogNormal(0, 1)
+    Am ~ Normal(0, 1)
+    As ~ LogNormal(0, 0.5)
 
-    Am ~ Uniform(-5, 5)
-    As ~ LogNormal(0, 1)
-
-    ρ ~ filldist(truncated(Normal(Pm, Ps), 0, 5), n)
+    ρ ~ filldist(truncated(Normal(Pm, Ps), lower=0), n)
     α ~ filldist(Normal(Am, As), n)
 
     ensemble_prob = EnsembleProblem(prob, 
@@ -142,29 +144,30 @@ end
 
     ensemble_sol = solve(ensemble_prob, 
                          Tsit5(), 
-                         abstol=1e-9, 
-                         reltol=1e-9,
+                         abstol = 1e-9, 
+                         reltol = 1e-9, 
                          trajectories=n, 
                          sensealg=InterpolatingAdjoint(autojacvec=ReverseDiffVJP(true)))
-    
     if !allequal([sol.retcode for sol in ensemble_sol]) 
         Turing.@addlogprob! -Inf
         println("failed")
         return nothing
     end
     vecsol = reduce(vcat, ensemble_sol)
-   
-    data ~ MvNormal(vecsol, σ)
+
+    data ~ MvNormal(vecsol, σ^2 * I)
 end
 
 Random.seed!(1234); 
 
-m = exfkpp(vecsubdata, prob, initial_conditions, times, n_neg)
+m = localfkpp(vecsubdata, prob, initial_conditions, times, n_neg)
 m();
 
-# prior = sample(m, Prior(), 2_000)
-# serialize(projectdir("adni/hierarchical-inference/local-fkpp/chains/hier-local-prior-tauneg-uniform-2000.jls"), prior)
-
 n_chains = 4
-pst = sample(m, NUTS(0.8), MCMCSerial(), 2_000, n_chains)
-serialize(projectdir("adni/hierarchical-inference/local-fkpp/chains/hier-local-pst-tauneg-uniform-$(n_chains)x2000-c99-ln.jls"), pst)
+pst = sample(m, 
+             Turing.NUTS(0.8), #, metricT=AdvancedHMC.DenseEuclideanMetric), 
+             MCMCThreads(), 
+             2_000, 
+             n_chains,
+             progress=false)
+serialize(projectdir("adni/chains/local-fkpp/pst-tauneg-$(n_chains)x2000.jls"), pst)
