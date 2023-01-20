@@ -86,7 +86,7 @@ end
 
 subdata = [calc_suvr(data, i) for i in tau_pos]
 for i in 1:n_pos
-    normalise!(subdata[i], u0)
+    normalise!(subdata[i], u0, cc)
 end
 
 vecsubdata = reduce(vcat, reduce(hcat, subdata))
@@ -118,17 +118,20 @@ end
 # Inference 
 #-------------------------------------------------------------------------------
 @model function localfkpp(data, prob, initial_conditions, times, n)
-    σ ~ InverseGamma(2, 3)
+    σ ~ LogNormal(0, 1)
     
-    Pm ~ truncated(Normal(0, 1), 0, 5)
-    Ps ~ LogNormal(0, 1)
+    Pm ~ LogNormal(0, 0.5)
+    Ps ~ LogNormal(0, 0.5)
 
     Am ~ Normal(0, 1)
-    As ~ LogNormal(0, 1)
+    As ~ LogNormal(0, 0.5)
 
-    ρ ~ filldist(truncated(Normal(Pm, Ps), 0, 5), n)
+    ρ ~ filldist(truncated(Normal(Pm, Ps), lower=0), n)
     α ~ filldist(Normal(Am, As), n)
-    
+
+    # ρ = (p .+ Pm) .* Ps
+    # α = (a .+ Am) .* As
+
     ensemble_prob = EnsembleProblem(prob, 
                                     prob_func=make_prob_func(initial_conditions, ρ, α, times), 
                                     output_func=output_func)
@@ -139,29 +142,27 @@ end
                          reltol = 1e-9, 
                          trajectories=n, 
                          sensealg=InterpolatingAdjoint(autojacvec=ReverseDiffVJP(true)))
-    
     if !allequal([sol.retcode for sol in ensemble_sol]) 
         Turing.@addlogprob! -Inf
         println("failed")
-        return
+        return nothing
     end
     vecsol = reduce(vcat, ensemble_sol)
 
-    data ~ MvNormal(vecsol, σ)
+    data ~ MvNormal(vecsol, σ^2 * I)
 end
 
 #setadbackend(:zygote)
-Random.seed!(1234); 
+Random.seed!(1234);
 
 m = localfkpp(vecsubdata, prob, initial_conditions, times, n_pos);
 m();
 
-# serialize(projectdir("adni/hierarchical-inference/local-fkpp/chains/hier-local-prior-taupos-uniform-2000.jls"), prior)
 n_chains = 4
 pst = sample(m, 
              Turing.NUTS(0.8), #, metricT=AdvancedHMC.DenseEuclideanMetric), 
-             MCMCSerial(), 
+             MCMCThreads(), 
              2_000, 
              n_chains,
              progress=false)
-serialize(projectdir("adni/chains/local-fkpp/pst-taupos-uniform-$(n_chains)x2000.jls"), pst)
+serialize(projectdir("adni/chains/local-fkpp/pst-taupos-$(n_chains)x2000.jls"), pst)

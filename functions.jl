@@ -80,16 +80,31 @@ function calc_aic(f, m, pst, data, args...)
 end
 
 
-function normalise!(data, cutoff)
+function normalise!(data, lower)
     for i in 1:size(data, 1)
-        mask = data[i,:] .< cutoff[i]
-        data[i, mask] .= cutoff[i]
+        lower_mask = data[i,:] .< lower[i]
+        data[i, lower_mask] .= lower[i]
     end
 end
 
-function normalise(data, cutoff)
+function normalise(data, lower)
     _data = deepcopy(data)
-    normalise!(_data, cutoff)
+    normalise!(_data, lower)
+    _data
+end
+
+function normalise!(data, lower, upper)
+    for i in 1:size(data, 1)
+        lower_mask = data[i,:] .< lower[i]
+        data[i, lower_mask] .= lower[i]
+        upper_mask = data[i,:] .> upper[i]
+        data[i, upper_mask] .= upper[i]
+    end
+end
+
+function normalise(data, lower, upper)
+    _data = deepcopy(data)
+    normalise!(_data, lower, upper)
     _data
 end
 
