@@ -129,9 +129,6 @@ end
     ρ ~ filldist(truncated(Normal(Pm, Ps), lower=0), n)
     α ~ filldist(Normal(Am, As), n)
 
-    # ρ = (p .+ Pm) .* Ps
-    # α = (a .+ Am) .* As
-
     ensemble_prob = EnsembleProblem(prob, 
                                     prob_func=make_prob_func(initial_conditions, ρ, α, times), 
                                     output_func=output_func)
