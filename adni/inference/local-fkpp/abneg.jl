@@ -79,7 +79,6 @@ _subdata = [normalise(sd, u0, cc) for sd in subsuvr]
 blsd = [sd .- u0 for sd in _subdata]
 nonzerosubs = findall(x -> sum(x) < 2, [sum(sd, dims=1) .== 0 for sd in blsd])
 
-
 subdata = _subdata[nonzerosubs]
 vecsubdata = reduce(vcat, reduce(hcat, subdata))
 
@@ -150,8 +149,8 @@ m();
 
 n_chains = 4
 pst = sample(m, 
-             Turing.NUTS(0.8), #, metricT=AdvancedHMC.DenseEuclideanMetric), 
-             MCMCSerial(), 
+             Turing.NUTS(0.8), #, metricT=AdvancedHMC.D enseEuclideanMetric), 
+             MCMCThreads(), 
              2_000, 
              n_chains,
              progress=false)
