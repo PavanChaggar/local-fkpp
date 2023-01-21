@@ -1,68 +1,14 @@
 using Connectomes
+using ADNIDatasets
 using CSV, DataFrames
 using DrWatson: projectdir
 using Distributions
 using Serialization
 using DelimitedFiles
-include(projectdir("adni/adni.jl"))
-include(projectdir("adni/braak-regions.jl"))
 
 #-------------------------------------------------------------------------------
-# Connectome and ROIs
+# Hierarchical Distributions
 #-------------------------------------------------------------------------------
-connectome_path = Connectomes.connectome_path()
-all_c = filter(Connectome(connectome_path; norm=true), 1e-2);
-all_unnorm_c = Connectome(connectome_path; norm=false)
-
-subcortex = filter(x -> x.Lobe == "subcortex", all_c.parc)
-cortex = filter(x -> x.Lobe != "subcortex", all_c.parc)
-
-c = slice(all_c, cortex) |> filter
-unnorm_c = slice(all_unnorm_c, cortex)
-N = unnorm_c.n_matrix ./ maximum(unnorm_c.n_matrix)
-A = replace(N ./ (c.l_matrix).^2, NaN => 0)
-maxA = maximum(A)
-
-mtl_regions = ["entorhinal", "Left-Amygdala", "Right-Amygdala"]
-mtl = findall(x -> x ∈ mtl_regions, cortex.Label)
-neo_regions = ["inferiortemporal", "middletemporal"]
-neo = findall(x -> x ∈ neo_regions, cortex.Label)
-#-------------------------------------------------------------------------------
-# Data 
-#-------------------------------------------------------------------------------
-sub_data_path = projectdir("data/adni-data/AV1451_Diagnosis-STATUS-STIME-braak-regions.csv")
-alldf = CSV.read(sub_data_path, DataFrame)
-
-posdf = filter(x -> x.STATUS == "POS", alldf)
-
-dktdict = Connectomes.node2FS()
-dktnames = [dktdict[i] for i in cortex.ID]
-
-data = ADNIDataSet(posdf, dktnames; min_scans=3)
-
-function regional_mean(data, rois, sub)
-    subsuvr = calc_suvr(data, sub)
-    mean(subsuvr[rois,end])
-end
-
-
-mtl_cutoff = 1.375
-neo_cutoff = 1.395
-
-mtl_pos = filter(x -> regional_mean(data, mtl, x) >= mtl_cutoff, 1:50)
-neo_pos = filter(x -> regional_mean(data, neo, x) >= neo_cutoff, 1:50)
-
-tau_pos = findall(x -> x ∈ unique([mtl_pos; neo_pos]), 1:50)
-tau_neg = findall(x -> x ∉ tau_pos, 1:50)
-
-n_pos = length(tau_pos)
-n_neg = length(tau_neg)
-
-gmm_moments = CSV.read(projectdir("data/adni-data/component_moments.csv"), DataFrame)
-ubase, upath = get_dkt_moments(gmm_moments, dktnames)
-u0 = mean.(ubase)
-cc = quantile.(upath, .95)
-
 pst = deserialize(projectdir("adni/hierarchical-inference/local-fkpp/chains/hier-local-pst-taupos-uniform-4x2000-c99-ln.jls"));
 pst2 = deserialize(projectdir("adni/hierarchical-inference/local-fkpp/chains/hier-local-pst-tauneg-uniform-4x2000-c99-ln.jls"));
 pst3 = deserialize(projectdir("adni/hierarchical-inference/local-fkpp/chains/hier-local-pst-abneg-uniform-4x2000-c99-ln.jls"));
@@ -87,9 +33,9 @@ begin
     hidexdecorations!(ax, label=false, ticks=false, ticklabels=false)
     hidespines!(ax, :t, :r, :l)
 
-    hist!(vec(pst[:Pm]) .* maxA, bins=50, color=(:blue, 0.6), label=L"A\beta^+ \tau P^+", normalization=:pdf, strokewidth=1, strokecolor=:blue)
-    hist!(vec(pst2[:Pm]) .* maxA, bins=50, color=(:red, 0.6), label=L"A\beta^+ \tau P^-", normalization=:pdf, strokewidth=1, strokecolor=:red)
-    hist!(vec(pst3[:Pm]) .* maxA, bins=50, color=(:green, 0.6), label=L"A\beta^-", normalization=:pdf, strokewidth=1, strokecolor=:green)
+    hist!(vec(pst[:Pm]), bins=50, color=(:blue, 0.6), label=L"A\beta^+ \tau P^+", normalization=:pdf, strokewidth=1, strokecolor=:blue)
+    hist!(vec(pst2[:Pm]), bins=50, color=(:red, 0.6), label=L"A\beta^+ \tau P^-", normalization=:pdf, strokewidth=1, strokecolor=:red)
+    hist!(vec(pst3[:Pm]), bins=50, color=(:green, 0.6), label=L"A\beta^-", normalization=:pdf, strokewidth=1, strokecolor=:green)
     
     ax = Axis(g3[1,1], 
             xticklabelsize=20, xlabelsize=30, xlabel="s.d.", 
