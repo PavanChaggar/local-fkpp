@@ -8,7 +8,7 @@ using Serialization
 using LinearAlgebra
 using Random
 using LinearAlgebra
-using MCMCChains
+using Turing
 include(projectdir("functions.jl"))
 
 #-------------------------------------------------------------------------------
@@ -115,10 +115,26 @@ meanpst = mean(pst)
 Pm, Am = meanpst[:Pm, :mean], meanpst[:Am, :mean]
 
 mean_probs = [ODEProblem(NetworkLocalFKPP, initial_conditions[i], (0.,5.), [Pm, Am]) for i in 1:n_pos];
-mean_sols = [solve(probs[i], Tsit5(), saveat=times[i]) for i in 1:n_pos];
+mean_sols = [solve(mean_probs[i], Tsit5(), saveat=times[i]) for i in 1:n_pos];
 
-predictions = predict(m, pst[[:σ, :Pm, :Am]])
-quantile(predictions; q=[0.05,0.95])
+_predictions = predict(m, pst[[:σ, :Pm, :Am]])
+qs = quantile(_predictions; q=[0.025, 0.5, 0.975])
+
+function get_quantiles(q)
+    lower = [q[Symbol("data[$i,$j]"), Symbol("2.5%")] for i in 1:72, j in 1:2]
+    upper = [q[Symbol("data[$i,$j]"), Symbol("97.5%")] for i in 1:72, j in 1:2]
+    mean = [q[Symbol("data[$i,$j]"), Symbol("50.0%")] for i in 1:72, j in 1:2]
+    (;lower, upper, mean)
+end
+
+function make_predictions(pst, initial_conditions, times)
+    m = localfkpp(prob, initial_conditions, times, n_pos);
+    _predictions = predict(m, pst[[:σ, :Pm, :Am]])
+    qs = quantile(_predictions; q=[0.025, 0.5, 0.975])
+    get_quantiles(qs)
+end
+
+predictions = [make_predictions(pst, initial_conditions[i], times[i]) for i in 1:n_pos];
 
 using CairoMakie
 
@@ -127,10 +143,16 @@ ax = Axis(f[1,1],
           xlabel="SUVR", 
           ylabel="Prediction", 
           titlesize=26, xlabelsize=20, ylabelsize=20)
-xlims!(ax, 0.9, 2.5)
-ylims!(ax, 0.9, 2.5)
+xlims!(ax, 0.9, 4.0)
+ylims!(ax, 0.9, 4.0)
 for i in 1:n_pos
-    scatter!(subdata[i][:,2], sols[i][2])
+    errorbars!(subdata[i][:,2], 
+               predictions[i].mean[:,2], 
+               abs.(predictions[i].lower[:,2] .- predictions[i].mean[:,2]),
+               predictions[i].upper[:,2] .- predictions[i].mean[:,2],
+               direction=:x,
+               whiskerwidth = 10,
+               color=(:grey, 0.2))
 end
 f
 

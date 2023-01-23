@@ -190,6 +190,8 @@ begin
 	          titlesize=26, xlabelsize=20, ylabelsize=20)
 	xlims!(ax2, -0.25, 0.5)
 	ylims!(ax2, -0.25, 0.5)
+	lines!(-0.25:0.1:0.5, -0.25:0.1:0.5, color=(:grey, 0.75), linewidth=2, linestyle=:dash)
+
 	for i in 1:n_pos
 	    scatter!(get_diff(subdata[i]), get_diff(sols[i]), color=(:grey, 0.2))
 	end
@@ -267,7 +269,7 @@ c.parc.Label[node]
 # ╠═e8333ba1-f967-43c0-b4bc-c89a189e5ea2
 # ╟─040f92b5-2b3f-4a5e-a4db-68ec3e12b4fb
 # ╠═8b131e58-e642-4756-9892-1721cc4e6db7
-# ╟─84d8872f-9b17-4259-9550-e1b1ffcb418c
+# ╠═84d8872f-9b17-4259-9550-e1b1ffcb418c
 # ╟─d5e8b4c0-3dd8-49a8-be8a-3597ba29e402
 # ╠═994e5a72-be90-4d62-b61a-bde998d9a221
 # ╟─0d78d8d0-a539-4839-b01b-a3f0f4aace22

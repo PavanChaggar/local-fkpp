@@ -87,10 +87,10 @@ for i in 1:n_pos
     normalise!(_subdata[i], u0, cc)
 end
 
-subdata = [sd[:,1:3] for sd in _subdata]
+subdata = [sd[:, 1:3] for sd in _subdata]
 vecsubdata = reduce(vcat, reduce(hcat, subdata))
 
-initial_conditions = [sd[:,1] for sd in subdata]
+initial_conditions = [sd[:,1] for sd in _subdata]
 _times =  [get_times(data, i) for i in tau_pos]
 times = [t[1:3] for t in _times]
 
@@ -99,7 +99,7 @@ prob = ODEProblem(NetworkLocalFKPP,
                   (0.,15.), 
                   [1.0,1.0])
                   
-sol = solve(prob, Tsit5())
+sol = solve(prob, AutoVern7(Rodas4()))
 
 ensemble_prob = EnsembleProblem(prob, prob_func=make_prob_func(initial_conditions, ones(n_pos), ones(n_pos), times), output_func=output_func)
 ensemble_sol = solve(ensemble_prob, Tsit5(), trajectories=n_pos)
@@ -157,18 +157,18 @@ end
     data ~ MvNormal(vecsol, σ^2 * I)
 end
 
-setadbackend(:zygote)
+#setadbackend(:zygote)
 Random.seed!(1234);
 
 m = localfkpp(vecsubdata, prob, initial_conditions, times, n_pos);
 m();
-
+sample(m, Turing.NUTS(0.8), 100)
 n_chains = 4
 pst = sample(m, 
-             Turing.NUTS(0.8),
+             Turing.NUTS(0.8), #, metricT=AdvancedHMC.DenseEuclideanMetric), 
              MCMCThreads(), 
              2_000, 
              n_chains,
              progress=false)
 
-serialize(projectdir("adni/chains/local-fkpp/pst-taupos-4x2000-three.jls"), pst)
+serialize(projectdir("adni/chains/local-fkpp/pst-taupos-$(n_chains)x2000-three.jls"), pst)
