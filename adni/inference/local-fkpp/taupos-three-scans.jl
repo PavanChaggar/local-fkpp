@@ -79,7 +79,7 @@ function make_prob_func(initial_conditions, p, a, times)
 end
 
 function output_func(sol,i)
-    ((vec(sol), sol.retcode),false)
+    ([vec(sol), sol.retcode],false)
 end
 
 _subdata = [calc_suvr(data, i) for i in tau_pos]

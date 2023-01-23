@@ -85,6 +85,26 @@ prob = ODEProblem(NetworkLocalFKPP,
                   [1.0,1.0])
                   
 sol = solve(prob, Tsit5())
+
+#-------------------------------------------------------------------------------
+# Model
+#-------------------------------------------------------------------------------
+@model function localfkpp(prob, initial_conditions, times, n)
+    σ ~ LogNormal(0, 1)
+    
+    Pm ~ LogNormal(0, 1)
+    Am ~ Normal(0, 1)
+    prob = remake(prob, u0 = initial_conditions, p = [Pm, Am])
+    
+    sol = solve(prob, Tsit5(), saveat=times)
+
+    data ~ arraydist(Normal.(sol, σ))
+    return (; σ, Pm, Am, data)
+end
+
+m = localfkpp(prob, initial_conditions[1], times[1], n_pos);
+m()
+
 #-------------------------------------------------------------------------------
 # Out of sample mean prediction
 #-------------------------------------------------------------------------------
@@ -94,8 +114,11 @@ meanpst = mean(pst)
 
 Pm, Am = meanpst[:Pm, :mean], meanpst[:Am, :mean]
 
-probs = [ODEProblem(NetworkLocalFKPP, initial_conditions[i], (0.,5.), [Pm, Am]) for i in 1:n_pos];
-sols = [solve(probs[i], Tsit5(), saveat=times[i]) for i in 1:n_pos];
+mean_probs = [ODEProblem(NetworkLocalFKPP, initial_conditions[i], (0.,5.), [Pm, Am]) for i in 1:n_pos];
+mean_sols = [solve(probs[i], Tsit5(), saveat=times[i]) for i in 1:n_pos];
+
+predictions = predict(m, pst[[:σ, :Pm, :Am]])
+quantile(predictions; q=[0.05,0.95])
 
 using CairoMakie
 
