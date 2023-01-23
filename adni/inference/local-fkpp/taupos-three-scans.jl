@@ -166,7 +166,9 @@ m();
 n_chains = 4
 pst = sample(m, 
              Turing.NUTS(0.8),
+             MCMCThreads(), 
              2_000, 
+             n_chains,
              progress=false)
-             
-serialize(projectdir("adni/chains/local-fkpp/pst-taupos-2000-three.jls"), pst)
+
+serialize(projectdir("adni/chains/local-fkpp/pst-taupos-4x2000-three.jls"), pst)
