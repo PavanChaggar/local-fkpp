@@ -1,4 +1,5 @@
 using Connectomes
+using ADNIDatasets
 using CSV, DataFrames
 using DrWatson: projectdir
 using DifferentialEquations
@@ -9,8 +10,7 @@ using Serialization
 using DelimitedFiles, LinearAlgebra
 using Random
 using LinearAlgebra
-include(projectdir("adni/adni.jl"))
-include(projectdir("adni/braak-regions.jl"))
+include(projectdir("functions.jl"))
 
 #-------------------------------------------------------------------------------
 # Connectome and ROIs
@@ -30,7 +30,7 @@ neo = findall(x -> x ∈ neo_regions, cortex.Label)
 #-------------------------------------------------------------------------------
 # Data 
 #-------------------------------------------------------------------------------
-sub_data_path = projectdir("data/adni-data/AV1451_Diagnosis-STATUS-STIME-braak-regions.csv")
+sub_data_path = projectdir("adni/data/AV1451_Diagnosis-STATUS-STIME-braak-regions.csv")
 alldf = CSV.read(sub_data_path, DataFrame)
 
 posdf = filter(x -> x.STATUS == "POS", alldf)
@@ -38,7 +38,7 @@ posdf = filter(x -> x.STATUS == "POS", alldf)
 dktdict = Connectomes.node2FS()
 dktnames = [dktdict[i] for i in cortex.ID]
 
-data = ADNIDataSet(posdf, dktnames; min_scans=3)
+data = ADNIDataset(posdf, dktnames; min_scans=3)
 
 function regional_mean(data, rois, sub)
     subsuvr = calc_suvr(data, sub)
@@ -60,18 +60,16 @@ n_neg = length(tau_neg)
 neo_only = findall(x -> x ∈ setdiff(neo_pos, mtl_pos), tau_pos)
 mtl_only = findall(x -> x ∈ setdiff(tau_pos, setdiff(neo_pos, mtl_pos)), tau_pos)
 
-
-gmm_moments = CSV.read(projectdir("data/adni-data/component_moments.csv"), DataFrame)
+gmm_moments = CSV.read(projectdir("adni/data/component_moments.csv"), DataFrame)
 ubase, upath = get_dkt_moments(gmm_moments, dktnames)
 u0 = mean.(ubase)
 cc = quantile.(upath, .99);
-
 #-------------------------------------------------------------------------------
 # Connectome + ODEE
 #-------------------------------------------------------------------------------
 L = laplacian_matrix(c)
 
-function NetworkExFKPP(du, u, p, t; L = L, u0 = u0, cc = cc)
+function NetworkLocalFKPP(du, u, p, t; L = L, u0 = u0, cc = cc)
     du .= -p[1] * L * (u .- u0) .+ p[2] .* (u .- u0) .* ((cc .- u0) .- (u .- u0))
 end
 
@@ -80,11 +78,11 @@ subdata = [normalise(sd, u0) for sd in _subdata]
 initial_conditions = [sd[:,1] for sd in subdata]
 times =  [get_times(data, i) for i in tau_pos];
 
-pst = deserialize(projectdir("adni/hierarchical-inference/local-fkpp/chains/hier-local-pst-taupos-uniform-4x2000-c99.jls"));
+pst = deserialize(projectdir("adni/chains/local-fkpp/pst-taupos-4x2000.jls"));
 
 meanpst = mean(pst)
 params = [[meanpst[Symbol("ρ[$i]"), :mean], meanpst[Symbol("α[$i]"), :mean]] for i in 1:27]
-meansols = [solve(ODEProblem(NetworkExFKPP, init, (0.0,15.0), p), Tsit5(), saveat=0.05) for (init, t, p) in zip(initial_conditions, times, params)];
+meansols = [solve(ODEProblem(NetworkLocalFKPP, init, (0.0,15.0), p), Tsit5(), saveat=0.05) for (init, t, p) in zip(initial_conditions, times, params)];
 
 sols = Vector{Vector{Array{Float64}}}();
 
@@ -93,7 +91,7 @@ for (i, j) in enumerate(tau_pos)
     for s in 1:40:8000
         params = [pst[Symbol("ρ[$i]")][s], pst[Symbol("α[$i]")][s]]
         σ = pst[:σ][s]
-        sol = solve(ODEProblem(NetworkExFKPP, initial_conditions[i], (0.0,15.0), params), Tsit5(), saveat=0.1)
+        sol = solve(ODEProblem(NetworkLocalFKPP, initial_conditions[i], (0.0,15.0), params), Tsit5(), saveat=0.1)
         noise = (randn(size(Array(sol))) .* σ)
         push!(isols, Array(sol) .+ noise)
     end
