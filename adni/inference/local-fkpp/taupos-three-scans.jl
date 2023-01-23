@@ -17,8 +17,6 @@ using DelimitedFiles, LinearAlgebra
 using Random
 using LinearAlgebra
 include(projectdir("functions.jl"))
-
-Turing.setprogress!(false)
 #-------------------------------------------------------------------------------
 # Connectome and ROIs
 #-------------------------------------------------------------------------------
@@ -84,22 +82,24 @@ function output_func(sol,i)
     ((vec(sol), sol.retcode),false)
 end
 
-subdata = [calc_suvr(data, i) for i in tau_pos]
+_subdata = [calc_suvr(data, i) for i in tau_pos]
 for i in 1:n_pos
-    normalise!(subdata[i], u0, cc)
+    normalise!(_subdata[i], u0, cc)
 end
 
+subdata = [sd[:,1:3] for sd in _subdata]
 vecsubdata = reduce(vcat, reduce(hcat, subdata))
 
 initial_conditions = [sd[:,1] for sd in subdata]
-times =  [get_times(data, i) for i in tau_pos]
+_times =  [get_times(data, i) for i in tau_pos]
+times = [t[1:3] for t in _times]
 
 prob = ODEProblem(NetworkLocalFKPP, 
                   initial_conditions[1], 
                   (0.,15.), 
                   [1.0,1.0])
                   
-sol = solve(prob, AutoVern7(Rodas4()))
+sol = solve(prob, Tsit5())
 
 ensemble_prob = EnsembleProblem(prob, prob_func=make_prob_func(initial_conditions, ones(n_pos), ones(n_pos), times), output_func=output_func)
 ensemble_sol = solve(ensemble_prob, Tsit5(), trajectories=n_pos)
@@ -157,7 +157,7 @@ end
     data ~ MvNormal(vecsol, σ^2 * I)
 end
 
-#setadbackend(:zygote)
+setadbackend(:zygote)
 Random.seed!(1234);
 
 m = localfkpp(vecsubdata, prob, initial_conditions, times, n_pos);
@@ -165,9 +165,8 @@ m();
 
 n_chains = 4
 pst = sample(m, 
-             Turing.NUTS(0.8), #, metricT=AdvancedHMC.DenseEuclideanMetric), 
-             MCMCThreads(), 
+             Turing.NUTS(0.8),
              2_000, 
-             n_chains,
              progress=false)
-serialize(projectdir("adni/chains/local-fkpp/pst-taupos-$(n_chains)x2000.jls"), pst)
+             
+serialize(projectdir("adni/chains/local-fkpp/pst-taupos-2000-three.jls"), pst)
