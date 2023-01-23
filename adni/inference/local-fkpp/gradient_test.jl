@@ -17,8 +17,6 @@ using DelimitedFiles, LinearAlgebra
 using Random
 using LinearAlgebra
 include(projectdir("functions.jl"))
-
-Turing.setprogress!(false)
 #-------------------------------------------------------------------------------
 # Connectome and ROIs
 #-------------------------------------------------------------------------------
@@ -81,8 +79,13 @@ function make_prob_func(initial_conditions, p, a, times)
 end
 
 function output_func(sol,i)
-    ((vec(sol), sol.retcode),false)
+    ([vec(sol), sol.retcode],false)
 end
+
+function output_func2(sol,i)
+    (sol,false)
+end
+
 
 subdata = [calc_suvr(data, i) for i in tau_pos]
 for i in 1:n_pos
@@ -113,7 +116,6 @@ ensemble_sol = solve(ensemble_prob, Tsit5(), trajectories=n_pos)
     end
     return true
 end
-
 function get_retcodes(es)
     [sol[2] for sol in es]
 end
@@ -147,27 +149,164 @@ end
                          reltol = 1e-9, 
                          trajectories=n, 
                          sensealg=InterpolatingAdjoint(autojacvec=ReverseDiffVJP(true)))
-    if !allequal(get_retcodes(ensemble_sol)) 
-        Turing.@addlogprob! -Inf
-        println("failed")
-        return nothing
-    end
+    
+    # if !allequal(get_retcodes(ensemble_sol)) 
+    #     Turing.@addlogprob! -Inf
+    #     println("failed")
+    #     return nothing
+    # end
     vecsol = vec_sol(ensemble_sol)
 
     data ~ MvNormal(vecsol, σ^2 * I)
 end
 
+@model function localfkpp2(data, prob, initial_conditions, times, n)
+    σ ~ LogNormal(0, 1)
+    
+    Pm ~ LogNormal(0, 0.5)
+    Ps ~ LogNormal(0, 0.5)
+
+    Am ~ Normal(0, 1)
+    As ~ LogNormal(0, 0.5)
+
+    ρ ~ filldist(truncated(Normal(Pm, Ps), lower=0), n)
+    α ~ filldist(Normal(Am, As), n)
+
+    ensemble_prob = EnsembleProblem(prob, 
+                                    prob_func=make_prob_func(initial_conditions, ρ, α, times), 
+                                    output_func=output_func2)
+
+    ensemble_sol = solve(ensemble_prob, 
+                         Tsit5(), 
+                         abstol = 1e-9, 
+                         reltol = 1e-9, 
+                         trajectories=n, 
+                         sensealg=InterpolatingAdjoint(autojacvec=ReverseDiffVJP(true)))
+    if !allequal([sol.retcode for sol in ensemble_sol]) 
+        Turing.@addlogprob! -Inf
+        println("failed")
+        return nothing
+    end
+    vecsol = reduce(vcat, ensemble_sol)
+
+    data ~ MvNormal(vecsol, σ^2 * I)
+end
 #setadbackend(:zygote)
+
+@code_warntype m.f(
+    m,
+    Turing.VarInfo(m),
+    Turing.SamplingContext(
+        Random.GLOBAL_RNG, Turing.SampleFromPrior(), Turing.DefaultContext(),
+    ),
+    m.args...,
+)
+
+using LogDensityProblems
+using LogDensityProblemsAD
+using BenchmarkTools
+
+function test_gradient(model, adbackend)
+    var_info = Turing.VarInfo(model)
+    ctx = Turing.DefaultContext()
+
+    spl = Turing.DynamicPPL.Sampler(Turing.NUTS(.8))
+
+    vi = Turing.DynamicPPL.VarInfo(var_info, spl, var_info[spl])
+    f = LogDensityProblemsAD.ADgradient(adbackend, 
+                                            Turing.LogDensityFunction(vi, model, spl, ctx))
+    θ = vi[spl]
+    return f, θ
+end
+
 Random.seed!(1234);
 
 m = localfkpp(vecsubdata, prob, initial_conditions, times, n_pos);
 m();
 
-n_chains = 4
-pst = sample(m, 
-             Turing.NUTS(0.8), #, metricT=AdvancedHMC.DenseEuclideanMetric), 
-             MCMCThreads(), 
-             2_000, 
-             n_chains,
-             progress=false)
-serialize(projectdir("adni/chains/local-fkpp/pst-taupos-$(n_chains)x2000.jls"), pst)
+f, θ = test_gradient(m, Turing.Essential.ForwardDiffAD{40}());
+LogDensityProblems.logdensity_and_gradient(f, θ)
+
+@benchmark LogDensityProblems.logdensity_and_gradient(f, θ)
+
+Random.seed!(1234);
+
+m = localfkpp(vecsubdata, prob, initial_conditions, times, n_pos);
+m();
+
+f, θ = test_gradient(m, Turing.Essential.ZygoteAD());
+LogDensityProblems.logdensity_and_gradient(f, θ)
+
+ensemble_prob = EnsembleProblem(prob, prob_func=make_prob_func(initial_conditions, ones(n_pos), ones(n_pos), times), output_func=output_func)
+ensemble_sol = solve(ensemble_prob, Tsit5(), trajectories=n_pos)
+
+ensemble_prob = EnsembleProblem(prob, prob_func=make_prob_func(initial_conditions, ones(n_pos), ones(n_pos), times), output_func=output_func)
+ensemble_sol = solve(ensemble_prob, Tsit5(), trajectories=2)
+
+function esumf(p)
+    ensemble_prob = EnsembleProblem(prob, 
+                                    prob_func=make_prob_func(initial_conditions, ones(2).*p, ones(2).*p, times), 
+                                    output_func=output_func)
+
+    ensemble_sol = solve(ensemble_prob, Tsit5(), trajectories=2)
+    vec_sol(ensemble_sol) |> sum
+end
+esumf(1.0)
+using Zygote, ForwardDiff
+ForwardDiff.gradient(essum, ensemble_sol)
+
+
+using DifferentialEquations
+using DiffEqSensitivity
+using Zygote
+using ComponentArrays
+
+f(u, p, t) = -p .* u
+
+function caf(du, u, p, t)
+    du .= -p[1] .* u
+end
+
+prob = ODEProblem(caf, ComponentArray(u=1.), (0.0,5.0), ComponentArray(p=1.))
+sol = solve(prob, Tsit5(), saveat=0.1)
+
+function sumf(p)
+    sum(solve(remake(prob, p = p), Tsit5(), saveat=0.5, ))
+end
+sumf(1.0)
+ForwardDiff.gradient(sumf, ComponentArray(p=1.))
+Zygote.gradient(sumf, ComponentArray(p=1.))
+
+
+
+using DifferentialEquations
+using DiffEqSensitivity
+using Zygote, ForwardDiff
+using ComponentArrays
+
+function decay(du, u, p, t)
+    du .= -p[1] .* u
+end
+
+prob = ODEProblem(decay, ComponentArray(u=1.), (0.0,5.0), ComponentArray(p=1.))
+
+function make_prob_func(u, p)
+    function prob_func(prob,i,repeat)
+        remake(prob, u0=u, p=p[i])
+    end
+end
+
+function output_func(sol,i)
+    (vec(sol),false)
+end
+
+function esum(p)
+    ensemble_prob = EnsembleProblem(prob, prob_func=make_prob_func(ComponentVector(u=ones(2)), ComponentVector(p=ones(2)) .* p), output_func=output_func)
+    ensemble_sol = solve(ensemble_prob, Tsit5(), trajectories=2, sensealg=InterpolatingAdjoint(autojacvec=ReverseDiffVJP(true)))
+
+    reduce(vcat, ensemble_sol) |> sum
+end
+
+esum(ComponentVector(p=2.0))
+
+Zygote.gradient(esum, ComponentVector(p=2.0))
