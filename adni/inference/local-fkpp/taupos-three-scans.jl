@@ -157,18 +157,18 @@ end
     data ~ MvNormal(vecsol, σ^2 * I)
 end
 
-#setadbackend(:zygote)
+setadbackend(:zygote)
 Random.seed!(1234);
 
 m = localfkpp(vecsubdata, prob, initial_conditions, times, n_pos);
 m();
-sample(m, Turing.NUTS(0.8), 100)
+
 n_chains = 4
 pst = sample(m, 
              Turing.NUTS(0.8), #, metricT=AdvancedHMC.DenseEuclideanMetric), 
-             MCMCThreads(), 
+             MCMCSerial(), 
              2_000, 
              n_chains,
-             progress=false)
+             progress=true)
 
 serialize(projectdir("adni/chains/local-fkpp/pst-taupos-$(n_chains)x2000-three.jls"), pst)

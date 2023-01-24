@@ -166,9 +166,9 @@ begin
 	          xlabel="SUVR", 
 	          ylabel="Prediction", 
 	          titlesize=26, xlabelsize=20, ylabelsize=20)
-	xlims!(ax, 0.9, 2.5)
-	ylims!(ax, 0.9, 2.5)
-	lines!(0.9:0.1:2.5, 0.9:0.1:2.5, color=(:grey, 0.75), linewidth=2, linestyle=:dash)
+	xlims!(ax, 0.9, 4.0)
+	ylims!(ax, 0.9, 4.0)
+	lines!(0.9:0.1:4.0, 0.9:0.1:4.0, color=(:grey, 0.75), linewidth=2, linestyle=:dash)
 
 	for i in 1:n_pos
 	    scatter!(subdata[i][:,2], sols[i][2], color=(:grey, 0.3))

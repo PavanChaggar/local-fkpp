@@ -276,26 +276,6 @@ esumf(1.0)
 using Zygote, ForwardDiff
 ForwardDiff.gradient(essum, ensemble_sol)
 
-
-using DifferentialEquations
-using DiffEqSensitivity
-using Zygote
-using ComponentArrays
-
-function decay(du, u, p, t)
-    du .= -p[1] .* u
-end
-
-prob = ODEProblem(decay, ComponentArray(u=1.), (0.0,5.0), ComponentArray(p=1.))
-sol = solve(prob, Tsit5(), saveat=0.1)
-
-function sumf(p)
-    sum(solve(remake(prob, p = p), Tsit5(), saveat=0.5, ))
-end
-sumf(1.0)
-ForwardDiff.gradient(sumf, ComponentArray(p=1.))
-Zygote.gradient(sumf, ComponentArray(p=1.))
-
 using DifferentialEquations
 using SciMLSensitivity
 using Zygote, ForwardDiff
@@ -305,25 +285,29 @@ function decay(du, u, p, t)
     du .= -p[1] .* u
 end
 
-prob = ODEProblem(decay, ComponentArray(u=1.), (0.0,5.0), ComponentArray(p=1.))
+prob = ODEProblem(decay, [1.0], (0.0,5.0), [1.0])
+sol = solve(prob, Tsit5(), saveat=0.1)
+
+function sumf(p)
+    sum(solve(remake(prob, p = p), Tsit5(), saveat=0.5, ))
+end
+sumf(1.0)
+ForwardDiff.gradient(sumf, [1.0])
+Zygote.gradient(sumf, [1.0])
 
 function make_prob_func(u, p)
     function prob_func(prob,i,repeat)
-        remake(prob, u0=ComponentVector(;u), p=p)
+        remake(prob, u0=ComponentVector(;u), p=ComponentVector(;p))
     end
 end
 
-function output_func(sol,i)
-    (vec(sol),false)
-end
-
 function esum(p)
-    ensemble_prob = EnsembleProblem(prob, prob_func=make_prob_func(ones(2), ones(2) .* p), output_func=output_func)
+    ensemble_prob = EnsembleProblem(prob, prob_func=make_prob_func(ones(2), ones(2) .* p))
     ensemble_sol = solve(ensemble_prob, Tsit5(), EnsembleSerial(), trajectories=2)
 
     reduce(vcat, ensemble_sol) |> sum
 end
 
-esum(ComponentVector(p=2.0))
-
-Zygote.gradient(esum, ComponentVector(p=2.0))
+esum(2.0)
+ForwardDiff.gradient(esum, [2])
+Zygote.gradient(esum, [2.0])
