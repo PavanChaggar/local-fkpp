@@ -10,7 +10,7 @@ using Random
 using LinearAlgebra
 using Turing
 include(projectdir("functions.jl"))
-
+include(projectdir("braak-regions.jl"))
 #-------------------------------------------------------------------------------
 # Connectome and ROIs
 #-------------------------------------------------------------------------------
@@ -117,9 +117,6 @@ Pm, Am = meanpst[:Pm, :mean], meanpst[:Am, :mean]
 mean_probs = [ODEProblem(NetworkLocalFKPP, initial_conditions[i], (0.,5.), [Pm, Am]) for i in 1:n_pos];
 mean_sols = [solve(mean_probs[i], Tsit5(), saveat=times[i]) for i in 1:n_pos];
 
-_predictions = predict(m, pst[[:σ, :Pm, :Am]])
-qs = quantile(_predictions; q=[0.025, 0.5, 0.975])
-
 function get_quantiles(q)
     lower = [q[Symbol("data[$i,$j]"), Symbol("2.5%")] for i in 1:72, j in 1:2]
     upper = [q[Symbol("data[$i,$j]"), Symbol("97.5%")] for i in 1:72, j in 1:2]
@@ -135,42 +132,195 @@ function make_predictions(pst, initial_conditions, times)
 end
 
 predictions = [make_predictions(pst, initial_conditions[i], times[i]) for i in 1:n_pos];
+mean_predictions = [predictions[i].mean[:,:] for i in 1:n_pos]
 
+#-------------------------------------------------------------------------------
+# Out of sample mean predictions -- figures
+#-------------------------------------------------------------------------------
 using CairoMakie
 
-f = Figure(resolution=(600, 500))
-ax = Axis(f[1,1], 
-          xlabel="SUVR", 
-          ylabel="Prediction", 
-          titlesize=26, xlabelsize=20, ylabelsize=20)
-xlims!(ax, 0.9, 4.0)
-ylims!(ax, 0.9, 4.0)
-for i in 1:n_pos
-    errorbars!(subdata[i][:,2], 
-               predictions[i].mean[:,2], 
-               abs.(predictions[i].lower[:,2] .- predictions[i].mean[:,2]),
-               predictions[i].upper[:,2] .- predictions[i].mean[:,2],
-               direction=:x,
-               whiskerwidth = 10,
-               color=(:grey, 0.2))
+begin
+    f = Figure(resolution=(600, 500))
+    ax = Axis(f[1,1], 
+            xlabel="SUVR", 
+            ylabel="Prediction", 
+            titlesize=26, xlabelsize=20, ylabelsize=20)
+    xlims!(ax, 0.9, 4.0)
+    ylims!(ax, 0.9, 4.0)
+    lines!(0.9:0.1:4.0,0.9:0.1:4.0, 
+           linestyle=:dash, 
+           linewidth=5, 
+           color=(:grey, 0.5))
+    for i in 1:n_pos
+        scatter!(subdata[i][:,2], 
+                predictions[i].mean[:,2],
+                color=(:grey, 0.2))
+    end
+    f
 end
-f
+
+begin
+    f = Figure(resolution=(600, 500))
+    ax = Axis(f[1,1], 
+            xlabel="SUVR", 
+            ylabel="Prediction", 
+            titlesize=26, xlabelsize=20, ylabelsize=20)
+    xlims!(ax, 0.9, 4.0)
+    ylims!(ax, 0.9, 4.0)
+    lines!(0.9:0.1:4.0,0.9:0.1:4.0, 
+           linestyle=:dash, 
+           linewidth=5, 
+           color=(:grey, 0.5))
+    for i in 1:n_pos
+        errorbars!(subdata[i][:,2], 
+                predictions[i].mean[:,2], 
+                abs.(predictions[i].lower[:,2] .- predictions[i].mean[:,2]),
+                predictions[i].upper[:,2] .- predictions[i].mean[:,2],
+                direction=:x,
+                whiskerwidth = 10,
+                color=(:grey, 0.2))
+    end
+    f
+end
+
+second_scan_pred = reduce(hcat, [mean_predictions[i][:,2] for i in 1:n_pos])
+mean_second_scan_pred = mean(second_scan_pred, dims=2) |> vec
+
+second_scan_lower = reduce(hcat, [predictions[i].lower[:,2] for i in 1:n_pos])
+second_scan_lower_mean = mean(second_scan_lower, dims=2) |> vec
+
+second_scan_upper = reduce(hcat, [predictions[i].upper[:,2] for i in 1:n_pos])
+second_scan_upper_mean = mean(second_scan_upper, dims=2) |> vec
+
+second_scan = reduce(hcat, [subdata[i][:,2] for i in 1:n_pos])
+mean_second_scan = mean(second_scan, dims=2) |> vec
+
+begin
+    f = Figure(resolution=(600, 500))
+    ax = Axis(f[1,1], 
+            xlabel="SUVR", 
+            ylabel="Prediction", 
+            titlesize=26, xlabelsize=20, ylabelsize=20)
+    xlims!(ax, 0.9, 2.0)
+    ylims!(ax, 0.9, 2.0)
+    lines!(0.9:0.1:4.0,0.9:0.1:4.0, 
+           linestyle=:dash, 
+           linewidth=2, 
+           color=(:grey, 0.5))
+    scatter!(mean_second_scan,mean_second_scan_pred, color=(:blue, 0.5))
+    f
+end
+
+
+begin
+    f = Figure(resolution=(600, 500))
+    ax = Axis(f[1,1], 
+            xlabel="SUVR", 
+            ylabel="Prediction", 
+            titlesize=26, xlabelsize=20, ylabelsize=20)
+    xlims!(ax, 0.9, 2.0)
+    ylims!(ax, 0.9, 2.0)
+    lines!(0.9:0.1:2.0,0.9:0.1:2.0, 
+           linestyle=:dash, 
+           linewidth=2, 
+           color=(:grey, 0.5))
+    scatter!(mean_second_scan,mean_second_scan_pred, color=(:blue, 0.5))
+    errorbars!(mean_second_scan, 
+            mean_second_scan_pred, 
+            abs.(second_scan_lower_mean.- mean_second_scan_pred),
+            second_scan_upper_mean .- mean_second_scan,
+            direction=:x,
+            whiskerwidth = 10,
+            color=(:grey, 0.5))
+    f
+end
 
 function get_diff(d)
     d[:,end] .- d[:,1]
 end
 
-f = Figure(resolution=(600, 500))
-ax = Axis(f[1,1], 
-          xlabel="SUVR", 
-          ylabel="Prediction", 
-          titlesize=26, xlabelsize=20, ylabelsize=20)
-xlims!(ax, -0.25, 0.5)
-ylims!(ax, -0.25, 0.5)
-for i in 1:n_pos
-    scatter!(get_diff(subdata[i]), get_diff(sols[i]))
+lobes = unique(c.parc.Lobe)
+region_dict = Dict(zip(lobes,collect(1:5)))
+region_idx = [region_dict[region] for region in c.parc.Lobe]
+cols = [:blue, :green, :black, :red, :brown, :magenta]
+col_dict = Dict(zip(collect(1:5), cols))
+regions = [findall(x -> x == i, region_idx) for i in 1:5]
+
+_braak_regions = map(getbraak, braak)
+braak_regions = [reduce(vcat, [findall(x -> x == roi, c.parc.ID) for roi in braak_region]) for braak_region in _braak_regions]
+
+begin
+    f = Figure(resolution=(600, 500))
+    ax = Axis(f[1,1], 
+            xlabel="SUVR", 
+            ylabel="Prediction", 
+            titlesize=26, xlabelsize=20, ylabelsize=20)
+    xlims!(ax, -0.25, 0.5)
+    ylims!(ax, -0.25, 0.5)
+    for i in 1:n_pos
+        scatter!(get_diff(subdata[i]), 
+                 get_diff(mean_predictions[i]), color=(cols[region_idx[i]], 0.1))
+    end
+    f
 end
-f
+
+begin
+    f = Figure(resolution=(2000, 500))
+    for k in 1:5
+        ax = Axis(f[1,k], 
+                xlabel="SUVR", 
+                ylabel="Prediction",
+                title="$(lobes[k])",
+                titlesize=26, xlabelsize=20, ylabelsize=20)
+        xlims!(ax, -0.25, 0.5)
+        ylims!(ax, -0.25, 0.5)
+        lines!(-0.25:0.1:0.5, -0.25:0.1:0.5, color=(:grey, 0.75), linewidth=2, linestyle=:dash)
+        for i in 1:n_pos
+            for j in regions[k]
+            scatter!(get_diff(subdata[i])[j], 
+                    get_diff(mean_predictions[i])[j], color=(cols[k], 0.2))
+            end
+        end
+    end 
+    f
+end
+
+mean_diff = mean(reduce(hcat, [get_diff(subdata[i]) for i in 1:n_pos]), dims=2) |> vec
+mean_pred_diff = mean(reduce(hcat, [get_diff(mean_predictions[i]) for i in 1:n_pos]), dims=2) |> vec
+
+begin
+    f = Figure(resolution=(600, 500))
+    ax = Axis(f[1,1], 
+            xlabel="δ SUVR", 
+            ylabel="δ Prediction", 
+            titlesize=26, xlabelsize=20, ylabelsize=20)
+    xlims!(ax, -0.05, 0.15)
+    ylims!(ax, -0.05, 0.15)
+    lines!(-0.05:0.05:0.15, -0.05:0.05:0.15, color=(:grey, 0.75), linewidth=2, linestyle=:dash)
+    for i in 1:72
+        scatter!(mean_diff[i], mean_pred_diff[i], color=(:blue, 0.5))
+    end
+    f
+end
+
+begin
+    f = Figure(resolution=(2500, 500))
+    for (j, roi) in enumerate(braak_regions)
+        ax = Axis(f[1,j],
+                xlabel="δ SUVR", 
+                ylabel="δ Prediction",
+                title="Braak $(j)",
+                titlesize=26, xlabelsize=20, ylabelsize=20)
+        xlims!(ax, -0.05, 0.15)
+        ylims!(ax, -0.05, 0.15)
+        lines!(-0.05:0.05:0.15, -0.05:0.05:0.15, color=(:grey, 0.75), linewidth=2, linestyle=:dash)
+        for i in roi
+            scatter!(mean_diff[i], 
+                    mean_pred_diff[i], color=(cols[j], 1.0))
+        end
+    end
+    f
+end
 
 function get_diff(d, roi)
     d[roi,end] .- d[roi, 1]

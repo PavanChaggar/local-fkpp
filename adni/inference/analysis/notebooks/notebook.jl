@@ -34,10 +34,14 @@ begin
 	using LinearAlgebra
 	using MCMCChains
 	using PlutoUI
+	using Turing
 end
 
 # ╔═╡ e8333ba1-f967-43c0-b4bc-c89a189e5ea2
 using CairoMakie; CairoMakie.activate!()
+
+# ╔═╡ 61c768df-c14f-43ff-a20d-9775177d0cb0
+include(projectdir("braak-regions.jl"))
 
 # ╔═╡ a56c1d2d-c02a-4bd8-8653-1f3df706dbd4
 begin
@@ -256,6 +260,76 @@ end
 # ╔═╡ db66ee10-446a-43dd-9383-ee74110cee36
 c.parc.Label[node]
 
+# ╔═╡ 8c640bb5-b550-4e81-8bcd-bfa4c7da7056
+begin
+	lobes = unique(c.parc.Lobe)
+	region_dict = Dict(zip(lobes,collect(1:5)))
+	region_idx = [region_dict[region] for region in c.parc.Lobe]
+	cols = [:blue, :green, :black, :red, :brown, :magenta]
+	col_dict = Dict(zip(collect(1:5), cols))
+	regions = [findall(x -> x == i, region_idx) for i in 1:5]
+	
+	_braak_regions = map(getbraak, braak)
+	braak_regions = [reduce(vcat, [findall(x -> x == roi, c.parc.ID) for roi in braak_region]) for braak_region in _braak_regions]
+end
+
+# ╔═╡ e8123fdc-b428-4b68-90db-8fd6eebcb278
+@model function localfkpp(prob, initial_conditions, times, n)
+    σ ~ LogNormal(0, 1)
+    
+    Pm ~ LogNormal(0, 1)
+    Am ~ Normal(0, 1)
+    prob = remake(prob, u0 = initial_conditions, p = [Pm, Am])
+    
+    sol = solve(prob, Tsit5(), saveat=times)
+
+    data ~ arraydist(Normal.(sol, σ))
+    return (; σ, Pm, Am, data)
+end
+
+# ╔═╡ a2650bab-025d-4442-8fe4-53f1298740f1
+m = localfkpp(prob, initial_conditions[1], times[1], n_pos);
+
+# ╔═╡ a5b4c8c7-b19c-4243-85b2-9793bfe8e980
+m()
+
+# ╔═╡ bdd8c37d-d605-41c7-96d7-9577d05fcec8
+function get_quantiles(q)
+    lower = [q[Symbol("data[$i,$j]"), Symbol("2.5%")] for i in 1:72, j in 1:2]
+    upper = [q[Symbol("data[$i,$j]"), Symbol("97.5%")] for i in 1:72, j in 1:2]
+    mean = [q[Symbol("data[$i,$j]"), Symbol("50.0%")] for i in 1:72, j in 1:2]
+    (;lower, upper, mean)
+end
+
+# ╔═╡ 30b8ae22-5cd2-4921-8e8f-8d139e5be69c
+function make_predictions(pst, initial_conditions, times)
+    m = localfkpp(prob, initial_conditions, times, n_pos);
+    _predictions = predict(m, pst[[:σ, :Pm, :Am]])
+    qs = quantile(_predictions; q=[0.025, 0.5, 0.975])
+    get_quantiles(qs)
+end
+
+# ╔═╡ 63ac98ee-b7ec-40e2-af8e-f9daf07dd92d
+predictions = [make_predictions(pst, initial_conditions[i], times[i]) for i in 1:n_pos];
+
+# ╔═╡ 6c2cb090-086b-46db-a088-79eaa2922577
+mean_predictions = [predictions[i].mean[:,:] for i in 1:n_pos]
+
+# ╔═╡ 21582492-6477-47ab-a6de-64ff210a9511
+begin
+	second_scan_pred = reduce(hcat, [mean_predictions[i][:,2] for i in 1:n_pos])
+	mean_second_scan_pred = mean(second_scan_pred, dims=2) |> vec
+	
+	second_scan_lower = reduce(hcat, [predictions[i].lower[:,2] for i in 1:n_pos])
+	second_scan_lower_mean = mean(second_scan_lower, dims=2) |> vec
+	
+	second_scan_upper = reduce(hcat, [predictions[i].upper[:,2] for i in 1:n_pos])
+	second_scan_upper_mean = mean(second_scan_upper, dims=2) |> vec
+	
+	second_scan = reduce(hcat, [subdata[i][:,2] for i in 1:n_pos])
+	mean_second_scan = mean(second_scan, dims=2) |> vec
+end
+
 # ╔═╡ Cell order:
 # ╠═5a1e2ffa-9a8b-11ed-330a-6b360d663ddb
 # ╠═5d463896-c3d8-4a7e-b3ff-59da170fda03
@@ -275,3 +349,13 @@ c.parc.Label[node]
 # ╟─0d78d8d0-a539-4839-b01b-a3f0f4aace22
 # ╟─d5261194-3a63-4a49-aa4c-4e3d11e4fbd3
 # ╟─db66ee10-446a-43dd-9383-ee74110cee36
+# ╠═61c768df-c14f-43ff-a20d-9775177d0cb0
+# ╠═8c640bb5-b550-4e81-8bcd-bfa4c7da7056
+# ╠═e8123fdc-b428-4b68-90db-8fd6eebcb278
+# ╠═a2650bab-025d-4442-8fe4-53f1298740f1
+# ╠═a5b4c8c7-b19c-4243-85b2-9793bfe8e980
+# ╠═bdd8c37d-d605-41c7-96d7-9577d05fcec8
+# ╠═30b8ae22-5cd2-4921-8e8f-8d139e5be69c
+# ╠═63ac98ee-b7ec-40e2-af8e-f9daf07dd92d
+# ╠═6c2cb090-086b-46db-a088-79eaa2922577
+# ╠═21582492-6477-47ab-a6de-64ff210a9511
