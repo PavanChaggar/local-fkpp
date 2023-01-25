@@ -211,6 +211,8 @@ end
     end
 end
 #setadbackend(:zygote)
+m = localfkpp(vecsubdata, prob, initial_conditions, times, n_pos);
+m();
 
 @code_warntype m.f(
     m,

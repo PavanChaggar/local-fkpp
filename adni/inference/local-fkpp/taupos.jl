@@ -16,9 +16,8 @@ using Serialization
 using DelimitedFiles, LinearAlgebra
 using Random
 using LinearAlgebra
+using SparseArrays
 include(projectdir("functions.jl"))
-
-Turing.setprogress!(false)
 #-------------------------------------------------------------------------------
 # Connectome and ROIs
 #-------------------------------------------------------------------------------
@@ -70,6 +69,12 @@ cc = quantile.(upath, .99)
 #-------------------------------------------------------------------------------
 L = laplacian_matrix(c)
 
+vols = [get_vol(data, i) for i in tau_pos]
+init_vols = [v[:,1] for v in vols]
+max_norm_vols = reduce(hcat, [v ./ maximum(v) for v in init_vols])
+mean_norm_vols = vec(mean(max_norm_vols, dims=2))
+Lv = sparse(inv(diagm(mean_norm_vols)) * L)
+
 function NetworkLocalFKPP(du, u, p, t; L = L, u0 = u0, cc = cc)
     du .= -p[1] * L * (u .- u0) .+ p[2] .* (u .- u0) .* ((cc .- u0) .- (u .- u0))
 end
@@ -81,7 +86,7 @@ function make_prob_func(initial_conditions, p, a, times)
 end
 
 function output_func(sol,i)
-    ((vec(sol), sol.retcode),false)
+    (sol,false)
 end
 
 subdata = [calc_suvr(data, i) for i in tau_pos]
@@ -99,7 +104,7 @@ prob = ODEProblem(NetworkLocalFKPP,
                   (0.,15.), 
                   [1.0,1.0])
                   
-sol = solve(prob, AutoVern7(Rodas4()))
+sol = solve(prob, Tsit5())
 
 ensemble_prob = EnsembleProblem(prob, prob_func=make_prob_func(initial_conditions, ones(n_pos), ones(n_pos), times), output_func=output_func)
 ensemble_sol = solve(ensemble_prob, Tsit5(), trajectories=n_pos)
@@ -115,11 +120,11 @@ ensemble_sol = solve(ensemble_prob, Tsit5(), trajectories=n_pos)
 end
 
 function get_retcodes(es)
-    [sol[2] for sol in es]
+    [sol.retcode for sol in es]
 end
 
 function vec_sol(es)
-    reduce(vcat, [sol[1] for sol in es])
+    reduce(vcat, [vec(sol) for sol in es])
 end
 
 #-------------------------------------------------------------------------------
@@ -157,7 +162,7 @@ end
     data ~ MvNormal(vecsol, σ^2 * I)
 end
 
-#setadbackend(:zygote)
+setadbackend(:zygote)
 Random.seed!(1234);
 
 m = localfkpp(vecsubdata, prob, initial_conditions, times, n_pos);
@@ -166,8 +171,8 @@ m();
 n_chains = 4
 pst = sample(m, 
              Turing.NUTS(0.8), #, metricT=AdvancedHMC.DenseEuclideanMetric), 
-             MCMCThreads(), 
+             MCMCSerial(), 
              2_000, 
              n_chains,
              progress=false)
-serialize(projectdir("adni/chains/local-fkpp/pst-taupos-$(n_chains)x2000.jls"), pst)
+serialize(projectdir("adni/chains/local-fkpp/pst-taupos-$(n_chains)x2000-vc.jls"), pst)

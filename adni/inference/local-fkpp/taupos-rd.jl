@@ -16,6 +16,8 @@ using Serialization
 using DelimitedFiles, LinearAlgebra
 using Random
 using LinearAlgebra
+using ComponentArrays
+using SparseArrays
 include(projectdir("functions.jl"))
 #-------------------------------------------------------------------------------
 # Connectome and ROIs
@@ -68,13 +70,18 @@ cc = quantile.(upath, .99)
 #-------------------------------------------------------------------------------
 L = laplacian_matrix(c)
 
-function NetworkLocalFKPP(du, u, p, t; L = L, u0 = u0, cc = cc)
-    du .= -p[1] * L * (u .- u0) .+ p[2] .* (u .- u0) .* ((cc .- u0) .- (u .- u0))
+vols = [get_vol(data, i) for i in tau_pos]
+init_vols = [v[:,1] for v in vols]
+max_norm_vols = [v ./ maximum(v) for v in init_vols]
+Ls = sparse.([inv(diagm(v)) * L for v in max_norm_vols])
+
+function NetworkLocalFKPP(du, u, p, t; u0 = u0, cc = cc)
+    du .= -p[1] * p[3] * (u .- u0) .+ p[2] .* (u .- u0) .* ((cc .- u0) .- (u .- u0))
 end
 
-function make_prob_func(initial_conditions, p, a, times)
+function make_prob_func(initial_conditions, ps, times)
     function prob_func(prob,i,repeat)
-        remake(prob, u0=initial_conditions[i], p=[p[i], a[i]], saveat=times[i])
+        remake(prob, u0=initial_conditions[i], p=ps[i], saveat=times[i])
     end
 end
 
@@ -92,14 +99,18 @@ vecsubdata = reduce(vcat, reduce(hcat, subdata))
 initial_conditions = [sd[:,1] for sd in subdata]
 times =  [get_times(data, i) for i in tau_pos]
 
+p = [1.0,1.0, L]
+
 prob = ODEProblem(NetworkLocalFKPP, 
                   initial_conditions[1], 
                   (0.,15.), 
-                  [1.0,1.0])
+                  p)
                   
-sol = solve(prob, AutoVern7(Rodas4()))
+@benchmark solve(prob, Tsit5())
 
-ensemble_prob = EnsembleProblem(prob, prob_func=make_prob_func(initial_conditions, ones(n_pos), ones(n_pos), times), output_func=output_func)
+ps = [[1.0,1.0, L] for L in Ls]
+
+ensemble_prob = EnsembleProblem(prob, prob_func=make_prob_func(initial_conditions, ps, times), output_func=output_func)
 ensemble_sol = solve(ensemble_prob, Tsit5(), trajectories=n_pos)
 
 @inline function allequal(x)
@@ -120,10 +131,13 @@ function vec_sol(es)
     reduce(vcat, [sol[1] for sol in es])
 end
 
+function make_p_vec(p, a, L, n)
+    [[p[i], a[i], L[i]] for i in 1:n]
+end
 #-------------------------------------------------------------------------------
 # Inference 
 #-------------------------------------------------------------------------------
-@model function localfkpp(data, prob, initial_conditions, times, n)
+@model function localfkpp(data, prob, initial_conditions, Ls, times, n)
     σ ~ LogNormal(0, 1)
     
     Pm ~ LogNormal(0, 0.5)
@@ -134,9 +148,10 @@ end
 
     ρ ~ filldist(truncated(Normal(Pm, Ps), lower=0), n)
     α ~ filldist(Normal(Am, As), n)
-
+    
+    ps = make_p_vec(ρ, α, Ls, n)
     ensemble_prob = EnsembleProblem(prob, 
-                                    prob_func=make_prob_func(initial_conditions, ρ, α, times), 
+                                    prob_func=make_prob_func(initial_conditions, ps, times), 
                                     output_func=output_func)
 
     ensemble_sol = solve(ensemble_prob, 
@@ -155,15 +170,42 @@ end
     data ~ MvNormal(vecsol, σ^2 * I)
 end
 
-setadbackend(:zygote)
+setadbackend(:forwarddiff)
 Random.seed!(1234);
 
-m = localfkpp(vecsubdata, prob, initial_conditions, times, n_pos);
+m = localfkpp(vecsubdata, prob, initial_conditions, Ls, times, n_pos);
 m();
 
+@code_warntype m.f(
+    m,
+    Turing.VarInfo(m),
+    Turing.SamplingContext(
+        Random.GLOBAL_RNG, Turing.SampleFromPrior(), Turing.DefaultContext(),
+    ),
+    m.args...,
+)
+
+function test_gradient(model, adbackend)
+    var_info = Turing.VarInfo(model)
+    ctx = Turing.DefaultContext()
+
+    spl = Turing.DynamicPPL.Sampler(Turing.NUTS(.8))
+
+    vi = Turing.DynamicPPL.VarInfo(var_info, spl, var_info[spl])
+    f = LogDensityProblemsAD.ADgradient(adbackend, 
+                                            Turing.LogDensityFunction(vi, model, spl, ctx))
+    θ = vi[spl]
+    return f, θ
+end
+
+f, θ = test_gradient(m, Turing.Essential.ForwardDiffAD{40}());
+LogDensityProblems.logdensity_and_gradient(f, θ)
+
+n_chains = 4
 pst = sample(m, 
-             Turing.NUTS(0.8), 
+             Turing.NUTS(0.8), #, metricT=AdvancedHMC.DenseEuclideanMetric), 
+             MCMCThreads(), 
              2_000, 
-             progress=true)
-             
-serialize(projectdir("adni/chains/local-fkpp/pst-taupos-2000-rd.jls"), pst)
+             n_chains,
+             progress=false)
+serialize(projectdir("adni/chains/local-fkpp/pst-taupos-$(n_chains)x2000.jls"), pst)
