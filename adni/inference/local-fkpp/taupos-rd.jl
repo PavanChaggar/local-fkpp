@@ -18,6 +18,7 @@ using Random
 using LinearAlgebra
 using ComponentArrays
 using SparseArrays
+using Parameters
 include(projectdir("functions.jl"))
 #-------------------------------------------------------------------------------
 # Connectome and ROIs
@@ -79,14 +80,14 @@ function NetworkLocalFKPP(du, u, p, t; u0 = u0, cc = cc)
     du .= -p[1] * p[3] * (u .- u0) .+ p[2] .* (u .- u0) .* ((cc .- u0) .- (u .- u0))
 end
 
-function make_prob_func(initial_conditions, ps, times)
+function make_prob_func(initial_conditions, p, a, Ls, times)
     function prob_func(prob,i,repeat)
-        remake(prob, u0=initial_conditions[i], p=ps[i], saveat=times[i])
+        remake(prob, u0=initial_conditions[i], p=ComponentArray(ρ=p[i], α = a[i], L=Ls[i]), saveat=times[i])
     end
 end
 
 function output_func(sol,i)
-    ([vec(sol), sol.retcode],false)
+    (sol,false)
 end
 
 subdata = [calc_suvr(data, i) for i in tau_pos]
@@ -99,19 +100,17 @@ vecsubdata = reduce(vcat, reduce(hcat, subdata))
 initial_conditions = [sd[:,1] for sd in subdata]
 times =  [get_times(data, i) for i in tau_pos]
 
-p = [1.0,1.0, L]
+p = ComponentArray(p=1.0,a=1.0,Lv=Ls[1])
 
 prob = ODEProblem(NetworkLocalFKPP, 
                   initial_conditions[1], 
                   (0.,15.), 
                   p)
                   
-@benchmark solve(prob, Tsit5())
+solve(prob, Tsit5())
 
-ps = [[1.0,1.0, L] for L in Ls]
-
-ensemble_prob = EnsembleProblem(prob, prob_func=make_prob_func(initial_conditions, ps, times), output_func=output_func)
-ensemble_sol = solve(ensemble_prob, Tsit5(), trajectories=n_pos)
+ensemble_prob = EnsembleProblem(prob, prob_func=make_prob_func(initial_conditions, ones(27), ones(27), Ls, times), output_func=output_func)
+solve(ensemble_prob, Tsit5(), trajectories=n_pos)
 
 @inline function allequal(x)
     length(x) < 2 && return true
@@ -124,15 +123,15 @@ ensemble_sol = solve(ensemble_prob, Tsit5(), trajectories=n_pos)
 end
 
 function get_retcodes(es)
-    [sol[2] for sol in es]
+    [sol.retcode for sol in es]
 end
 
 function vec_sol(es)
-    reduce(vcat, [sol[1] for sol in es])
+    reduce(vcat, [vec(sol) for sol in es])
 end
 
 function make_p_vec(p, a, L, n)
-    [[p[i], a[i], L[i]] for i in 1:n]
+    [ComponentArray(ρ=p[i], α=a[i], Lv = L[i]) for i in 1:n]
 end
 #-------------------------------------------------------------------------------
 # Inference 
@@ -149,9 +148,8 @@ end
     ρ ~ filldist(truncated(Normal(Pm, Ps), lower=0), n)
     α ~ filldist(Normal(Am, As), n)
     
-    ps = make_p_vec(ρ, α, Ls, n)
     ensemble_prob = EnsembleProblem(prob, 
-                                    prob_func=make_prob_func(initial_conditions, ps, times), 
+                                    prob_func=make_prob_func(initial_conditions, ρ, α, Ls, times), 
                                     output_func=output_func)
 
     ensemble_sol = solve(ensemble_prob, 
