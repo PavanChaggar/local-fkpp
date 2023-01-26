@@ -7,7 +7,7 @@ using ADNIDatasets
 using CSV, DataFrames
 using DrWatson: projectdir
 using DifferentialEquations
-using DiffEqSensitivity
+using SciMLSensitivity
 using Zygote
 using Turing
 using AdvancedHMC
@@ -16,9 +16,9 @@ using Serialization
 using DelimitedFiles, LinearAlgebra
 using Random
 using LinearAlgebra
+using SparseArrays
 include(projectdir("functions.jl"))
 
-Turing.setprogress!(false)
 #-------------------------------------------------------------------------------
 # Connectome and ROIs
 #-------------------------------------------------------------------------------
@@ -74,8 +74,14 @@ cc = quantile.(upath, .99)
 #-------------------------------------------------------------------------------
 L = laplacian_matrix(c)
 
-function NetworkLocalFKPP(du, u, p, t; L = L, u0 = u0, cc = cc)
-    du .= -p[1] * L * (u .- u0) .+ p[2] .* (u .- u0) .* ((cc .- u0) .- (u .- u0))
+vols = [get_vol(data, i) for i in tau_neg]
+init_vols = [v[:,1] for v in vols]
+max_norm_vols = reduce(hcat, [v ./ maximum(v) for v in init_vols])
+mean_norm_vols = vec(mean(max_norm_vols, dims=2))
+Lv = sparse(inv(diagm(mean_norm_vols)) * L)
+
+function NetworkLocalFKPP(du, u, p, t; Lv = Lv, u0 = u0, cc = cc)
+    du .= -p[1] * Lv * (u .- u0) .+ p[2] .* (u .- u0) .* ((cc .- u0) .- (u .- u0))
 end
 
 function make_prob_func(initial_conditions, p, a, times)
@@ -123,6 +129,14 @@ ensemble_sol = solve(ensemble_prob, Tsit5(), trajectories=n_neg)
     return true
 end
 
+function get_retcodes(es)
+    [sol.retcode for sol in es]
+end
+
+function vec_sol(es)
+    reduce(vcat, [vec(sol) for sol in es])
+end
+
 #-------------------------------------------------------------------------------
 # Inference 
 #-------------------------------------------------------------------------------
@@ -148,15 +162,16 @@ end
                          reltol = 1e-9, 
                          trajectories=n, 
                          sensealg=InterpolatingAdjoint(autojacvec=ReverseDiffVJP(true)))
-    if !allequal([sol.retcode for sol in ensemble_sol]) 
+    if !allequal(get_retcodes(ensemble_sol)) 
         Turing.@addlogprob! -Inf
         println("failed")
         return nothing
     end
-    vecsol = reduce(vcat, ensemble_sol)
+    vecsol = vec_sol(ensemble_sol)
 
     data ~ MvNormal(vecsol, σ^2 * I)
 end
+
 Turing.setadbackend(:zygote)
 Random.seed!(1234); 
 
@@ -170,4 +185,4 @@ pst = sample(m,
              2_000, 
              n_chains,
              progress=false)
-serialize(projectdir("adni/chains/local-fkpp/pst-tauneg-$(n_chains)x2000.jls"), pst)
+serialize(projectdir("adni/chains/local-fkpp/pst-tauneg-$(n_chains)x2000-vc.jls"), pst)
