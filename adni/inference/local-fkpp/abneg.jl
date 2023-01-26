@@ -155,7 +155,7 @@ end
     data ~ MvNormal(vecsol, σ^2 * I)
 end
 
-Turing.setadbackend!(:zygote)
+Turing.setadbackend(:zygote)
 Random.seed!(1234); 
 
 m = localfkpp(vecsubdata, prob, initial_conditions, times, n_subjects)
