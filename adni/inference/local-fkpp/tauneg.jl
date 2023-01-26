@@ -18,7 +18,7 @@ using Random
 using LinearAlgebra
 using SparseArrays
 include(projectdir("functions.jl"))
-
+  
 #-------------------------------------------------------------------------------
 # Connectome and ROIs
 #-------------------------------------------------------------------------------
