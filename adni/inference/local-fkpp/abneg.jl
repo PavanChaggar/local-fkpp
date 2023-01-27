@@ -168,4 +168,4 @@ pst = sample(m,
              2_000, 
              n_chains,
              progress=false)
-serialize(projectdir("adni/chains/local-fkpp/pst-abneg-$(n_chains)x2000=vc.jls"), pst)
+serialize(projectdir("adni/chains/local-fkpp/pst-abneg-$(n_chains)x2000-vc.jls"), pst)
