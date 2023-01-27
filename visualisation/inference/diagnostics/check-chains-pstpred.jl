@@ -3,7 +3,6 @@ using ADNIDatasets
 using CSV, DataFrames
 using DrWatson: projectdir
 using DifferentialEquations
-using DiffEqSensitivity
 using Turing
 using Distributions
 using Serialization
@@ -69,16 +68,22 @@ cc = quantile.(upath, .99);
 #-------------------------------------------------------------------------------
 L = laplacian_matrix(c)
 
-function NetworkLocalFKPP(du, u, p, t; L = L, u0 = u0, cc = cc)
-    du .= -p[1] * L * (u .- u0) .+ p[2] .* (u .- u0) .* ((cc .- u0) .- (u .- u0))
+vols = [get_vol(data, i) for i in tau_pos]
+init_vols = [v[:,1] for v in vols]
+max_norm_vols = reduce(hcat, [v ./ maximum(v) for v in init_vols])
+mean_norm_vols = vec(mean(max_norm_vols, dims=2))
+Lv = sparse(inv(diagm(mean_norm_vols)) * L)
+
+function NetworkLocalFKPP(du, u, p, t; Lv = Lv, u0 = u0, cc = cc)
+    du .= -p[1] * Lv * (u .- u0) .+ p[2] .* (u .- u0) .* ((cc .- u0) .- (u .- u0))
 end
 
 _subdata = [calc_suvr(data, i) for i in tau_pos]
-subdata = [normalise(sd, u0) for sd in _subdata]
+subdata = [normalise(sd, u0, cc) for sd in _subdata]
 initial_conditions = [sd[:,1] for sd in subdata]
 times =  [get_times(data, i) for i in tau_pos];
 
-pst = deserialize(projectdir("adni/chains/local-fkpp/pst-taupos-4x2000.jls"));
+pst = deserialize(projectdir("adni/chains/local-fkpp/pst-taupos-4x2000-vc.jls"));
 
 meanpst = mean(pst)
 params = [[meanpst[Symbol("ρ[$i]"), :mean], meanpst[Symbol("α[$i]"), :mean]] for i in 1:27]
@@ -104,7 +109,7 @@ function get_quantiles(mean_sols)
     [vec(mapslices(x -> quantile(x, q), mean_sols, dims = 2)) for q in [0.975, 0.025, 0.5]]
 end
 
-node = 27
+node = 29
 begin
     f = Figure(resolution=(1500,1800))
     g = f[1:4,:] = GridLayout()

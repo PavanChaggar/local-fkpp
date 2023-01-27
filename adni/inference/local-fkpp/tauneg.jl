@@ -178,7 +178,7 @@ Random.seed!(1234);
 m = localfkpp(vecsubdata, prob, initial_conditions, times, n_neg)
 m();
 
-n_chains = 1
+n_chains = 4
 pst = sample(m, 
              Turing.NUTS(0.8), #, metricT=AdvancedHMC.DenseEuclideanMetric), 
              MCMCSerial(), 

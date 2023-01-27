@@ -67,9 +67,16 @@ cc = quantile.(upath, .99)
 #-------------------------------------------------------------------------------
 L = laplacian_matrix(c)
 
-function NetworkLocalFKPP(du, u, p, t; L = L, u0 = u0, cc = cc)
-    du .= -p[1] * L * (u .- u0) .+ p[2] .* (u .- u0) .* ((cc .- u0) .- (u .- u0))
+vols = [get_vol(data, i) for i in tau_pos]
+init_vols = [v[:,1] for v in vols]
+max_norm_vols = reduce(hcat, [v ./ maximum(v) for v in init_vols])
+mean_norm_vols = vec(mean(max_norm_vols, dims=2))
+Lv = sparse(inv(diagm(mean_norm_vols)) * L)
+
+function NetworkLocalFKPP(du, u, p, t; Lv = Lv, u0 = u0, cc = cc)
+    du .= -p[1] * Lv * (u .- u0) .+ p[2] .* (u .- u0) .* ((cc .- u0) .- (u .- u0))
 end
+
 
 subdata = [calc_suvr(data, i) for i in tau_pos]
 for i in 1:n_pos
@@ -108,7 +115,7 @@ m()
 #-------------------------------------------------------------------------------
 # Out of sample mean prediction
 #-------------------------------------------------------------------------------
-pst = deserialize(projectdir("adni/chains/local-fkpp/pst-taupos-4x2000.jls"));
+pst = deserialize(projectdir("adni/chains/local-fkpp/pst-taupos-4x2000-vc.jls"));
 
 meanpst = mean(pst)
 
@@ -211,30 +218,6 @@ begin
     f
 end
 
-
-begin
-    f = Figure(resolution=(600, 500))
-    ax = Axis(f[1,1], 
-            xlabel="SUVR", 
-            ylabel="Prediction", 
-            titlesize=26, xlabelsize=20, ylabelsize=20)
-    xlims!(ax, 0.9, 2.0)
-    ylims!(ax, 0.9, 2.0)
-    lines!(0.9:0.1:2.0,0.9:0.1:2.0, 
-           linestyle=:dash, 
-           linewidth=2, 
-           color=(:grey, 0.5))
-    scatter!(mean_second_scan,mean_second_scan_pred, color=(:blue, 0.5))
-    errorbars!(mean_second_scan, 
-            mean_second_scan_pred, 
-            abs.(second_scan_lower_mean.- mean_second_scan_pred),
-            second_scan_upper_mean .- mean_second_scan,
-            direction=:x,
-            whiskerwidth = 10,
-            color=(:grey, 0.5))
-    f
-end
-
 function get_diff(d)
     d[:,end] .- d[:,1]
 end
@@ -259,7 +242,7 @@ begin
     ylims!(ax, -0.25, 0.5)
     for i in 1:n_pos
         scatter!(get_diff(subdata[i]), 
-                 get_diff(mean_predictions[i]), color=(cols[region_idx[i]], 0.1))
+                 get_diff(mean_predictions[i]), color=((:grey, 0.5), 0.1))
     end
     f
 end
