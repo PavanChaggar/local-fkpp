@@ -5,7 +5,7 @@ Pkg.activate(".")
 using Distributed
 using Turing, DrWatson
 
-addprocs(4)
+addprocs(2)
 file_path = projectdir("adni/inference/local-fkpp/taupos.jl")
 @everywhere include($(file_path))
 
