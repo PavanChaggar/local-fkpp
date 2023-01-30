@@ -164,7 +164,6 @@ end
 end
 
 setadbackend(:zygote)
-Random.seed!(1234);
 
 m = localfkpp(vecsubdata, prob, initial_conditions, times, n_pos);
 m();
