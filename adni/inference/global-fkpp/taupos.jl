@@ -58,12 +58,6 @@ tau_neg = findall(x -> x ∉ tau_pos, 1:50)
 
 n_pos = length(tau_pos)
 n_neg = length(tau_neg)
-
-gmm_moments = CSV.read(projectdir("adni/data/component_moments.csv"), DataFrame)
-#gmm_moments2 = CSV.read(projectdir("data/adni-data/component_moments-bothcomps.csv"), DataFrame)
-ubase, upath = get_dkt_moments(gmm_moments, dktnames)
-u0 = mean.(ubase)
-cc = quantile.(upath, .99)
 #-------------------------------------------------------------------------------
 # Connectome + ODEE
 #-------------------------------------------------------------------------------
