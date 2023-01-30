@@ -1,7 +1,6 @@
 using Pkg
-cd("/Users/pavanchaggar/Projects/local-fkpp")
+cd("/home/chaggar/Projects/local-fkpp")
 Pkg.activate(".")
-println(@__DIR__)
 
 using Connectomes
 using ADNIDatasets
@@ -77,12 +76,12 @@ mean_norm_vols = vec(mean(max_norm_vols, dims=2))
 Lv = sparse(inv(diagm(mean_norm_vols)) * L)
 
 function NetworkGlobalFKPP(du, u, p, t; Lv = Lv)
-    du .= -p[1] * Lv * u .+ p[2] .* u .* (1 .- u)
+    du .= -p[1] * Lv * u .+ p[2] .* u .* (1 .- ( u ./ p[3]))
 end
 
-function make_prob_func(initial_conditions, p, a, times)
+function make_prob_func(initial_conditions, p, a, p_max, times)
     function prob_func(prob,i,repeat)
-        remake(prob, u0=initial_conditions[i], p=[p[i], a[i]], saveat=times[i])
+        remake(prob, u0=initial_conditions[i], p=[p[i], a[i], p_max], saveat=times[i])
     end
 end
 
@@ -91,23 +90,23 @@ function output_func(sol,i)
 end
 
 subdata = [calc_suvr(data, i) for i in tau_pos]
-for i in 1:n_pos
-    normalise!(subdata[i], u0, cc)
-end
 
 vecsubdata = reduce(vcat, reduce(hcat, subdata))
 
+max_suvr = maximum(vecsubdata)
+
 initial_conditions = [sd[:,1] for sd in subdata]
 times =  [get_times(data, i) for i in tau_pos]
+max_t = maximum(reduce(vcat, times))
 
-prob = ODEProblem(NetworkLocalFKPP, 
+prob = ODEProblem(NetworkGlobalFKPP, 
                   initial_conditions[1], 
-                  (0.,15.), 
-                  [1.0,1.0])
+                  (0.,max_t), 
+                  [1.0,1.0, max_suvr])
                   
 sol = solve(prob, Tsit5())
 
-ensemble_prob = EnsembleProblem(prob, prob_func=make_prob_func(initial_conditions, ones(n_pos), ones(n_pos), times), output_func=output_func)
+ensemble_prob = EnsembleProblem(prob, prob_func=make_prob_func(initial_conditions, ones(n_pos), ones(n_pos), max_suvr, times), output_func=output_func)
 ensemble_sol = solve(ensemble_prob, Tsit5(), trajectories=n_pos)
 
 @inline function allequal(x)
@@ -131,7 +130,7 @@ end
 #-------------------------------------------------------------------------------
 # Inference 
 #-------------------------------------------------------------------------------
-@model function localfkpp(data, prob, initial_conditions, times, n)
+@model function globalfkpp(data, prob, initial_conditions, max_suvr, times, n)
     σ ~ LogNormal(0, 1)
     
     Pm ~ LogNormal(0, 0.5)
@@ -144,7 +143,7 @@ end
     α ~ filldist(Normal(Am, As), n)
 
     ensemble_prob = EnsembleProblem(prob, 
-                                    prob_func=make_prob_func(initial_conditions, ρ, α, times), 
+                                    prob_func=make_prob_func(initial_conditions, ρ, α, max_suvr, times), 
                                     output_func=output_func)
 
     ensemble_sol = solve(ensemble_prob, 
@@ -153,6 +152,7 @@ end
                          reltol = 1e-9, 
                          trajectories=n, 
                          sensealg=InterpolatingAdjoint(autojacvec=ReverseDiffVJP(true)))
+
     if !allequal(get_retcodes(ensemble_sol)) 
         Turing.@addlogprob! -Inf
         println("failed")
@@ -166,14 +166,14 @@ end
 setadbackend(:zygote)
 Random.seed!(1234);
 
-m = localfkpp(vecsubdata, prob, initial_conditions, times, n_pos);
+m = globalfkpp(vecsubdata, prob, initial_conditions, max_suvr, times, n_pos);
 m();
 
-# n_chains = 4
-# pst = sample(m, 
-#              Turing.NUTS(0.8), #, metricT=AdvancedHMC.DenseEuclideanMetric), 
-#              MCMCSerial(), 
-#              2_000, 
-#              n_chains,
-#              progress=false)
-# serialize(projectdir("adni/chains/local-fkpp/pst-taupos-$(n_chains)x2000-vc.jls"), pst)
+n_chains = 4
+pst = sample(m, 
+             Turing.NUTS(0.8), #, metricT=AdvancedHMC.DenseEuclideanMetric), 
+             MCMCSerial(), 
+             2_000, 
+             n_chains,
+             progress=false)
+serialize(projectdir("adni/chains/global-fkpp/pst-taupos-$(n_chains)x2000-vc.jls"), pst)
