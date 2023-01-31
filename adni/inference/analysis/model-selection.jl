@@ -84,14 +84,14 @@ end
 
 subdata = [calc_suvr(data, i) for i in tau_pos];
 norm_subdata = [normalise(sd, u0, cc) for sd in subdata];
-local_initial_conditions = [sd[:,1] for sd in norm_subdata];
+norm_initial_conditions = [sd[:,1] for sd in norm_subdata];
 times =  [get_times(data, i) for i in tau_pos];
 
 local_pst = deserialize(projectdir("adni/chains/local-fkpp/pst-taupos-4x2000-vc.jls"));
 
 local_meanpst = mean(local_pst);
 local_params = [[local_meanpst[Symbol("ρ[$i]"), :mean], local_meanpst[Symbol("α[$i]"), :mean]] for i in 1:27];
-local_sols = [solve(ODEProblem(NetworkLocalFKPP, init, (0.0,5.0), p), Tsit5(), saveat=t) for (init, t, p) in zip(local_initial_conditions, times, local_params)];
+local_sols = [solve(ODEProblem(NetworkLocalFKPP, init, (0.0,5.0), p), Tsit5(), saveat=t) for (init, t, p) in zip(norm_initial_conditions, times, local_params)];
 
 #-------------------------------------------------------------------------------
 # Global FKPP
@@ -117,7 +117,6 @@ function NetworkDiffusion(du, u, p, t; Lv = Lv)
     du .= -p[1] * Lv * u
 end
 
-
 diffusion_pst = deserialize(projectdir("adni/chains/diffusion/pst-taupos-4x2000-vc.jls"));
 
 diffusion_meanpst = mean(diffusion_pst);
@@ -125,14 +124,30 @@ diffusion_params = [diffusion_meanpst[Symbol("ρ[$i]"), :mean] for i in 1:27];
 diffusion_sols = [solve(ODEProblem(NetworkDiffusion, init, (0.0,5.0), p), Tsit5(), saveat=t) for (init, t, p) in zip(initial_conditions, times, diffusion_params)];
 
 #-------------------------------------------------------------------------------
+# Logistic
+#-------------------------------------------------------------------------------
+function NetworkLogistic(du, u, p, t; Lv = Lv)
+    du .= p[1] .* (u .- u0) .* ((cc .- u0) .- (u .- u0))
+end
+
+logistic_pst = deserialize(projectdir("adni/chains/logistic/pst-taupos-4x2000.jls"));
+
+logistic_meanpst = mean(logistic_pst);
+logistic_params = [logistic_meanpst[Symbol("α[$i]"), :mean] for i in 1:27];
+logistic_sols = [solve(ODEProblem(NetworkLogistic, init, (0.0,5.0), p), Tsit5(), saveat=t) for (init, t, p) in zip(norm_initial_conditions, times, logistic_params)];
+
+
+#-------------------------------------------------------------------------------
 # Predictions
 #-------------------------------------------------------------------------------
+using CairoMakie; CairoMakie.activate!()
 
 function getdiff(d, n)
     d[:,n] .- d[:,1]
 end
 
-sols = local_sols;
+sols = logistic_sols;
+plot_data = norm_subdata;
 begin
     f = Figure(resolution=(1500, 1000))
     gl = [f[1, i] = GridLayout() for i in 1:3]
@@ -150,8 +165,8 @@ begin
         ylims!(ax, 0.8, 4.0)
         lines!(0.8:0.1:4.0, 0.8:0.1:4.0, color=(:grey, 0.75), linewidth=2, linestyle=:dash)
         for i in 1:27
-            if size(subdata[i], 2) >= scan
-                scatter!(subdata[i][:,scan], sols[i][:,scan], marker='o', markersize=15)
+            if size(plot_data[i], 2) >= scan
+                scatter!(plot_data[i][:,scan], sols[i][:,scan], marker='o', markersize=15, color=(:grey, 0.5))
             end
         end
     end
@@ -161,11 +176,11 @@ begin
         scan = i + 1
 
         if scan < 4
-            diffs = getdiff.(subdata, scan)
+            diffs = getdiff.(plot_data, scan)
             soldiff = getdiff.(sols, scan)
         else
-            idx = findall(x -> size(x,2) == scan, subdata)
-            diffs = getdiff.(subdata[idx], scan)
+            idx = findall(x -> size(x,2) == scan, plot_data)
+            diffs = getdiff.(plot_data[idx], scan)
             soldiff = getdiff.(sols[idx], scan)
         end
 
@@ -183,7 +198,7 @@ begin
         ylims!(ax, start, stop)
         lines!(start:0.1:stop, start:0.1:stop, color=(:grey, 0.75), linewidth=2, linestyle=:dash)
         for i in eachindex(diffs)
-            scatter!(diffs[i], soldiff[i], marker='o', markersize=15)
+            scatter!(diffs[i], soldiff[i], marker='o', markersize=15, color=(:grey, 0.5))
         end
     end
 
@@ -191,98 +206,258 @@ begin
 end
 
 #-------------------------------------------------------------------------------
-# Model selection
+# Predicted trajectories
 #-------------------------------------------------------------------------------
-function make_idata(m, pst, data, args...)
-    chains_params = Turing.MCMCChains.get_sections(pst, :parameters)
-    loglikelihoods = pointwise_loglikelihoods(m, chains_params)
-    #nms = string.(keys(pst_pred))
-    nms = keys(loglikelihoods)
-    loglikelihoods_vals = getindex.(Ref(loglikelihoods), nms)
-    n_samples, n_chains = size(pst[:n_steps])
-    loglikelihoods_arr = Array{Float64}(undef, n_chains, n_samples, length(data))
-    for j in 1:n_chains
-        for i in 1:length(data)
-            loglikelihoods_arr[j,:,i] .= loglikelihoods_vals[i]
+function get_quantiles(mean_sols)
+    [vec(mapslices(x -> quantile(x, q), mean_sols, dims = 2)) for q in [0.975, 0.025, 0.5]]
+end
+
+meansols = [solve(ODEProblem(NetworkLogistic, 
+                             init, (0.0,15.0), p), 
+                             Tsit5(), saveat=0.05) 
+            for (init, t, p) in 
+            zip(norm_initial_conditions, times, logistic_params)];
+
+sols = Vector{Vector{Array{Float64}}}();
+
+for (i, j) in enumerate(tau_pos)
+    isols = Vector{Array{Float64}}()
+    for s in 1:40:8000
+        params = [logistic_pst[Symbol("α[$i]")][s]]
+        σ = logistic_pst[:σ][s]
+        sol = solve(ODEProblem(NetworkLogistic, norm_initial_conditions[i], (0.0,15.0), params), Tsit5(), saveat=0.1)
+        noise = (randn(size(Array(sol))) .* σ)
+        push!(isols, Array(sol) .+ noise)
+    end
+    push!(sols, isols)
+end
+
+node = 10
+
+begin
+    f = Figure(resolution=(1500,1800))
+    g = f[1:4,:] = GridLayout()
+    g2 = f[5:6,:] = GridLayout()
+    ylabelsize = 30
+    xlabelsize = 30
+    for j in 1:5
+        sub = 0 + j
+        q1, q2, q3 = get_quantiles(reduce(hcat, [sols[sub][i][node, :] for i in 1:200]))
+
+        ax = Axis(g[1, sub], ylabel="SUVR", ylabelsize=ylabelsize)
+        ylims!(ax, 1.0,3.5)
+        hidexdecorations!(ax, ticks = false, grid=false)
+        if j > 1
+            hideydecorations!(ax, ticks=false, grid=false)
         end
+        band!(0.0:0.1:15.0, q1, q2, color=(:grey, 0.5))
+        lines!(meansols[sub].t, meansols[sub][node,:], color=(:red, 0.8), linewidth=3)
+        scatter!(times[sub], plot_data[sub][node,:], color=:navy)
     end
-    from_mcmcchains(pst;
-                    # posterior_predictive=pst_pred,
-                    log_likelihood=Dict("ll" => loglikelihoods_arr),
-                    library="Turing",
-                    observed_data=Dict("data" => data))
-end
+    f
+    for j in 1:5
+        sub = 5 + j
+        q1, q2, q3 = get_quantiles(reduce(hcat, [sols[sub][i][node, :] for i in 1:200]))
 
-function make_prob_func(initial_conditions, p, a, p_max, times)
-    function prob_func(prob,i,repeat)
-        remake(prob, u0=initial_conditions[i], p=[p[i], a[i], p_max], saveat=times[i])
+        ax = Axis(g[2, j], ylabel="SUVR", ylabelsize=ylabelsize)
+        hidexdecorations!(ax, ticks = false, grid=false)
+        ylims!(ax, 1.0,3.5)
+        if j > 1
+            hideydecorations!(ax, ticks=false, grid=false)
+        end
+        band!(0.0:0.1:15.0, q1, q2, color=(:grey, 0.5))
+        lines!(meansols[sub].t, meansols[sub][node,:], color=(:red, 0.8), linewidth=3)
+        scatter!(times[sub], plot_data[sub][node,:], color=:navy)
     end
-end
+    f
+    for j in 1:5
+        sub = 10 + j
+        q1, q2, q3 = get_quantiles(reduce(hcat, [sols[sub][i][node, :] for i in 1:200]))
 
-function output_func(sol,i)
-    (sol,false)
-end
+        ax = Axis(g[3, j], ylabel="SUVR", ylabelsize=ylabelsize)
+        hidexdecorations!(ax, ticks = false, grid=false)
+        ylims!(ax, 1.0,3.5)
+        if j > 1
+            hideydecorations!(ax, ticks=false, grid=false)
+        end
+        band!(0.0:0.1:15.0, q1, q2, color=(:grey, 0.5))
+        lines!(meansols[sub].t, meansols[sub][node,:], color=(:red, 0.8), linewidth=3)
+        scatter!(times[sub], plot_data[sub][node,:], color=:navy)
+    end
+    for j in 1:5
+        sub = 15 + j
+        q1, q2, q3 = get_quantiles(reduce(hcat, [sols[sub][i][node, :] for i in 1:200]))
 
-@model function globalfkpp(data, prob, initial_conditions, max_suvr, times, n)
-    σ ~ LogNormal(0, 1)
+        ax = Axis(g[4, j], ylabel="SUVR", ylabelsize=ylabelsize)
+        hidexdecorations!(ax, ticks = false, grid=false)
+        if j > 1
+            hideydecorations!(ax, ticks=false, grid=false)
+        end
+        ylims!(ax, 1.0,3.5)
+        band!(0.0:0.1:15.0, q1, q2, color=(:grey, 0.5))
+        lines!(meansols[sub].t, meansols[sub][node,:], color=(:red, 0.8), linewidth=3)
+        scatter!(times[sub], plot_data[sub][node,:], color=:navy)
+    end
+    for j in 1:5
+        sub = 20 + j
+        q1, q2, q3 = get_quantiles(reduce(hcat, [sols[sub][i][node, :] for i in 1:200]))
+
+        ax = Axis(g2[1, j], ylabel="SUVR", xlabel="Time / Years", 
+                  ylabelsize=ylabelsize, xlabelsize=xlabelsize)
+        if j > 1
+            hideydecorations!(ax, ticks=false, grid=false)
+        end
+        if j < 3
+            hidexdecorations!(ax, ticks=false, grid=false)
+        end
+        ylims!(ax, 1.0,3.5)
+        band!(0.0:0.1:15.0, q1, q2, color=(:grey, 0.5))
+        lines!(meansols[sub].t, meansols[sub][node,:], color=(:red, 0.8), linewidth=3)
+        scatter!(times[sub], plot_data[sub][node,:], color=:navy)
+    end
+
+    for j in 1:2
+        sub = 25 + j
+        q1, q2, q3 = get_quantiles(reduce(hcat, [sols[sub][i][node, :] for i in 1:200]))
+
+        ax = Axis(g2[2, j], ylabel="SUVR", xlabel="Time / Years",
+                  ylabelsize=ylabelsize, xlabelsize=xlabelsize)
+        if j > 1
+            hideydecorations!(ax, ticks=false, grid=false)
+        end
+        ylims!(ax, 1.0,3.5)
+        band!(0.0:0.1:15.0, q1, q2, color=(:grey, 0.5))
+        lines!(meansols[sub].t, meansols[sub][node,:], color=(:red, 0.8), linewidth=3)
+        scatter!(times[sub], plot_data[sub][node,:], color=:navy)
+    end
+
+    elem_1 = LineElement(color = (:red, 0.6), linewidth=5)
+    elem_2 = MarkerElement(color = (:navy, 0.6), marker=:circ, markersize=20)
+    elem_3 = PolyElement(color = (:lightgrey, 1.0))
+    legend = Legend(g2[2,4:5],
+           [elem_1, elem_3, elem_2],
+           [" Mean Predictions", " 95% Quantile", " Observations"],
+           patchsize = (100, 50), rowgap = 10, labelsize=40)
+    rowgap!(g, 15)
+    rowgap!(f.layout,15)
+    rowgap!(g2,-20)
+    f
+end
+f
+#-------------------------------------------------------------------------------
+#  Local FKPP CV
+#-------------------------------------------------------------------------------
+# @inline function allequal(x)
+#     length(x) < 2 && return true
+#     e1 = x[1]
+#     i = 2
+#     @inbounds for i=2:length(x)
+#         x[i] == e1 || return false
+#     end
+#     return true
+# end
+
+# function make_prob_func(initial_conditions, p, a, times)
+#     function prob_func(prob,i,repeat)
+#         remake(prob, u0=initial_conditions[i], p=[p[i], a[i]], saveat=times[i])
+#     end
+# end
+
+# function output_func(sol,i)
+#     (sol,false)
+# end
+
+# @model function localfkpp(data, prob, initial_conditions, times, n)
+#     σ ~ LogNormal(0, 1)
     
-    Pm ~ LogNormal(0, 0.5)
-    Ps ~ LogNormal(0, 0.5)
+#     Pm ~ LogNormal(0, 0.5)
+#     Ps ~ LogNormal(0, 0.5)
 
-    Am ~ Normal(0, 1)
-    As ~ LogNormal(0, 0.5)
+#     Am ~ Normal(0, 1)
+#     As ~ LogNormal(0, 0.5)
 
-    ρ ~ filldist(truncated(Normal(Pm, Ps), lower=0), n)
-    α ~ filldist(Normal(Am, As), n)
+#     ρ ~ filldist(truncated(Normal(Pm, Ps), lower=0), n)
+#     α ~ filldist(Normal(Am, As), n)
 
-    ensemble_prob = EnsembleProblem(prob, 
-                                    prob_func=make_prob_func(initial_conditions, ρ, α, max_suvr, times), 
-                                    output_func=output_func)
+#     ensemble_prob = EnsembleProblem(prob, 
+#                                     prob_func=make_prob_func(initial_conditions, ρ, α, times), 
+#                                     output_func=output_func)
 
-    ensemble_sol = solve(ensemble_prob, 
-                         Tsit5(), 
-                         abstol = 1e-9, 
-                         reltol = 1e-9, 
-                         trajectories=n)
+#     ensemble_sol = solve(ensemble_prob, 
+#                          Tsit5(), 
+#                          abstol = 1e-9, 
+#                          reltol = 1e-9, 
+#                          trajectories=n)
 
-    vecsol = reduce(vcat, [vec(sol) for sol in ensemble_sol])
+#     vecsol = reduce(vcat, [vec(sol) for sol in ensemble_sol])
 
-    # for sub in eachindex(data)
-    #     data[sub] .~ Normal.(Array(ensemble_sol[sub]), σ)
-    # end
-    for i in eachindex(data)
-        data[i] ~ Normal(vecsol[i], σ)
-    end
-end
+#     for i in eachindex(data)
+#         data[i] ~ Normal(vecsol[i], σ)
+#     end
+# end
 
-vecsubdata = reduce(vcat, reduce(hcat, subdata))
-prob = ODEProblem(NetworkGlobalFKPP, 
-                  initial_conditions[1], 
-                  (0.,5.0), 
-                  [1.0,1.0, max_suvr])
+# vecsubdata = reduce(vcat, reduce(hcat, norm_subdata))
+# prob = ODEProblem(NetworkLocalFKPP, 
+#                   norm_initial_conditions[1], 
+#                   (0.,5.0), 
+#                   [1.0,1.0])
+# solve(prob, Tsit5())
 
-m = globalfkpp(vecsubdata, prob, initial_conditions, max_suvr, times, n_pos);
-m()
+# m = localfkpp(vecsubdata, prob, initial_conditions, times, n_pos);
+# m()
 
-global_loo = psis_loo(m, global_pst)
+# local_loo = psis_loo(m, local_pst);
+# scatter(local_loo.psis_object.pareto_k)
+# findall(x -> x > 1, local_loo.psis_object.pareto_k)
+# #-------------------------------------------------------------------------------
+# #  Global FKPP CV
+# #-------------------------------------------------------------------------------
+# function make_prob_func(initial_conditions, p, a, p_max, times)
+#     function prob_func(prob,i,repeat)
+#         remake(prob, u0=initial_conditions[i], p=[p[i], a[i], p_max], saveat=times[i])
+#     end
+# end
 
-_log_likelihood = Turing.pointwise_loglikelihoods(
-    m, MCMCChains.get_sections(global_pst, :parameters)
-);
+# @model function globalfkpp(data, prob, initial_conditions, max_suvr, times, n)
+#     σ ~ LogNormal(0, 1)
+    
+#     Pm ~ LogNormal(0, 0.5)
+#     Ps ~ LogNormal(0, 0.5)
 
-ynames = string.(keys(_log_likelihood))
-log_likelihood_y = getindex.(Ref(_log_likelihood), ynames)
-n_samples, n_chains = size(global_pst[:n_steps])
-log_likelihood = Array{Float64}(undef, n_chains, n_samples, length(vecsubdata))
-for j in 1:n_chains
-    for i in 1:length(data)
-        log_likelihood[j,:,i] .= log_likelihood_y[i][:,j]
-    end
-end
+#     Am ~ Normal(0, 1)
+#     As ~ LogNormal(0, 0.5)
 
-idata_turing = from_mcmcchains(
-    global_pst;
-    log_likelihood,
-    observed_data=(; vecsubdata),
-    library=Turing,
-)
+#     ρ ~ filldist(truncated(Normal(Pm, Ps), lower=0), n)
+#     α ~ filldist(Normal(Am, As), n)
+
+#     ensemble_prob = EnsembleProblem(prob, 
+#                                     prob_func=make_prob_func(initial_conditions, ρ, α, max_suvr, times), 
+#                                     output_func=output_func)
+
+#     ensemble_sol = solve(ensemble_prob, 
+#                          Tsit5(), 
+#                          abstol = 1e-9, 
+#                          reltol = 1e-9, 
+#                          trajectories=n)
+
+#     vecsol = reduce(vcat, [vec(sol) for sol in ensemble_sol])
+
+#     # for sub in eachindex(data)
+#     #     data[sub] .~ Normal.(Array(ensemble_sol[sub]), σ)
+#     # end
+#     for i in eachindex(data)
+#         data[i] ~ Normal(vecsol[i], σ)
+#     end
+# end
+
+# vecsubdata = reduce(vcat, reduce(hcat, subdata))
+# prob = ODEProblem(NetworkGlobalFKPP, 
+#                   initial_conditions[1], 
+#                   (0.,5.0), 
+#                   [1.0,1.0, max_suvr])
+
+# m = globalfkpp(vecsubdata, prob, initial_conditions, max_suvr, times, n_pos);
+# m()
+
+# global_loo = psis_loo(m, global_pst)
+# findall(x -> x > 1, global_loo.psis_object.pareto_k)

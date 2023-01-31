@@ -67,7 +67,7 @@ cc = quantile.(upath, .99)
 #-------------------------------------------------------------------------------
 # Connectome + ODEE
 #-------------------------------------------------------------------------------
-function NetworkLocalFKPP(du, u, p, t; u0 = u0, cc = cc)
+function NetworkLogistic(du, u, p, t; u0 = u0, cc = cc)
     du .= p[1] .* (u .- u0) .* ((cc .- u0) .- (u .- u0))
 end
 
@@ -122,7 +122,7 @@ end
 #-------------------------------------------------------------------------------
 # Inference 
 #-------------------------------------------------------------------------------
-@model function localfkpp(data, prob, initial_conditions, times, n)
+@model function logistic(data, prob, initial_conditions, times, n)
     σ ~ LogNormal(0, 1)
 
     Am ~ Normal(0, 1)
@@ -155,7 +155,7 @@ end
 setadbackend(:zygote)
 Random.seed!(1234)
 
-m = localfkpp(vecsubdata, prob, initial_conditions, times, n_pos);
+m = logistic(vecsubdata, prob, initial_conditions, times, n_pos);
 m();
 
 n_chains = 4
