@@ -247,8 +247,11 @@ end
 
     vecsol = reduce(vcat, [vec(sol) for sol in ensemble_sol])
 
-    for sub in eachindex(data)
-        data[sub] .~ Normal.(Array(ensemble_sol[sub]), σ)
+    # for sub in eachindex(data)
+    #     data[sub] .~ Normal.(Array(ensemble_sol[sub]), σ)
+    # end
+    for i in eachindex(data)
+        data[i] ~ Normal(vecsol[i], σ)
     end
 end
 
@@ -258,26 +261,28 @@ prob = ODEProblem(NetworkGlobalFKPP,
                   (0.,5.0), 
                   [1.0,1.0, max_suvr])
 
-m = globalfkpp(subdata, prob, initial_conditions, max_suvr, times, n_pos);
+m = globalfkpp(vecsubdata, prob, initial_conditions, max_suvr, times, n_pos);
 m()
 
 global_loo = psis_loo(m, global_pst)
 
-make_idata(m, global_pst, vecsubdata, prob, initial_conditions, max_suvr, times, n_pos)
+_log_likelihood = Turing.pointwise_loglikelihoods(
+    m, MCMCChains.get_sections(global_pst, :parameters)
+);
 
-chains_params = Turing.MCMCChains.get_sections(global_pst, :parameters)
-loglikelihoods = pointwise_loglikelihoods(m, chains_params)
-    #nms = string.(keys(pst_pred))
-nms = keys(loglikelihoods)
-loglikelihoods_vals = getindex.(Ref(loglikelihoods), nms)
-n_samples, n_chains = size(pst[:n_steps])
-loglikelihoods_arr = Array{Float64}(undef, n_chains, n_samples, length(vecsubdata))
-for i in eachindex(vecsubdata)
-    loglikelihoods_arr[:,:,i] .= transpose(loglikelihoods_vals[i])
-end
-
+ynames = string.(keys(_log_likelihood))
+log_likelihood_y = getindex.(Ref(_log_likelihood), ynames)
+n_samples, n_chains = size(global_pst[:n_steps])
+log_likelihood = Array{Float64}(undef, n_chains, n_samples, length(vecsubdata))
 for j in 1:n_chains
     for i in 1:length(data)
-        loglikelihoods_arr[j,:,i] .= transpose(loglikelihoods_vals[i])
+        log_likelihood[j,:,i] .= log_likelihood_y[i][:,j]
     end
 end
+
+idata_turing = from_mcmcchains(
+    global_pst;
+    log_likelihood,
+    observed_data=(; vecsubdata),
+    library=Turing,
+)

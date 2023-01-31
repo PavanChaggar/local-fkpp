@@ -68,7 +68,7 @@ cc = quantile.(upath, .99)
 # Connectome + ODEE
 #-------------------------------------------------------------------------------
 function NetworkLocalFKPP(du, u, p, t; u0 = u0, cc = cc)
-    du .= p .* (u .- u0) .* ((cc .- u0) .- (u .- u0))
+    du .= p[1] .* (u .- u0) .* ((cc .- u0) .- (u .- u0))
 end
 
 function make_prob_func(initial_conditions, p, times)
