@@ -73,7 +73,7 @@ end
 
 function make_prob_func(initial_conditions, p, times)
     function prob_func(prob,i,repeat)
-        remake(prob, u0=initial_conditions[i], p=p[i], saveat=times[i])
+        remake(prob, u0=initial_conditions[i], p=[p[i]], saveat=times[i])
     end
 end
 
