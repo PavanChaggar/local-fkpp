@@ -178,5 +178,5 @@ pst = sample(m,
              MCMCSerial(), 
              2_000, 
              n_chains,
-             progress=false)
+             progress=true)
 serialize(projectdir("adni/chains/local-fkpp/pst-taupos-$(n_chains)x2000-indp0.jls"), pst)
