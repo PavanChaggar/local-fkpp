@@ -242,7 +242,7 @@ begin
     ylims!(ax, -0.25, 0.5)
     for i in 1:n_pos
         scatter!(get_diff(subdata[i]), 
-                 get_diff(mean_predictions[i]), color=((:grey, 0.5), 0.1))
+                 get_diff(mean_predictions[i]), color=((:grey, 0.75), 0.1))
     end
     f
 end

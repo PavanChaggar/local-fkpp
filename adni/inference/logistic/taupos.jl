@@ -1,7 +1,6 @@
 using Pkg
 cd("/home/chaggar/Projects/local-fkpp")
 Pkg.activate(".")
-println(@__DIR__)
 
 using Connectomes
 using ADNIDatasets
@@ -68,21 +67,13 @@ cc = quantile.(upath, .99)
 #-------------------------------------------------------------------------------
 # Connectome + ODEE
 #-------------------------------------------------------------------------------
-L = laplacian_matrix(c)
-
-vols = [get_vol(data, i) for i in tau_pos]
-init_vols = [v[:,1] for v in vols]
-max_norm_vols = reduce(hcat, [v ./ maximum(v) for v in init_vols])
-mean_norm_vols = vec(mean(max_norm_vols, dims=2))
-Lv = sparse(inv(diagm(mean_norm_vols)) * L)
-
-function NetworkLocalFKPP(du, u, p, t; Lv = Lv, u0 = u0, cc = cc)
-    du .= -p[1] * Lv * (u .- u0) .+ p[2] .* (u .- u0) .* ((cc .- u0) .- (u .- u0))
+function NetworkLocalFKPP(du, u, p, t; u0 = u0, cc = cc)
+    du .= p .* (u .- u0) .* ((cc .- u0) .- (u .- u0))
 end
 
-function make_prob_func(initial_conditions, p, a, times)
+function make_prob_func(initial_conditions, p, times)
     function prob_func(prob,i,repeat)
-        remake(prob, u0=initial_conditions[i], p=[p[i], a[i]], saveat=times[i])
+        remake(prob, u0=initial_conditions[i], p=p[i], saveat=times[i])
     end
 end
 
@@ -102,12 +93,12 @@ times =  [get_times(data, i) for i in tau_pos]
 
 prob = ODEProblem(NetworkLocalFKPP, 
                   initial_conditions[1], 
-                  (0.,15.), 
-                  [1.0,1.0])
+                  (0.,5.), 
+                  1.0)
                   
 sol = solve(prob, Tsit5())
 
-ensemble_prob = EnsembleProblem(prob, prob_func=make_prob_func(initial_conditions, ones(n_pos), ones(n_pos), times), output_func=output_func)
+ensemble_prob = EnsembleProblem(prob, prob_func=make_prob_func(initial_conditions, ones(n_pos), times), output_func=output_func)
 ensemble_sol = solve(ensemble_prob, Tsit5(), trajectories=n_pos)
 
 @inline function allequal(x)
@@ -133,18 +124,14 @@ end
 #-------------------------------------------------------------------------------
 @model function localfkpp(data, prob, initial_conditions, times, n)
     σ ~ LogNormal(0, 1)
-    
-    Pm ~ LogNormal(0, 0.5)
-    Ps ~ LogNormal(0, 0.5)
 
     Am ~ Normal(0, 1)
     As ~ LogNormal(0, 0.5)
 
-    ρ ~ filldist(truncated(Normal(Pm, Ps), lower=0), n)
     α ~ filldist(Normal(Am, As), n)
 
     ensemble_prob = EnsembleProblem(prob, 
-                                    prob_func=make_prob_func(initial_conditions, ρ, α, times), 
+                                    prob_func=make_prob_func(initial_conditions, α, times), 
                                     output_func=output_func)
 
     ensemble_sol = solve(ensemble_prob, 
@@ -153,11 +140,13 @@ end
                          reltol = 1e-9, 
                          trajectories=n, 
                          sensealg=InterpolatingAdjoint(autojacvec=ReverseDiffVJP(true)))
+
     if !allequal(get_retcodes(ensemble_sol)) 
         Turing.@addlogprob! -Inf
         println("failed")
         return nothing
     end
+
     vecsol = vec_sol(ensemble_sol)
 
     data ~ MvNormal(vecsol, σ^2 * I)
@@ -176,4 +165,4 @@ pst = sample(m,
              2_000, 
              n_chains,
              progress=false)
-serialize(projectdir("adni/chains/local-fkpp/pst-taupos-$(n_chains)x2000-vc.jls"), pst)
+serialize(projectdir("adni/chains/logistic/pst-taupos-$(n_chains)x2000.jls"), pst)
