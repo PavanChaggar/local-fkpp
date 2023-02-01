@@ -63,7 +63,6 @@ gmm_moments = CSV.read(projectdir("adni/data/component_moments.csv"), DataFrame)
 ubase, upath = get_dkt_moments(gmm_moments, dktnames)
 u0 = mean.(ubase)
 cc = quantile.(upath, .99);
-
 #-------------------------------------------------------------------------------
 # Connectome
 #-------------------------------------------------------------------------------
@@ -82,16 +81,24 @@ function NetworkLocalFKPP(du, u, p, t; Lv = Lv, u0 = u0, cc = cc)
     du .= -p[1] * Lv * (u .- u0) .+ p[2] .* (u .- u0) .* ((cc .- u0) .- (u .- u0))
 end
 
-subdata = [calc_suvr(data, i) for i in tau_pos];
-norm_subdata = [normalise(sd, u0, cc) for sd in subdata];
-norm_initial_conditions = [sd[:,1] for sd in norm_subdata];
-times =  [get_times(data, i) for i in tau_pos];
 
-local_pst = deserialize(projectdir("adni/chains/local-fkpp/pst-taupos-4x2000-vc.jls"));
+subsuvr = [calc_suvr(data, i) for i in tau_neg]
+_subdata = [normalise(sd, u0, cc) for sd in subsuvr]
+
+blsd = [sd .- u0 for sd in _subdata]
+nonzerosubs = findall(x -> sum(x) < 2, [sum(sd, dims=1) .== 0 for sd in blsd])
+
+subdata = _subdata[nonzerosubs]
+
+initial_conditions = [sd[:,1] for sd in subdata];
+_times =  [get_times(data, i) for i in tau_neg];
+times = _times[nonzerosubs]
+
+local_pst = deserialize(projectdir("adni/chains/local-fkpp/pst-tauneg-4x2000-vc.jls"));
 
 local_meanpst = mean(local_pst);
-local_params = [[local_meanpst[Symbol("ρ[$i]"), :mean], local_meanpst[Symbol("α[$i]"), :mean]] for i in 1:27];
-local_sols = [solve(ODEProblem(NetworkLocalFKPP, init, (0.0,5.0), p), Tsit5(), saveat=t) for (init, t, p) in zip(norm_initial_conditions, times, local_params)];
+local_params = [[local_meanpst[Symbol("ρ[$i]"), :mean], local_meanpst[Symbol("α[$i]"), :mean]] for i in 1:21];
+local_sols = [solve(ODEProblem(NetworkLocalFKPP, init, (0.0,5.0), p), Tsit5(), saveat=t) for (init, t, p) in zip(initial_conditions, times, local_params)];
 
 #-------------------------------------------------------------------------------
 # Global FKPP
@@ -130,11 +137,11 @@ function NetworkLogistic(du, u, p, t; Lv = Lv)
     du .= p[1] .* (u .- u0) .* ((cc .- u0) .- (u .- u0))
 end
 
-logistic_pst = deserialize(projectdir("adni/chains/logistic/pst-taupos-4x2000.jls"));
+logistic_pst = deserialize(projectdir("adni/chains/logistic/pst-tauneg-4x2000.jls"));
 
 logistic_meanpst = mean(logistic_pst);
-logistic_params = [logistic_meanpst[Symbol("α[$i]"), :mean] for i in 1:27];
-logistic_sols = [solve(ODEProblem(NetworkLogistic, init, (0.0,5.0), p), Tsit5(), saveat=t) for (init, t, p) in zip(norm_initial_conditions, times, logistic_params)];
+logistic_params = [logistic_meanpst[Symbol("α[$i]"), :mean] for i in 1:21];
+logistic_sols = [solve(ODEProblem(NetworkLogistic, init, (0.0,5.0), p), Tsit5(), saveat=t) for (init, t, p) in zip(initial_conditions, times, logistic_params)];
 
 #-------------------------------------------------------------------------------
 # Model comparison
@@ -145,23 +152,11 @@ function calc_aic(pst)
     return 2 * ( log(k) - log(maxP) )
 end
 
-function calc_bic(pst, data)
-    k = length(pst.name_map.parameters)
-    maxP = maximum(pst[:lp])
-    n = length(data)
-    k * log(n) - 2 * log(maxP)
-end
-
 calc_aic(local_pst)
 calc_aic(logistic_pst)
 calc_aic(global_pst)
 calc_aic(diffusion_pst)
 
-vecdata = reduce(vcat, reduce(hcat, subdata))
-calc_bic(local_pst, vecdata)
-calc_bic(logistic_pst, vecdata)
-calc_bic(global_pst, vecdata)
-calc_bic(diffusion_pst, vecdata)
 #-------------------------------------------------------------------------------
 # Predictions
 #-------------------------------------------------------------------------------
@@ -171,7 +166,7 @@ function getdiff(d, n)
     d[:,n] .- d[:,1]
 end
 
-sols = global_sols;
+sols = local_sols;
 plot_data = subdata;
 begin
     f = Figure(resolution=(1500, 1000))
@@ -189,7 +184,7 @@ begin
         xlims!(ax, 0.8, 4.0)
         ylims!(ax, 0.8, 4.0)
         lines!(0.8:0.1:4.0, 0.8:0.1:4.0, color=(:grey, 0.75), linewidth=2, linestyle=:dash)
-        for i in 1:27
+        for i in 1:21
             if size(plot_data[i], 2) >= scan
                 scatter!(plot_data[i][:,scan], sols[i][:,scan], marker='o', markersize=15, color=(:grey, 0.5))
             end

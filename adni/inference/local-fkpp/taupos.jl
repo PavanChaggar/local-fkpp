@@ -132,13 +132,13 @@ end
 # Inference 
 #-------------------------------------------------------------------------------
 @model function localfkpp(data, prob, initial_conditions, times, n)
-    σ ~ LogNormal(0, 1)
+    σ ~ LogNormal(0.0, 1.0)
     
-    Pm ~ LogNormal(0, 0.5)
-    Ps ~ LogNormal(0, 0.5)
+    Pm ~ truncated(Normal(0.0, 1.0), 0.0, Inf)
+    Ps ~ LogNormal(0.0, 0.5)
 
-    Am ~ Normal(0, 1)
-    As ~ LogNormal(0, 0.5)
+    Am ~ Normal(0.0, 1.0)
+    As ~ LogNormal(0.0, 0.5)
 
     ρ ~ filldist(truncated(Normal(Pm, Ps), lower=0), n)
     α ~ filldist(Normal(Am, As), n)
@@ -169,7 +169,7 @@ Random.seed!(1234)
 m = localfkpp(vecsubdata, prob, initial_conditions, times, n_pos);
 m();
 
-n_chains = 4
+n_chains = 1
 pst = sample(m, 
              Turing.NUTS(0.8), #, metricT=AdvancedHMC.DenseEuclideanMetric), 
              MCMCSerial(), 
