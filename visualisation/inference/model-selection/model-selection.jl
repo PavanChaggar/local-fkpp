@@ -146,8 +146,8 @@ function getdiff(d, n)
     d[:,n] .- d[:,1]
 end
 
-sols = logistic_sols;
-plot_data = norm_subdata;
+sols = global_sols;
+plot_data = subdata;
 begin
     f = Figure(resolution=(1500, 1000))
     gl = [f[1, i] = GridLayout() for i in 1:3]
@@ -204,6 +204,7 @@ begin
 
     f
 end
+save(projectdir("visualisation/inference/model-selection/global-fkpp-model-preds.pdf"), f)
 
 #-------------------------------------------------------------------------------
 # Predicted trajectories
