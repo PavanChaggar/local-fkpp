@@ -136,6 +136,19 @@ logistic_meanpst = mean(logistic_pst);
 logistic_params = [logistic_meanpst[Symbol("α[$i]"), :mean] for i in 1:27];
 logistic_sols = [solve(ODEProblem(NetworkLogistic, init, (0.0,5.0), p), Tsit5(), saveat=t) for (init, t, p) in zip(norm_initial_conditions, times, logistic_params)];
 
+#-------------------------------------------------------------------------------
+# Model comparison
+#-------------------------------------------------------------------------------
+function calc_aic(pst)
+    k = length(pst.name_map.parameters)
+    maxP = maximum(pst[:lp])
+    return 2 * ( log(k) - log(maxP) )
+end
+
+calc_aic(local_pst)
+calc_aic(logistic_pst)
+calc_aic(global_pst)
+calc_aic(diffusion_pst)
 
 #-------------------------------------------------------------------------------
 # Predictions
@@ -348,117 +361,188 @@ f
 #-------------------------------------------------------------------------------
 #  Local FKPP CV
 #-------------------------------------------------------------------------------
-# @inline function allequal(x)
-#     length(x) < 2 && return true
-#     e1 = x[1]
-#     i = 2
-#     @inbounds for i=2:length(x)
-#         x[i] == e1 || return false
-#     end
-#     return true
-# end
+@inline function allequal(x)
+    length(x) < 2 && return true
+    e1 = x[1]
+    i = 2
+    @inbounds for i=2:length(x)
+        x[i] == e1 || return false
+    end
+    return true
+end
 
-# function make_prob_func(initial_conditions, p, a, times)
-#     function prob_func(prob,i,repeat)
-#         remake(prob, u0=initial_conditions[i], p=[p[i], a[i]], saveat=times[i])
-#     end
-# end
+function make_prob_func(initial_conditions, p, a, times)
+    function prob_func(prob,i,repeat)
+        remake(prob, u0=initial_conditions[i], p=[p[i], a[i]], saveat=times[i])
+    end
+end
 
-# function output_func(sol,i)
-#     (sol,false)
-# end
+function output_func(sol,i)
+    (sol,false)
+end
 
-# @model function localfkpp(data, prob, initial_conditions, times, n)
-#     σ ~ LogNormal(0, 1)
+@model function localfkpp(data, prob, initial_conditions, times, n)
+    σ ~ LogNormal(0, 1)
     
-#     Pm ~ LogNormal(0, 0.5)
-#     Ps ~ LogNormal(0, 0.5)
+    Pm ~ LogNormal(0, 0.5)
+    Ps ~ LogNormal(0, 0.5)
 
-#     Am ~ Normal(0, 1)
-#     As ~ LogNormal(0, 0.5)
+    Am ~ Normal(0, 1)
+    As ~ LogNormal(0, 0.5)
 
-#     ρ ~ filldist(truncated(Normal(Pm, Ps), lower=0), n)
-#     α ~ filldist(Normal(Am, As), n)
+    ρ ~ filldist(truncated(Normal(Pm, Ps), lower=0), n)
+    α ~ filldist(Normal(Am, As), n)
 
-#     ensemble_prob = EnsembleProblem(prob, 
-#                                     prob_func=make_prob_func(initial_conditions, ρ, α, times), 
-#                                     output_func=output_func)
+    ensemble_prob = EnsembleProblem(prob, 
+                                    prob_func=make_prob_func(initial_conditions, ρ, α, times), 
+                                    output_func=output_func)
 
-#     ensemble_sol = solve(ensemble_prob, 
-#                          Tsit5(), 
-#                          abstol = 1e-9, 
-#                          reltol = 1e-9, 
-#                          trajectories=n)
+    ensemble_sol = solve(ensemble_prob, 
+                         Tsit5(), 
+                         abstol = 1e-9, 
+                         reltol = 1e-9, 
+                         trajectories=n)
+    vecsol = reduce(vcat, ensemble_sol)
+    # for i in 1:length(data)
+    #     data[i] .~ Normal.(vec(ensemble_sol[i]), σ)
+    # end
+    data ~ MvNormal(vecsol, σ^2 * I)
+end
 
-#     vecsol = reduce(vcat, [vec(sol) for sol in ensemble_sol])
+vecsubdata = reduce(vcat, reduce(hcat, norm_subdata))
+prob = ODEProblem(NetworkLocalFKPP, 
+                  norm_initial_conditions[1], 
+                  (0.,5.0), 
+                  [1.0,1.0])
 
-#     for i in eachindex(data)
-#         data[i] ~ Normal(vecsol[i], σ)
-#     end
-# end
+m = localfkpp(vecsubdata, prob, norm_initial_conditions, times, n_pos);
+m()
 
-# vecsubdata = reduce(vcat, reduce(hcat, norm_subdata))
-# prob = ODEProblem(NetworkLocalFKPP, 
-#                   norm_initial_conditions[1], 
-#                   (0.,5.0), 
-#                   [1.0,1.0])
-# solve(prob, Tsit5())
+chains_params = Turing.MCMCChains.get_sections(local_pst, :parameters)
+loglikelihoods = pointwise_loglikelihoods(m, chains_params)
+ℓ_mat = reduce(hcat, values(loglikelihoods));
+ℓ_arr = reshape(ℓ_mat, 1, size(ℓ_mat)...)
 
-# m = localfkpp(vecsubdata, prob, initial_conditions, times, n_pos);
-# m()
+data = ArviZ.from_mcmcchains(
+    local_pst,
+    library = "Turing",
+    log_likelihood = Dict("y" => ℓ_arr)
+)
 
-# local_loo = psis_loo(m, local_pst);
-# scatter(local_loo.psis_object.pareto_k)
-# findall(x -> x > 1, local_loo.psis_object.pareto_k)
-# #-------------------------------------------------------------------------------
-# #  Global FKPP CV
-# #-------------------------------------------------------------------------------
-# function make_prob_func(initial_conditions, p, a, p_max, times)
-#     function prob_func(prob,i,repeat)
-#         remake(prob, u0=initial_conditions[i], p=[p[i], a[i], p_max], saveat=times[i])
-#     end
-# end
+local_loo = ArviZ.loo(data)
 
-# @model function globalfkpp(data, prob, initial_conditions, max_suvr, times, n)
-#     σ ~ LogNormal(0, 1)
+local_loo = psis_loo(m, local_pst);
+scatter(local_loo.psis_object.pareto_k)
+findall(x -> x > 0.7, local_loo.psis_object.pareto_k)
+
+#-------------------------------------------------------------------------------
+#  Logistic Model CV
+#-------------------------------------------------------------------------------
+function make_prob_func(initial_conditions, p, times)
+    function prob_func(prob,i,repeat)
+        remake(prob, u0=initial_conditions[i], p=[p[i]], saveat=times[i])
+    end
+end
+
+@model function logistic(data, prob, initial_conditions, times, n)
+    σ ~ LogNormal(0, 1)
+
+    Am ~ Normal(0, 1)
+    As ~ LogNormal(0, 0.5)
+
+    α ~ filldist(Normal(Am, As), n)
+
+    ensemble_prob = EnsembleProblem(prob, 
+                                    prob_func=make_prob_func(initial_conditions, α, times), 
+                                    output_func=output_func)
+
+    ensemble_sol = solve(ensemble_prob, 
+                         Tsit5(), 
+                         abstol = 1e-9, 
+                         reltol = 1e-9, 
+                         trajectories=n)
+
+    vecsol = reduce(vcat, ensemble_sol)
+
+    for i in eachindex(data)
+        data[i] ~ Normal(vecsol[i], σ)
+    end
+end
+
+vecsubdata = reduce(vcat, reduce(hcat, norm_subdata))
+prob = ODEProblem(NetworkLogistic, 
+                  norm_initial_conditions[1], 
+                  (0.,5.0), 
+                  [1.0])
+
+m = logistic(vecsubdata, prob, norm_initial_conditions, times, n_pos);
+m()
+
+chains_params = Turing.MCMCChains.get_sections(logistic_pst, :parameters)
+loglikelihoods = pointwise_loglikelihoods(m, chains_params)
+lls = loglikelihoods["data"]
+
+k = length(logistic_pst.name_map.parameters)
+2 * (log(k) - log(maximum(lls)))
+
+logistic_loo = psis_loo(m, logistic_pst);
+scatter(local_loo.psis_object.pareto_k)
+findall(x -> x > 0.7, local_loo.psis_object.pareto_k)
+
+#-------------------------------------------------------------------------------
+#  Global FKPP CV
+#-------------------------------------------------------------------------------
+function make_prob_func(initial_conditions, p, a, p_max, times)
+    function prob_func(prob,i,repeat)
+        remake(prob, u0=initial_conditions[i], p=[p[i], a[i], p_max], saveat=times[i])
+    end
+end
+
+@model function globalfkpp(data, prob, initial_conditions, max_suvr, times, n)
+    σ ~ LogNormal(0, 1)
     
-#     Pm ~ LogNormal(0, 0.5)
-#     Ps ~ LogNormal(0, 0.5)
+    Pm ~ LogNormal(0, 0.5)
+    Ps ~ LogNormal(0, 0.5)
 
-#     Am ~ Normal(0, 1)
-#     As ~ LogNormal(0, 0.5)
+    Am ~ Normal(0, 1)
+    As ~ LogNormal(0, 0.5)
 
-#     ρ ~ filldist(truncated(Normal(Pm, Ps), lower=0), n)
-#     α ~ filldist(Normal(Am, As), n)
+    ρ ~ filldist(truncated(Normal(Pm, Ps), lower=0), n)
+    α ~ filldist(Normal(Am, As), n)
 
-#     ensemble_prob = EnsembleProblem(prob, 
-#                                     prob_func=make_prob_func(initial_conditions, ρ, α, max_suvr, times), 
-#                                     output_func=output_func)
+    ensemble_prob = EnsembleProblem(prob, 
+                                    prob_func=make_prob_func(initial_conditions, ρ, α, max_suvr, times), 
+                                    output_func=output_func)
 
-#     ensemble_sol = solve(ensemble_prob, 
-#                          Tsit5(), 
-#                          abstol = 1e-9, 
-#                          reltol = 1e-9, 
-#                          trajectories=n)
+    ensemble_sol = solve(ensemble_prob, 
+                         Tsit5(), 
+                         abstol = 1e-9, 
+                         reltol = 1e-9, 
+                         trajectories=n)
 
-#     vecsol = reduce(vcat, [vec(sol) for sol in ensemble_sol])
+    vecsol = reduce(vcat, [vec(sol) for sol in ensemble_sol])
 
-#     # for sub in eachindex(data)
-#     #     data[sub] .~ Normal.(Array(ensemble_sol[sub]), σ)
-#     # end
-#     for i in eachindex(data)
-#         data[i] ~ Normal(vecsol[i], σ)
-#     end
-# end
+    # for sub in eachindex(data)
+    #     data[sub] .~ Normal.(Array(ensemble_sol[sub]), σ)
+    # end
+    data ~ MvNormal(vecsol, σ^2 * I)
+end
 
-# vecsubdata = reduce(vcat, reduce(hcat, subdata))
-# prob = ODEProblem(NetworkGlobalFKPP, 
-#                   initial_conditions[1], 
-#                   (0.,5.0), 
-#                   [1.0,1.0, max_suvr])
+vecsubdata = reduce(vcat, reduce(hcat, subdata))
+prob = ODEProblem(NetworkGlobalFKPP, 
+                  initial_conditions[1], 
+                  (0.,5.0), 
+                  [1.0,1.0, max_suvr])
 
-# m = globalfkpp(vecsubdata, prob, initial_conditions, max_suvr, times, n_pos);
-# m()
+m = globalfkpp(vecsubdata, prob, initial_conditions, max_suvr, times, n_pos);
+m()
 
-# global_loo = psis_loo(m, global_pst)
-# findall(x -> x > 1, global_loo.psis_object.pareto_k)
+chains_params = Turing.MCMCChains.get_sections(global_pst, :parameters)
+loglikelihoods = pointwise_loglikelihoods(m, chains_params)
+lls = loglikelihoods["data"]
+
+k = length(global_pst.name_map.parameters)
+global_aic = 2 * (log(k) - log(maximum(lls)))
+
+global_loo = psis_loo(m, global_pst)
+findall(x -> x > 1, global_loo.psis_object.pareto_k)
