@@ -130,7 +130,7 @@ end
 #-------------------------------------------------------------------------------
 # Inference 
 #-------------------------------------------------------------------------------
-@model function localfkpp(data, prob, initial_conditions, times, u0, cc, n)
+@model function localfkpp(data, prob, times, u0, cc, n)
     σ ~ LogNormal(0, 1)
     
     Pm ~ LogNormal(0, 0.5)
@@ -171,14 +171,12 @@ end
 setadbackend(:zygote)
 Random.seed!(1234)
 
-m = localfkpp(vecsubdata, prob, initial_conditions, times, u0, cc, n_pos);
+m = localfkpp(vecsubdata, prob, times, u0, cc, n_pos);
 m();
 
-n_chains = 1
 pst = sample(m, 
              Turing.NUTS(0.8),
-             MCMCSerial(), 
              2_000, 
-             n_chains,
              progress=true)
-serialize(projectdir("adni/chains/local-fkpp/pst-taupos-$(n_chains)x2000-indp0.jls"), pst)
+
+serialize(projectdir("adni/chains/local-fkpp/pst-taupos-2000-indp0.jls"), pst)
