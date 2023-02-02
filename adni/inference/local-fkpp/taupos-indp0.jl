@@ -142,11 +142,11 @@ end
     ρ ~ filldist(truncated(Normal(Pm, Ps), lower=0), n)
     α ~ filldist(Normal(Am, As), n)
 
-    # u ~ arraydist(reduce(hcat, [Uniform.(u0, cc) for _ in 1:n]))
+    u ~ arraydist(reduce(hcat, [Uniform.(u0, cc) for _ in 1:n]))
 
-    u ~ arraydist(reduce(hcat, 
-                    [truncated.(Normal.(inits, 0.5), u0, cc) 
-                    for inits in initial_conditions]))
+    # u ~ arraydist(reduce(hcat, 
+    #                 [truncated.(Normal.(inits, 0.5), u0, cc) 
+    #                 for inits in initial_conditions]))
 
     ensemble_prob = EnsembleProblem(prob, 
                                     prob_func=make_prob_func(u, ρ, α, times), 
