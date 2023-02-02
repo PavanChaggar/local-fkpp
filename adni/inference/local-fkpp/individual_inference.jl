@@ -152,10 +152,8 @@ end
 setadbackend(:zygote)
 Random.seed!(1234)
 
-m = localfkpp(vec(subdata[1]), prob, initial_conditions[1], times[1]);
-m();
-
 psts = Vector{Chains}()
+
 for (sd, inits, t) in zip(subdata, initial_conditions, times)
     println("starting inference")
     m = localfkpp(vec(sd), prob, inits, t);
@@ -165,4 +163,4 @@ for (sd, inits, t) in zip(subdata, initial_conditions, times)
                 progress=false)
     push!(psts, pst)
 end
-serialize(projectdir("adni/chains/local-fkpp/ind-pst-taupos-2000.jls"), psts)
+serialize(projectdir("adni/chains/local-fkpp/ind-psts-taupos-2000.jls"), psts)
