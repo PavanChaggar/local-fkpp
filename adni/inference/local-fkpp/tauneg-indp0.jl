@@ -111,7 +111,7 @@ n_neg = length(nonzerosubs)
 
 maxt = maximum(reduce(vcat, times))
 
-pprob = ODEProblem(NetworkLocalFKPP, 
+prob = ODEProblem(NetworkLocalFKPP, 
                    initial_conditions[:,1], 
                    (0., maxt), 
                    [1.0,1.0])
