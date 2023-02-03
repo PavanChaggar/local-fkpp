@@ -103,7 +103,7 @@ nonzerosubs = findall(x -> sum(x) < 2, [sum(sd, dims=1) .== 0 for sd in blsd])
 subdata = _subdata[nonzerosubs]
 vecsubdata = reduce(vcat, reduce(hcat, subdata))
 
-initial_conditions = [sd[:,1] for sd in subdata]
+initial_conditions = reduce(hcat, [sd[:,1] for sd in subdata])
 _times =  [get_times(data, i) for i in tau_neg]
 times = _times[nonzerosubs]
 
