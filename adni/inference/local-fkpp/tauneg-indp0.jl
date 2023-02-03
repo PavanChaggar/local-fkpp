@@ -18,14 +18,15 @@ using Random
 using LinearAlgebra
 using SparseArrays
 include(projectdir("functions.jl"))
+  
 #-------------------------------------------------------------------------------
 # Connectome and ROIs
 #-------------------------------------------------------------------------------
 connectome_path = Connectomes.connectome_path()
 all_c = filter(Connectome(connectome_path; norm=true), 1e-2);
 
-subcortex = filter(x -> x.Lobe == "subcortex", all_c.parc);
-cortex = filter(x -> x.Lobe != "subcortex", all_c.parc);
+subcortex = filter(x -> x.Lobe == "subcortex", all_c.parc)
+cortex = filter(x -> x.Lobe != "subcortex", all_c.parc)
 
 c = slice(all_c, cortex) |> filter
 
@@ -35,7 +36,7 @@ neo_regions = ["inferiortemporal", "middletemporal"]
 neo = findall(x -> x ∈ neo_regions, cortex.Label)
 #-------------------------------------------------------------------------------
 # Data 
-#-----------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
 sub_data_path = projectdir("adni/data/AV1451_Diagnosis-STATUS-STIME-braak-regions.csv")
 alldf = CSV.read(sub_data_path, DataFrame)
 
@@ -46,7 +47,11 @@ dktnames = [dktdict[i] for i in cortex.ID]
 
 data = ADNIDataset(posdf, dktnames; min_scans=3)
 
-# Ask Jake where we got these cutoffs from? 
+function regional_mean(data, rois, sub)
+    subsuvr = calc_suvr(data, sub)
+    mean(subsuvr[rois,end])
+end
+
 mtl_cutoff = 1.375
 neo_cutoff = 1.395
 
@@ -60,16 +65,16 @@ n_pos = length(tau_pos)
 n_neg = length(tau_neg)
 
 gmm_moments = CSV.read(projectdir("adni/data/component_moments.csv"), DataFrame)
-#gmm_moments2 = CSV.read(projectdir("data/adni-data/component_moments-bothcomps.csv"), DataFrame)
 ubase, upath = get_dkt_moments(gmm_moments, dktnames)
 u0 = mean.(ubase)
 cc = quantile.(upath, .99)
+
 #-------------------------------------------------------------------------------
 # Connectome + ODEE
 #-------------------------------------------------------------------------------
 L = laplacian_matrix(c)
 
-vols = [get_vol(data, i) for i in tau_pos]
+vols = [get_vol(data, i) for i in tau_neg]
 init_vols = [v[:,1] for v in vols]
 max_norm_vols = reduce(hcat, [v ./ maximum(v) for v in init_vols])
 mean_norm_vols = vec(mean(max_norm_vols, dims=2))
@@ -81,7 +86,7 @@ end
 
 function make_prob_func(initial_conditions, p, a, times)
     function prob_func(prob,i,repeat)
-        remake(prob, u0=initial_conditions[:,i], p=[p[i], a[i]], saveat=times[i])
+        remake(prob, u0=initial_conditions[i], p=[p[i], a[i]], saveat=times[i])
     end
 end
 
@@ -89,26 +94,32 @@ function output_func(sol,i)
     (sol,false)
 end
 
-subdata = [calc_suvr(data, i) for i in tau_pos]
-for i in 1:n_pos
-    normalise!(subdata[i], u0, cc)
-end
+subsuvr = [calc_suvr(data, i) for i in tau_neg]
+_subdata = [normalise(sd, u0, cc) for sd in subsuvr]
 
+blsd = [sd .- u0 for sd in _subdata]
+nonzerosubs = findall(x -> sum(x) < 2, [sum(sd, dims=1) .== 0 for sd in blsd])
+
+subdata = _subdata[nonzerosubs]
 vecsubdata = reduce(vcat, reduce(hcat, subdata))
 
-initial_conditions = reduce(hcat, [sd[:,1] for sd in subdata])
-times =  [get_times(data, i) for i in tau_pos]
+initial_conditions = [sd[:,1] for sd in subdata]
+_times =  [get_times(data, i) for i in tau_neg]
+times = _times[nonzerosubs]
+
+n_neg = length(nonzerosubs)
+
 maxt = maximum(reduce(vcat, times))
 
 prob = ODEProblem(NetworkLocalFKPP, 
-                  initial_conditions[:,1], 
-                  (0., maxt), 
+                  initial_conditions[1], 
+                  (0.,maxt), 
                   [1.0,1.0])
                   
 sol = solve(prob, Tsit5())
 
-ensemble_prob = EnsembleProblem(prob, prob_func=make_prob_func(initial_conditions, ones(n_pos), ones(n_pos), times), output_func=output_func)
-ensemble_sol = solve(ensemble_prob, Tsit5(), trajectories=n_pos)
+ensemble_prob = EnsembleProblem(prob, prob_func=make_prob_func(initial_conditions, ones(n_neg), ones(n_neg), times), output_func=output_func)
+ensemble_sol = solve(ensemble_prob, Tsit5(), trajectories=n_neg)
 
 @inline function allequal(x)
     length(x) < 2 && return true
@@ -165,10 +176,10 @@ end
     data ~ MvNormal(vecsol, σ^2 * I)
 end
 
-setadbackend(:zygote)
-Random.seed!(1234)
+Turing.setadbackend(:zygote)
+Random.seed!(1234); 
 
-m = localfkpp(vecsubdata, prob, times, u0, cc, n_pos);
+m = localfkpp(vecsubdata, prob, times, u0, cc, n_neg);
 m();
 
 pst = sample(m, 
@@ -176,4 +187,4 @@ pst = sample(m,
              1_000, 
              progress=true)
 
-serialize(projectdir("adni/chains/local-fkpp/pst-taupos-1000-indp0.jls"), pst)
+serialize(projectdir("adni/chains/local-fkpp/pst-tauneg-1000-indp0.jls"), pst)
