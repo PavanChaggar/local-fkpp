@@ -86,7 +86,7 @@ end
 
 function make_prob_func(initial_conditions, p, a, times)
     function prob_func(prob,i,repeat)
-        remake(prob, u0=initial_conditions[i], p=[p[i], a[i]], saveat=times[i])
+        remake(prob, u0=initial_conditions[:,i], p=[p[i], a[i]], saveat=times[i])
     end
 end
 
@@ -111,10 +111,10 @@ n_neg = length(nonzerosubs)
 
 maxt = maximum(reduce(vcat, times))
 
-prob = ODEProblem(NetworkLocalFKPP, 
-                  initial_conditions[1], 
-                  (0.,maxt), 
-                  [1.0,1.0])
+pprob = ODEProblem(NetworkLocalFKPP, 
+                   initial_conditions[:,1], 
+                   (0., maxt), 
+                   [1.0,1.0])
                   
 sol = solve(prob, Tsit5())
 
