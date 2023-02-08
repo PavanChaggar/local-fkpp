@@ -1,7 +1,6 @@
 using Pkg
 cd("/home/chaggar/Projects/local-fkpp")
 Pkg.activate(".")
-println(@__DIR__)
 
 using Connectomes
 using ADNIDatasets
@@ -19,14 +18,15 @@ using Random
 using LinearAlgebra
 using SparseArrays
 include(projectdir("functions.jl"))
+
 #-------------------------------------------------------------------------------
 # Connectome and ROIs
 #-------------------------------------------------------------------------------
 connectome_path = Connectomes.connectome_path()
 all_c = filter(Connectome(connectome_path; norm=true), 1e-2);
 
-subcortex = filter(x -> x.Lobe == "subcortex", all_c.parc);
-cortex = filter(x -> x.Lobe != "subcortex", all_c.parc);
+subcortex = filter(x -> x.Lobe == "subcortex", all_c.parc)
+cortex = filter(x -> x.Lobe != "subcortex", all_c.parc)
 
 c = slice(all_c, cortex) |> filter
 
@@ -36,29 +36,18 @@ neo_regions = ["inferiortemporal", "middletemporal"]
 neo = findall(x -> x ∈ neo_regions, cortex.Label)
 #-------------------------------------------------------------------------------
 # Data 
-#-----------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
 sub_data_path = projectdir("adni/data/AV1451_Diagnosis-STATUS-STIME-braak-regions.csv")
 alldf = CSV.read(sub_data_path, DataFrame)
 
-posdf = filter(x -> x.STATUS == "POS", alldf)
+posdf = filter(x -> x.STATUS == "NEG", alldf)
 
 dktdict = Connectomes.node2FS()
 dktnames = [dktdict[i] for i in cortex.ID]
 
 data = ADNIDataset(posdf, dktnames; min_scans=3)
+n_subjects = length(data)
 
-# Ask Jake where we got these cutoffs from? 
-mtl_cutoff = 1.375
-neo_cutoff = 1.395
-
-mtl_pos = filter(x -> regional_mean(data, mtl, x) >= mtl_cutoff, 1:50)
-neo_pos = filter(x -> regional_mean(data, neo, x) >= neo_cutoff, 1:50)
-
-tau_pos = findall(x -> x ∈ unique([mtl_pos; neo_pos]), 1:50)
-tau_neg = findall(x -> x ∉ tau_pos, 1:50)
-
-n_pos = length(tau_pos)
-n_neg = length(tau_neg)
 
 gmm_moments = CSV.read(projectdir("adni/data/component_moments.csv"), DataFrame)
 ubase, upath = get_dkt_moments(gmm_moments, dktnames)
@@ -81,7 +70,7 @@ function output_func(sol,i)
     (sol,false)
 end
 
-subsuvr = [calc_suvr(data, i) for i in tau_neg]
+subsuvr = [calc_suvr(data, i) for i in 1:n_subjects]
 _subdata = [normalise(sd, u0, cc) for sd in subsuvr]
 
 blsd = [sd .- u0 for sd in _subdata]
@@ -91,10 +80,10 @@ subdata = _subdata[nonzerosubs]
 vecsubdata = reduce(vcat, reduce(hcat, subdata))
 
 initial_conditions = [sd[:,1] for sd in subdata]
-_times =  [get_times(data, i) for i in tau_neg]
+_times =  [get_times(data, i) for i in 1:n_subjects]
 times = _times[nonzerosubs]
 
-n_neg = length(nonzerosubs)
+n_nz = length(subdata)
 
 prob = ODEProblem(NetworkLogistic, 
                   initial_conditions[1], 
@@ -103,8 +92,8 @@ prob = ODEProblem(NetworkLogistic,
                   
 sol = solve(prob, Tsit5())
 
-ensemble_prob = EnsembleProblem(prob, prob_func=make_prob_func(initial_conditions, ones(n_neg), times), output_func=output_func)
-ensemble_sol = solve(ensemble_prob, Tsit5(), trajectories=n_neg)
+ensemble_prob = EnsembleProblem(prob, prob_func=make_prob_func(initial_conditions, ones(n_nz), times), output_func=output_func)
+ensemble_sol = solve(ensemble_prob, Tsit5(), trajectories=n_nz)
 
 function get_retcodes(es)
     [sol.retcode for sol in es]
@@ -113,7 +102,6 @@ end
 function vec_sol(es)
     reduce(vcat, [vec(sol) for sol in es])
 end
-
 #-------------------------------------------------------------------------------
 # Inference 
 #-------------------------------------------------------------------------------
@@ -147,18 +135,17 @@ end
     data ~ MvNormal(vecsol, σ^2 * I)
 end
 
-setadbackend(:zygote)
-Random.seed!(1234)
+Turing.setadbackend(:zygote)
+Random.seed!(1234); 
 
-m = logistic(vecsubdata, prob, initial_conditions, times, n_neg);
+m = logistic(vecsubdata, prob, initial_conditions, times, n_nz)
 m();
 
 n_chains = 4
 pst = sample(m, 
-             Turing.NUTS(0.8), #, metricT=AdvancedHMC.DenseEuclideanMetric), 
+             Turing.NUTS(0.8), #, metricT=AdvancedHMC.D enseEuclideanMetric), 
              MCMCSerial(), 
              2_000, 
              n_chains,
              progress=false)
-
-serialize(projectdir("adni/chains/logistic/pst-tauneg-$(n_chains)x2000.jls"), pst)
+serialize(projectdir("adni/chains/logistic/pst-abneg-$(n_chains)x2000.jls"), pst)
