@@ -116,7 +116,7 @@ end
 @model function localfkpp(data, prob, initial_conditions, times, n)
     σ ~ LogNormal(0.0, 1.0)
     
-    Pm ~ truncated(Normal(0.0, 1.0), lower=0)
+    Pm ~ LogNormal(0.0, 1.0)
     Ps ~ LogNormal(0.0, 1.0)
 
     Am ~ Normal(0.0, 1.0)
