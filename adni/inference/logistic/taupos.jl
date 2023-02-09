@@ -91,7 +91,7 @@ vecsubdata = reduce(vcat, reduce(hcat, subdata))
 initial_conditions = [sd[:,1] for sd in subdata]
 times =  [get_times(data, i) for i in tau_pos]
 
-prob = ODEProblem(NetworkLocalFKPP, 
+prob = ODEProblem(NetworkLogistic, 
                   initial_conditions[1], 
                   (0.,5.), 
                   1.0)
