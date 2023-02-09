@@ -132,7 +132,7 @@ end
 #-------------------------------------------------------------------------------
 # Inference 
 #-------------------------------------------------------------------------------
-@model function global(data, prob, initial_conditions, max_suvr, times, n)
+@model function globalfkpp(data, prob, initial_conditions, max_suvr, times, n)
     σ ~ LogNormal(0.0, 1.0)
     
     Pm ~ LogNormal(0.0, 1.0)
