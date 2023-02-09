@@ -150,7 +150,7 @@ m();
 
 n_chains = 4
 pst = sample(m, 
-             Turing.NUTS(0.8), #, metricT=AdvancedHMC.DenseEuclideanMetric), 
+             Turing.NUTS(0.8),
              MCMCSerial(), 
              2_000, 
              n_chains,
