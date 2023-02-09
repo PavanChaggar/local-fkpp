@@ -119,7 +119,7 @@ prob = ODEProblem(NetworkGlobalFKPP,
 sol = solve(prob, Tsit5())
 
 ensemble_prob = EnsembleProblem(prob, prob_func=make_prob_func(initial_conditions, ones(n_neg), ones(n_neg), max_suvr, times), output_func=output_func)
-ensemble_sol = solve(ensemble_prob, Tsit5(), trajectories=n_pos)
+ensemble_sol = solve(ensemble_prob, Tsit5(), trajectories=n_neg)
 
 function get_retcodes(es)
     [sol.retcode for sol in es]
