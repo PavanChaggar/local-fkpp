@@ -112,16 +112,6 @@ sol = solve(prob, Tsit5())
 ensemble_prob = EnsembleProblem(prob, prob_func=make_prob_func(initial_conditions, ones(n_pos), ones(n_pos), max_suvr, times), output_func=output_func)
 ensemble_sol = solve(ensemble_prob, Tsit5(), trajectories=n_pos)
 
-@inline function allequal(x)
-    length(x) < 2 && return true
-    e1 = x[1]
-    i = 2
-    @inbounds for i=2:length(x)
-        x[i] == e1 || return false
-    end
-    return true
-end
-
 function get_retcodes(es)
     [sol.retcode for sol in es]
 end
@@ -134,13 +124,13 @@ end
 # Inference 
 #-------------------------------------------------------------------------------
 @model function globalfkpp(data, prob, initial_conditions, max_suvr, times, n)
-    σ ~ LogNormal(0, 1)
+    σ ~ LogNormal(0.0, 1.0)
     
-    Pm ~ LogNormal(0, 0.5)
-    Ps ~ LogNormal(0, 0.5)
+    Pm ~ LogNormal(0.0, 1.0)
+    Ps ~ LogNormal(0.0, 1.0)
 
-    Am ~ Normal(0, 1)
-    As ~ LogNormal(0, 0.5)
+    Am ~ Normal(0.0, 1.0)
+    As ~ LogNormal(0.0, 1.0)
 
     ρ ~ filldist(truncated(Normal(Pm, Ps), lower=0), n)
     α ~ filldist(Normal(Am, As), n)
@@ -174,7 +164,7 @@ m();
 
 n_chains = 4
 pst = sample(m, 
-             Turing.NUTS(0.8), #, metricT=AdvancedHMC.DenseEuclideanMetric), 
+             Turing.NUTS(0.8),
              MCMCSerial(), 
              2_000, 
              n_chains,
