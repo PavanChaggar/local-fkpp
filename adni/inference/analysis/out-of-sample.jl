@@ -9,6 +9,7 @@ using LinearAlgebra
 using Random
 using LinearAlgebra
 using Turing
+using SparseArrays
 include(projectdir("functions.jl"))
 include(projectdir("braak-regions.jl"))
 #-------------------------------------------------------------------------------
@@ -62,8 +63,9 @@ gmm_moments = CSV.read(projectdir("adni/data/component_moments.csv"), DataFrame)
 ubase, upath = get_dkt_moments(gmm_moments, dktnames)
 u0 = mean.(ubase)
 cc = quantile.(upath, .99)
+
 #-------------------------------------------------------------------------------
-# Connectome + ODEE
+# Connectome
 #-------------------------------------------------------------------------------
 L = laplacian_matrix(c)
 
@@ -73,35 +75,65 @@ max_norm_vols = reduce(hcat, [v ./ maximum(v) for v in init_vols])
 mean_norm_vols = vec(mean(max_norm_vols, dims=2))
 Lv = sparse(inv(diagm(mean_norm_vols)) * L)
 
+#-------------------------------------------------------------------------------
+# Local FKPP
+#-------------------------------------------------------------------------------
 function NetworkLocalFKPP(du, u, p, t; Lv = Lv, u0 = u0, cc = cc)
     du .= -p[1] * Lv * (u .- u0) .+ p[2] .* (u .- u0) .* ((cc .- u0) .- (u .- u0))
 end
 
+_subdata = [calc_suvr(data, i) for i in tau_pos];
+subdata = [normalise(sd, u0, cc) for sd in _subdata];
+initial_conditions = [sd[:,1] for sd in subdata];
+times =  [get_times(data, i) for i in tau_pos];
 
-subdata = [calc_suvr(data, i) for i in tau_pos]
-for i in 1:n_pos
-    normalise!(subdata[i], u0, cc)
-end
+local_pst = deserialize(projectdir("adni/chains/local-fkpp/pst-taupos-4x2000-vc.jls"));
+mean_local_pst = mean(local_pst)
 
-initial_conditions = [sd[:,1] for sd in subdata]
-times =  [get_times(data, i) for i in tau_pos]
-
-prob = ODEProblem(NetworkLocalFKPP, 
+local_prob = ODEProblem(NetworkLocalFKPP, 
                   initial_conditions[1], 
                   (0.,10.), 
-                  [1.0,1.0])
-                  
-sol = solve(prob, Tsit5())
+                  [1.0, 1.0])
 
+@model function localfkpp(prob, initial_conditions, times)
+    σ ~ LogNormal(0, 1)
+
+    Pm ~ LogNormal(0, 1)
+    Am ~ Normal(0, 1)
+    prob = remake(prob, u0 = initial_conditions, p = [Pm, Am])
+
+    sol = solve(prob, Tsit5(), saveat=times)
+
+    data ~ arraydist(Normal.(sol, σ))
+    return (; σ, Pm, Am, data)
+end
+
+local_m = localfkpp(local_prob, initial_conditions[1], times[1]);
+local_m()
 #-------------------------------------------------------------------------------
-# Model
+# Global FKPP
 #-------------------------------------------------------------------------------
-@model function localfkpp(prob, initial_conditions, times, n)
+function NetworkGlobalFKPP(du, u, p, t; Lv = Lv)
+    du .= -p[1] * Lv * u .+ p[2] .* u .* (1 .- ( u ./ p[3]))
+end
+
+max_suvr = maximum(reduce(vcat, reduce(hcat, subdata)))
+
+global_pst = deserialize(projectdir("adni/chains/global-fkpp/pst-taupos-4x2000-vc.jls"));
+mean_global_pst = mean(global_pst)
+
+global_prob = ODEProblem(NetworkGlobalFKPP, 
+                  initial_conditions[1], 
+                  (0.,10.), 
+                  [1.0, 1.0, max_suvr])
+
+
+@model function globalfkpp(prob, initial_conditions, times, max_suvr)
     σ ~ LogNormal(0, 1)
     
     Pm ~ LogNormal(0, 1)
     Am ~ Normal(0, 1)
-    prob = remake(prob, u0 = initial_conditions, p = [Pm, Am])
+    prob = remake(prob, u0 = initial_conditions, p = [Pm, Am, max_suvr])
     
     sol = solve(prob, Tsit5(), saveat=times)
 
@@ -109,21 +141,12 @@ sol = solve(prob, Tsit5())
     return (; σ, Pm, Am, data)
 end
 
-m = localfkpp(prob, initial_conditions[1], times[1], n_pos);
-m()
+global_m = globalfkpp(global_prob, initial_conditions[1], times[1], max_suvr);
+global_m()
 
 #-------------------------------------------------------------------------------
 # Out of sample mean prediction
 #-------------------------------------------------------------------------------
-pst = deserialize(projectdir("adni/chains/local-fkpp/pst-taupos-4x2000-vc.jls"));
-
-meanpst = mean(pst)
-
-Pm, Am = meanpst[:Pm, :mean], meanpst[:Am, :mean]
-
-mean_probs = [ODEProblem(NetworkLocalFKPP, initial_conditions[i], (0.,5.), [Pm, Am]) for i in 1:n_pos];
-mean_sols = [solve(mean_probs[i], Tsit5(), saveat=times[i]) for i in 1:n_pos];
-
 function get_quantiles(q)
     lower = [q[Symbol("data[$i,$j]"), Symbol("2.5%")] for i in 1:72, j in 1:2]
     upper = [q[Symbol("data[$i,$j]"), Symbol("97.5%")] for i in 1:72, j in 1:2]
@@ -131,20 +154,26 @@ function get_quantiles(q)
     (;lower, upper, mean)
 end
 
-function make_predictions(pst, initial_conditions, times)
-    m = localfkpp(prob, initial_conditions, times, n_pos);
+function make_predictions(m, pst)
     _predictions = predict(m, pst[[:σ, :Pm, :Am]])
     qs = quantile(_predictions; q=[0.025, 0.5, 0.975])
     get_quantiles(qs)
 end
 
-predictions = [make_predictions(pst, initial_conditions[i], times[i]) for i in 1:n_pos];
-mean_predictions = [predictions[i].mean[:,:] for i in 1:n_pos]
+
+
+local_predictions = [make_predictions(localfkpp(local_prob, initial_conditions[i], times[i]), local_pst) for i in 1:n_pos];
+local_mean_predictions = [local_predictions[i].mean[:,:] for i in 1:n_pos]
+
+global_predictions = [make_predictions(globalfkpp(global_prob, initial_conditions[i], times[i], max_suvr), global_pst) for i in 1:n_pos];
+global_mean_predictions = [global_predictions[i].mean[:,:] for i in 1:n_pos]
 
 #-------------------------------------------------------------------------------
 # Out of sample mean predictions -- figures
 #-------------------------------------------------------------------------------
 using CairoMakie
+
+predictions = global_predictions
 
 begin
     f = Figure(resolution=(600, 500))
@@ -190,17 +219,24 @@ begin
     f
 end
 
-second_scan_pred = reduce(hcat, [mean_predictions[i][:,2] for i in 1:n_pos])
-mean_second_scan_pred = mean(second_scan_pred, dims=2) |> vec
+function get_second_scan(mean_predictions)
+    second_scan_pred = reduce(hcat, [mean_predictions[i][:,2] for i in 1:n_pos])
+    mean_second_scan_pred = mean(second_scan_pred, dims=2) |> vec
+    
+    second_scan_lower = reduce(hcat, [predictions[i].lower[:,2] for i in 1:n_pos])
+    second_scan_lower_mean = mean(second_scan_lower, dims=2) |> vec
+    
+    second_scan_upper = reduce(hcat, [predictions[i].upper[:,2] for i in 1:n_pos])
+    second_scan_upper_mean = mean(second_scan_upper, dims=2) |> vec
+    
+    second_scan = reduce(hcat, [subdata[i][:,2] for i in 1:n_pos])
+    mean_second_scan = mean(second_scan, dims=2) |> vec
 
-second_scan_lower = reduce(hcat, [predictions[i].lower[:,2] for i in 1:n_pos])
-second_scan_lower_mean = mean(second_scan_lower, dims=2) |> vec
+    return (;mean_second_scan_pred, second_scan_lower_mean, second_scan_upper_mean), mean_second_scan
+end
 
-second_scan_upper = reduce(hcat, [predictions[i].upper[:,2] for i in 1:n_pos])
-second_scan_upper_mean = mean(second_scan_upper, dims=2) |> vec
-
-second_scan = reduce(hcat, [subdata[i][:,2] for i in 1:n_pos])
-mean_second_scan = mean(second_scan, dims=2) |> vec
+local_second_scan_predictions, mean_second_scans = get_second_scan(local_mean_predictions)
+global_second_scan_predictions, _ = get_second_scan(global_mean_predictions)
 
 begin
     f = Figure(resolution=(600, 500))
@@ -214,7 +250,7 @@ begin
            linestyle=:dash, 
            linewidth=2, 
            color=(:grey, 0.5))
-    scatter!(mean_second_scan,mean_second_scan_pred, color=(:blue, 0.5))
+    scatter!(mean_second_scans,local_second_scan_predictions.mean_second_scan_pred, color=(:blue, 0.5))
     f
 end
 
@@ -232,6 +268,7 @@ regions = [findall(x -> x == i, region_idx) for i in 1:5]
 _braak_regions = map(getbraak, braak)
 braak_regions = [reduce(vcat, [findall(x -> x == roi, c.parc.ID) for roi in braak_region]) for braak_region in _braak_regions]
 
+mean_predictions = global_mean_predictions
 begin
     f = Figure(resolution=(600, 500))
     ax = Axis(f[1,1], 
