@@ -86,7 +86,7 @@ end
 
 function make_prob_func(initial_conditions, p, a, times)
     function prob_func(prob,i,repeat)
-        remake(prob, u0=initial_conditions[:,i], p=[p[i], a[i]], saveat=times[i])
+        remake(prob, u0=initial_conditions[i,:], p=[p[i], a[i]], saveat=times[i])
     end
 end
 
@@ -99,18 +99,17 @@ _subdata = [normalise(sd, u0, cc) for sd in subsuvr]
 
 blsd = [sd .- u0 for sd in _subdata]
 nonzerosubs = findall(x -> sum(x) < 2, [sum(sd, dims=1) .== 0 for sd in blsd])
-nonzerosubs = setdiff(nonzerosubs, [2, 7])
 subdata = _subdata[nonzerosubs]
 vecsubdata = reduce(vcat, reduce(hcat, subdata))
 
-initial_conditions = reduce(hcat, [sd[:,1] for sd in subdata])
+initial_conditions = transpose(reduce(hcat, [sd[:,1] for sd in subdata]))
 _times =  [get_times(data, i) for i in tau_neg]
 times = _times[nonzerosubs]
 
 n_neg = length(nonzerosubs)
 
 prob = ODEProblem(NetworkLocalFKPP, 
-                  initial_conditions[:,1], 
+                  initial_conditions[1,:], 
                   (0.,maximum(reduce(vcat, times))), 
                   [1.0,1.0])
                   
@@ -141,7 +140,10 @@ end
     ρ ~ filldist(truncated(Normal(Pm, Ps), lower=0), n)
     α ~ filldist(Normal(Am, As), n)
 
-    u ~ arraydist(reduce(hcat, [Uniform.(u0, cc) for _ in 1:n]))
+    # u ~ arraydist(reduce(hcat, [Uniform.(u0, cc) for _ in 1:n]))
+    u ~ arraydist(reduce(hcat, 
+                        [truncated.(Normal.(initial_conditions[:,i], 0.1), 
+                                    lower=u0[i], upper=cc[i]) for i in 1:72]))
 
     ensemble_prob = EnsembleProblem(prob, 
                                     prob_func=make_prob_func(u, ρ, α, times), 
