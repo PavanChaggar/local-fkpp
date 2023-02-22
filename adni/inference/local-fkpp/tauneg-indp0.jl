@@ -99,7 +99,7 @@ _subdata = [normalise(sd, u0, cc) for sd in subsuvr]
 
 blsd = [sd .- u0 for sd in _subdata]
 nonzerosubs = findall(x -> sum(x) < 2, [sum(sd, dims=1) .== 0 for sd in blsd])
-
+nonzerosubs = setdiff(nonzerosubs, [2, 7])
 subdata = _subdata[nonzerosubs]
 vecsubdata = reduce(vcat, reduce(hcat, subdata))
 
@@ -174,4 +174,32 @@ pst = sample(m,
              1_000, 
              progress=true)
 
-serialize(projectdir("adni/chains/local-fkpp/pst-tauneg-1000-indp0.jls"), pst)
+# serialize(projectdir("adni/chains/local-fkpp/pst-tauneg-1000-indp0.jls"), pst)
+
+# function plot_u0!(chain, u0, n)
+#     scatter!(u0, color=(:red, 0.5), label="data")
+#     for i in 1:83
+#         hist!(ax, vec(chain[Symbol("u[$i, $n]")]), bins=20, scale_to=0.6, offset=i, direction=:x, color=(:grey, 0.5), label="posterior")
+#     end
+# end
+
+# for j in 1:21
+#     f, ax = scatter(initial_conditions[:,j], color=(:red, 0.5), label="data")
+#     for i in 1:72
+#         hist!(ax, vec(pst2[Symbol("u[$i,$j]")]), bins=20, scale_to=0.6, offset=i, direction=:x, color=(:grey, 0.5), label="posterior")
+#     end
+#     ylims!(ax, 0.9, 2.0)
+#     display(f)
+# end
+
+# meanpst = mean(pst2)
+# for j in 1:21
+#     inits = [meanpst["u[$i,$j]",:mean] for i in 1:72]
+#     f = Figure(resolution=(500, 500))
+#     ax = Axis(f[1,1])
+#     scatter!(initial_conditions[:,j], inits)
+#     lines!(0.9:0.1:2.0,0.9:0.1:2.0)
+#     xlims!(ax, 0.9, 2.0)
+#     ylims!(ax, 0.9, 2.0)
+#     display(f)
+# end
