@@ -109,27 +109,15 @@ times = _times[nonzerosubs]
 
 n_neg = length(nonzerosubs)
 
-maxt = maximum(reduce(vcat, times))
-
 prob = ODEProblem(NetworkLocalFKPP, 
-                   initial_conditions[:,1], 
-                   (0., maxt), 
-                   [1.0,1.0])
+                  initial_conditions[1], 
+                  (0.,maximum(reduce(vcat, times))), 
+                  [1.0,1.0])
                   
 sol = solve(prob, Tsit5())
 
 ensemble_prob = EnsembleProblem(prob, prob_func=make_prob_func(initial_conditions, ones(n_neg), ones(n_neg), times), output_func=output_func)
 ensemble_sol = solve(ensemble_prob, Tsit5(), trajectories=n_neg)
-
-@inline function allequal(x)
-    length(x) < 2 && return true
-    e1 = x[1]
-    i = 2
-    @inbounds for i=2:length(x)
-        x[i] == e1 || return false
-    end
-    return true
-end
 
 function get_retcodes(es)
     [sol.retcode for sol in es]
@@ -138,7 +126,6 @@ end
 function vec_sol(es)
     reduce(vcat, [vec(sol) for sol in es])
 end
-
 #-------------------------------------------------------------------------------
 # Inference 
 #-------------------------------------------------------------------------------
@@ -176,8 +163,8 @@ end
     data ~ MvNormal(vecsol, σ^2 * I)
 end
 
-Turing.setadbackend(:zygote)
-Random.seed!(1234); 
+setadbackend(:zygote)
+Random.seed!(1234)
 
 m = localfkpp(vecsubdata, prob, times, u0, cc, n_neg);
 m();
