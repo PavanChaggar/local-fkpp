@@ -110,7 +110,7 @@ times = _times[nonzerosubs]
 n_neg = length(nonzerosubs)
 
 prob = ODEProblem(NetworkLocalFKPP, 
-                  initial_conditions[1], 
+                  initial_conditions[:,1], 
                   (0.,maximum(reduce(vcat, times))), 
                   [1.0,1.0])
                   
