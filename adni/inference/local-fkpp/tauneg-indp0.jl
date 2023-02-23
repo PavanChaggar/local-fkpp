@@ -86,7 +86,7 @@ end
 
 function make_prob_func(initial_conditions, p, a, times)
     function prob_func(prob,i,repeat)
-        remake(prob, u0=initial_conditions[i,:], p=[p[i], a[i]], saveat=times[i])
+        remake(prob, u0=initial_conditions[:,i], p=[p[i], a[i]], saveat=times[i])
     end
 end
 
@@ -102,14 +102,14 @@ nonzerosubs = findall(x -> sum(x) < 2, [sum(sd, dims=1) .== 0 for sd in blsd])
 subdata = _subdata[nonzerosubs]
 vecsubdata = reduce(vcat, reduce(hcat, subdata))
 
-initial_conditions = transpose(reduce(hcat, [sd[:,1] for sd in subdata]))
+initial_conditions = reduce(hcat, [sd[:,1] for sd in subdata])
 _times =  [get_times(data, i) for i in tau_neg]
 times = _times[nonzerosubs]
 
 n_neg = length(nonzerosubs)
 
 prob = ODEProblem(NetworkLocalFKPP, 
-                  initial_conditions[1,:], 
+                  initial_conditions[:,1], 
                   (0.,maximum(reduce(vcat, times))), 
                   [1.0,1.0])
                   
@@ -141,9 +141,10 @@ end
     α ~ filldist(Normal(Am, As), n)
 
     # u ~ arraydist(reduce(hcat, [Uniform.(u0, cc) for _ in 1:n]))
-    u ~ arraydist(reduce(hcat, 
-                        [truncated.(Normal.(initial_conditions[:,i], 0.1), 
-                                    lower=u0[i], upper=cc[i]) for i in 1:72]))
+    # u ~ arraydist(reduce(hcat, 
+    #                     [truncated.(Normal.(initial_conditions[:,i], 0.1), 
+    #                                 lower=u0[i], upper=cc[i]) for i in 1:72]))
+    u ~ arraydist(reduce(hcat, [truncated.(Normal.(initial_conditions[:,i], 0.1), u0, cc) for i in 1:n]))
 
     ensemble_prob = EnsembleProblem(prob, 
                                     prob_func=make_prob_func(u, ρ, α, times), 
@@ -151,10 +152,10 @@ end
 
     ensemble_sol = solve(ensemble_prob, 
                          Tsit5(), 
-                         abstol = 1e-9, 
-                         reltol = 1e-9, 
-                         trajectories=n, 
-                         sensealg=InterpolatingAdjoint(autojacvec=ReverseDiffVJP(true)))
+                         abstol = 1e-6, 
+                         reltol = 1e-6, 
+                         trajectories=n,
+                        sensealg=InterpolatingAdjoint(autojacvec=ReverseDiffVJP(true)))
     if !allequal(get_retcodes(ensemble_sol)) 
         Turing.@addlogprob! -Inf
         println("failed")
@@ -163,6 +164,7 @@ end
     vecsol = vec_sol(ensemble_sol)
 
     data ~ MvNormal(vecsol, σ^2 * I)
+    # Turing.@addlogprob! loglikelihood(MvNormal(vecsol, σ^2 * I), data)
 end
 
 setadbackend(:zygote)
@@ -172,11 +174,11 @@ m = localfkpp(vecsubdata, prob, times, u0, cc, n_neg);
 m();
 
 pst = sample(m, 
-             Turing.NUTS(0.8),
+             Turing.NUTS(0.65),
              1_000, 
              progress=true)
 
-# serialize(projectdir("adni/chains/local-fkpp/pst-tauneg-1000-indp0.jls"), pst)
+serialize(projectdir("adni/chains/local-fkpp/pst-tauneg-1000-indp0.jls"), pst)
 
 # function plot_u0!(chain, u0, n)
 #     scatter!(u0, color=(:red, 0.5), label="data")
