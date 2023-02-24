@@ -144,7 +144,7 @@ end
     # u ~ arraydist(reduce(hcat, 
     #                     [truncated.(Normal.(initial_conditions[:,i], 0.1), 
     #                                 lower=u0[i], upper=cc[i]) for i in 1:72]))
-    u ~ arraydist(reduce(hcat, [truncated.(Normal.(initial_conditions[:,i], 0.1), u0, cc) for i in 1:n]))
+    u ~ arraydist(reduce(hcat, [truncated.(Normal.(initial_conditions[:,i], 0.01), u0, cc) for i in 1:n]))
 
     ensemble_prob = EnsembleProblem(prob, 
                                     prob_func=make_prob_func(u, ρ, α, times), 
@@ -180,12 +180,7 @@ pst = sample(m,
 
 serialize(projectdir("adni/chains/local-fkpp/pst-tauneg-1000-indp0.jls"), pst)
 
-# function plot_u0!(chain, u0, n)
-#     scatter!(u0, color=(:red, 0.5), label="data")
-#     for i in 1:83
-#         hist!(ax, vec(chain[Symbol("u[$i, $n]")]), bins=20, scale_to=0.6, offset=i, direction=:x, color=(:grey, 0.5), label="posterior")
-#     end
-# end
+# using CairoMakie
 
 # for j in 1:21
 #     f, ax = scatter(initial_conditions[:,j], color=(:red, 0.5), label="data")
@@ -194,6 +189,39 @@ serialize(projectdir("adni/chains/local-fkpp/pst-tauneg-1000-indp0.jls"), pst)
 #     end
 #     ylims!(ax, 0.9, 2.0)
 #     display(f)
+# end
+
+# meanpst = mean(pst2)
+# inits = [[meanpst["u[$i,$j]", :mean] for i in 1:72] for j in 1:21]
+# ρs = [meanpst["ρ[$i]", :mean] for i in 1:21]
+# αs = [meanpst["α[$i]", :mean] for i in 1:21]
+# times
+# function simulate(f, initial_conditions, params, times)
+#     max_t = maximum(reduce(vcat, times))
+#     [solve(
+#         ODEProblem(
+#             f, inits, (0, max_t), p
+#         ),
+#         Tsit5(), saveat=t
+#     )
+#     for (inits, p, t) in zip(initial_conditions, params, times)
+#     ]
+# end
+
+# sols = simulate(NetworkLocalFKPP, inits, collect(zip(ρs, αs)), times)
+# function getdiff(d)
+#     d[:,end] .- d[:,1]
+# end
+
+# begin
+#     f = Figure(resolution=(500, 500))
+#     ax = Axis(f[1,1])
+#     xlims!(ax, -0.4, 0.4)
+#     ylims!(ax, -0.4, 0.4)
+#     for (i, sol) in enumerate(sols)
+#         scatter!(getdiff(subdata[i]), getdiff(subdata2[i]))
+#     end
+#     f
 # end
 
 # meanpst = mean(pst2)
