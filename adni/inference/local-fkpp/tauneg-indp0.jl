@@ -193,7 +193,7 @@ pst = sample(m,
              1_000, 
              progress=true)
 
-serialize(projectdir("adni/chains/local-fkpp/pst-tauneg-1000-indp0.jls"), pst)
+serialize(projectdir("adni/chains/local-fkpp/pst-tauneg-1000-indp0-scaled-priors.jls"), pst)
 
 
 # using CairoMakie
