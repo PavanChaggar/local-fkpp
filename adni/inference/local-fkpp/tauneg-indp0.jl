@@ -102,20 +102,27 @@ nonzerosubs = findall(x -> sum(x) < 2, [sum(sd, dims=1) .== 0 for sd in blsd])
 subdata = _subdata[nonzerosubs]
 vecsubdata = reduce(vcat, reduce(hcat, subdata))
 
-initial_conditions = reduce(hcat, [sd[:,1] for sd in subdata])
+function percent_signal(inits, u0, cc)
+    (inits .- u0) ./ (cc .- u0)
+end
+
+initial_conditions_vec = [sd[:,1] for sd in subdata]
+initial_conditions_var_prior = [percent_signal(inits, u0, cc) .* 0.5 for inits in initial_conditions_vec]
+initial_conditions_arr = reduce(hcat,initial_conditions_vec)
+
 _times =  [get_times(data, i) for i in tau_neg]
 times = _times[nonzerosubs]
 
 n_neg = length(nonzerosubs)
 
 prob = ODEProblem(NetworkLocalFKPP, 
-                  initial_conditions[:,1], 
+                  initial_conditions_arr[:,1], 
                   (0.,maximum(reduce(vcat, times))), 
                   [1.0,1.0])
                   
 sol = solve(prob, Tsit5())
 
-ensemble_prob = EnsembleProblem(prob, prob_func=make_prob_func(initial_conditions, ones(n_neg), ones(n_neg), times), output_func=output_func)
+ensemble_prob = EnsembleProblem(prob, prob_func=make_prob_func(initial_conditions_arr, ones(n_neg), ones(n_neg), times), output_func=output_func)
 ensemble_sol = solve(ensemble_prob, Tsit5(), trajectories=n_neg)
 
 function get_retcodes(es)
@@ -128,7 +135,7 @@ end
 #-------------------------------------------------------------------------------
 # Inference 
 #-------------------------------------------------------------------------------
-@model function localfkpp(data, prob, times, u0, cc, n)
+@model function localfkpp(data, prob, times, inits, vars, u0, cc, n)
     σ ~ LogNormal(0.0, 1.0)
     
     Pm ~ LogNormal(0.0, 1.0)
@@ -144,10 +151,11 @@ end
     # u ~ arraydist(reduce(hcat, 
     #                     [truncated.(Normal.(initial_conditions[:,i], 0.1), 
     #                                 lower=u0[i], upper=cc[i]) for i in 1:72]))
-    u ~ arraydist(reduce(hcat, [truncated.(Normal.(initial_conditions[:,i], 0.01), u0, cc) for i in 1:n]))
-
+    # u ~ arraydist(reduce(hcat, [truncated.(Normal.(inits[:,i], 0.01), u0, cc) for i in 1:n]))
+    u ~ arraydist(truncated.(Normal.(inits, vars .+ 1e-5), u0, cc))
+    _inits = reshape(u, 72, 21)
     ensemble_prob = EnsembleProblem(prob, 
-                                    prob_func=make_prob_func(u, ρ, α, times), 
+                                    prob_func=make_prob_func(_inits, ρ, α, times), 
                                     output_func=output_func)
 
     ensemble_sol = solve(ensemble_prob, 
@@ -170,7 +178,14 @@ end
 setadbackend(:zygote)
 Random.seed!(1234)
 
-m = localfkpp(vecsubdata, prob, times, u0, cc, n_neg);
+inits_vec = reduce(vcat, initial_conditions_vec)
+inits_vars = reduce(vcat, initial_conditions_var_prior)
+u0_vec = reduce(vcat, fill(u0, n_neg))
+cc_vec = reduce(vcat, fill(cc, n_neg))
+
+m = localfkpp(vecsubdata, prob, times,
+              inits_vec, inits_vars,
+              u0_vec, cc_vec, n_neg);
 m();
 
 pst = sample(m, 
@@ -179,6 +194,7 @@ pst = sample(m,
              progress=true)
 
 serialize(projectdir("adni/chains/local-fkpp/pst-tauneg-1000-indp0.jls"), pst)
+
 
 # using CairoMakie
 
@@ -195,7 +211,7 @@ serialize(projectdir("adni/chains/local-fkpp/pst-tauneg-1000-indp0.jls"), pst)
 # inits = [[meanpst["u[$i,$j]", :mean] for i in 1:72] for j in 1:21]
 # ρs = [meanpst["ρ[$i]", :mean] for i in 1:21]
 # αs = [meanpst["α[$i]", :mean] for i in 1:21]
-# times
+
 # function simulate(f, initial_conditions, params, times)
 #     max_t = maximum(reduce(vcat, times))
 #     [solve(
@@ -206,22 +222,6 @@ serialize(projectdir("adni/chains/local-fkpp/pst-tauneg-1000-indp0.jls"), pst)
 #     )
 #     for (inits, p, t) in zip(initial_conditions, params, times)
 #     ]
-# end
-
-# sols = simulate(NetworkLocalFKPP, inits, collect(zip(ρs, αs)), times)
-# function getdiff(d)
-#     d[:,end] .- d[:,1]
-# end
-
-# begin
-#     f = Figure(resolution=(500, 500))
-#     ax = Axis(f[1,1])
-#     xlims!(ax, -0.4, 0.4)
-#     ylims!(ax, -0.4, 0.4)
-#     for (i, sol) in enumerate(sols)
-#         scatter!(getdiff(subdata[i]), getdiff(subdata2[i]))
-#     end
-#     f
 # end
 
 # meanpst = mean(pst2)
