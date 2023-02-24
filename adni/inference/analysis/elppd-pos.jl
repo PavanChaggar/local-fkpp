@@ -150,7 +150,7 @@ function elppd_logistic(pst, initial_conditions, subdata, second_times)
     sum(log.(slls))
 end
 
-logistic_elppd = elppd_logistic(local_pst, initial_conditions, subdata, second_times)
+logistic_elppd = elppd_logistic(logistic_pst, initial_conditions, subdata, second_times)
 
 function elppd_global_fkpp(pst, initial_conditions, subdata, second_times, max_s)
     ps, as, σ = vec(pst[:Pm]), vec(pst[:Am]), vec(pst[:σ])
@@ -168,7 +168,7 @@ function elppd_global_fkpp(pst, initial_conditions, subdata, second_times, max_s
     sum(log.(slls))
 end
 
-global_elppd = elppd_global_fkpp(local_pst, initial_conditions, subdata, second_times, max_suvr)
+global_elppd = elppd_global_fkpp(global_pst, initial_conditions, subdata, second_times, max_suvr)
 
 function elppd_diffusion(pst, initial_conditions, subdata, second_times)
     ps, σ = vec(pst[:Pm]), vec(pst[:σ])
@@ -186,6 +186,19 @@ function elppd_diffusion(pst, initial_conditions, subdata, second_times)
     sum(log.(slls))
 end
 
-diffusion_elppd = elppd_diffusion(local_pst, initial_conditions, subdata, second_times)
+diffusion_elppd = elppd_diffusion(diffusion_pst, initial_conditions, subdata, second_times)
 
-elppd_df = DataFrame("Local" => local_elppd, "Global" => global_elppd, "Logistic" => logistic_elppd, "Diffusion" => diffusion_elppd)
+local_map, global_map, logistic_map, diffusion_map = maximum(local_pst[:lp]), maximum(global_pst[:lp]), maximum(logistic_pst[:lp]), maximum(diffusion_pst[:lp])
+max_map = maximum([local_map, global_map, logistic_map, diffusion_map])
+
+map_df = DataFrame("Local" => local_map - max_map, 
+                   "Global" => global_map - max_map, 
+                   "Diffusion" => diffusion_map - max_map,
+                   "Logistic" => logistic_map - max_map)
+
+max_elppd = maximum([local_elppd, global_elppd, logistic_elppd, diffusion_elppd])
+
+elppd_df = DataFrame("Local" => local_elppd - max_elppd, 
+                     "Global" => global_elppd - max_elppd, 
+                     "Diffusion" => diffusion_elppd - max_elppd,
+                     "Logistic" => logistic_elppd - max_elppd)

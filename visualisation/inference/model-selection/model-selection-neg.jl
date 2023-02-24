@@ -60,14 +60,22 @@ cc = quantile.(upath, .99)
 #-------------------------------------------------------------------------------
 # Pos data 
 #-------------------------------------------------------------------------------
-_insample_subdata = [calc_suvr(insample_data, i) for i in insample_tau_pos]
-insample_pos_data = [normalise(sd, u0, cc) for sd in _insample_subdata]
+subsuvr = [calc_suvr(data, i) for i in insample_tau_neg]
+_subdata = [normalise(sd, u0, cc) for sd in subsuvr]
 
-max_suvr = maximum(reduce(vcat, reduce(hcat, insample_pos_data)))
+blsd = [sd .- u0 for sd in _subdata]
+nonzerosubs = findall(x -> sum(x) < 2, [sum(sd, dims=1) .== 0 for sd in blsd])
 
-insample_pos_initial_conditions = [sd[:,1] for sd in insample_pos_data]
-insample_pos_times =  [get_times(insample_data, i) for i in insample_tau_pos]
-insample_max_t = maximum(reduce(vcat, insample_pos_times))
+insample_neg_data = _subdata[nonzerosubs]
+
+insample_n_neg = length(insample_neg_data)
+
+max_suvr = maximum(reduce(vcat, reduce(hcat, insample_neg_data)))
+
+insample_neg_initial_conditions = [sd[:,1] for sd in insample_neg_data]
+_times =  [get_times(data, i) for i in tau_neg]
+insample_neg_times = _times[nonzerosubs]
+insample_max_t = maximum(reduce(vcat, insample_neg_times))
 
 #-------------------------------------------------------------------------------
 # Out of sample pos data 
@@ -83,10 +91,10 @@ outsample_tau_neg = findall(x -> x ∉ outsample_tau_pos, 1:50)
 outsample_n_pos = length(outsample_tau_pos)
 outsample_n_neg = length(outsample_tau_neg)
 
-_outsample_subdata = [calc_suvr(outsample_data, i) for i in outsample_tau_pos];
+_outsample_subdata = [calc_suvr(outsample_data, i) for i in outsample_tau_neg];
 outsample_subdata = [normalise(sd, u0, cc) for sd in _outsample_subdata];
 outsample_initial_conditions = [sd[:,1] for sd in outsample_subdata];
-outsample_times =  [get_times(outsample_data, i) for i in outsample_tau_pos];
+outsample_times =  [get_times(outsample_data, i) for i in outsample_tau_neg];
 outsample_second_times = [t[2] for t in outsample_times]
 
 #-------------------------------------------------------------------------------
@@ -94,7 +102,7 @@ outsample_second_times = [t[2] for t in outsample_times]
 #-------------------------------------------------------------------------------
 L = laplacian_matrix(c)
 
-vols = [get_vol(insample_data, i) for i in insample_tau_pos]
+vols = [get_vol(insample_data, i) for i in insample_tau_neg]
 init_vols = [v[:,1] for v in vols]
 max_norm_vols = reduce(hcat, [v ./ maximum(v) for v in init_vols])
 mean_norm_vols = vec(mean(max_norm_vols, dims=2))
@@ -119,16 +127,16 @@ end
 #-------------------------------------------------------------------------------
 # Posteriors
 #-------------------------------------------------------------------------------
-local_pst = mean(deserialize(projectdir("adni/chains/local-fkpp/pst-taupos-4x2000-vc.jls")));
-global_pst = mean(deserialize(projectdir("adni/chains/global-fkpp/pst-taupos-4x2000-vc.jls")));
-diffusion_pst = mean(deserialize(projectdir("adni/chains/diffusion/pst-taupos-4x2000-vc.jls")));
-logistic_pst = mean(deserialize(projectdir("adni/chains/logistic/pst-taupos-4x2000.jls")));
+local_pst = mean(deserialize(projectdir("adni/chains/local-fkpp/pst-tauneg-4x2000-vc.jls")));
+global_pst = mean(deserialize(projectdir("adni/chains/global-fkpp/pst-tauneg-4x2000-vc.jls")));
+diffusion_pst = mean(deserialize(projectdir("adni/chains/diffusion/pst-tauneg-4x2000-vc.jls")));
+logistic_pst = mean(deserialize(projectdir("adni/chains/logistic/pst-tauneg-4x2000.jls")));
 
 #-------------------------------------------------------------------------------
 # Local model
 #-------------------------------------------------------------------------------
-ρs = [local_pst["ρ[$i]", :mean] for i in 1:insample_n_pos]
-αs = [local_pst["α[$i]", :mean] for i in 1:insample_n_pos]
+ρs = [local_pst["ρ[$i]", :mean] for i in 1:insample_n_neg]
+αs = [local_pst["α[$i]", :mean] for i in 1:insample_n_neg]
 
 function simulate(f, initial_conditions, params, times)
     max_t = maximum(reduce(vcat, times))
@@ -142,45 +150,50 @@ function simulate(f, initial_conditions, params, times)
     ]
 end
 
-local_sols = simulate(NetworkLocalFKPP, insample_pos_initial_conditions, collect(zip(ρs, αs)), insample_pos_times);
+local_sols = simulate(NetworkLocalFKPP, 
+                      insample_neg_initial_conditions, 
+                      collect(zip(ρs, αs)), insample_neg_times);
 #-------------------------------------------------------------------------------
 # Global model
 #-------------------------------------------------------------------------------
-ρs = [global_pst["ρ[$i]", :mean] for i in 1:insample_n_pos]
-αs = [global_pst["α[$i]", :mean] for i in 1:insample_n_pos]
+ρs = [global_pst["ρ[$i]", :mean] for i in 1:insample_n_neg]
+αs = [global_pst["α[$i]", :mean] for i in 1:insample_n_neg]
 
 global_sols = simulate(NetworkGlobalFKPP, 
-                       insample_pos_initial_conditions, 
-                       collect(zip(ρs, αs, ones(insample_n_pos) * max_suvr)), 
-                       insample_pos_times);
+                       insample_neg_initial_conditions, 
+                       collect(zip(ρs, αs, ones(insample_n_neg) * max_suvr)), 
+                       insample_neg_times);
 #-------------------------------------------------------------------------------
 # Diffusion model
 #-------------------------------------------------------------------------------
-ρs = [diffusion_pst["ρ[$i]", :mean] for i in 1:insample_n_pos]
+ρs = [diffusion_pst["ρ[$i]", :mean] for i in 1:insample_n_neg]
 
 diffusion_sols = simulate(NetworkDiffusion, 
-                       insample_pos_initial_conditions, 
+                       insample_neg_initial_conditions, 
                        ρs, 
-                       insample_pos_times);
+                       insample_neg_times);
 
 #-------------------------------------------------------------------------------
 # Logistic model
 #-------------------------------------------------------------------------------
-αs = [logistic_pst["α[$i]", :mean] for i in 1:insample_n_pos]
+αs = [logistic_pst["α[$i]", :mean] for i in 1:insample_n_neg]
 
-logistic_sols = simulate(NetworkLogistic, insample_pos_initial_conditions, αs, insample_pos_times);
+logistic_sols = simulate(NetworkLogistic, 
+                         insample_neg_initial_conditions, 
+                         αs, insample_neg_times);
 #-------------------------------------------------------------------------------
-# Fits
-#-------------------------------------------------------------------------------
-
-#-------------------------------------------------------------------------------
-# Tau Positive Prediction Plot
+# Tau Negative Prediction Plot
 #-------------------------------------------------------------------------------
 using CairoMakie, ColorSchemes, Colors
 
 function getdiff(d, n)
     d[:,n] .- d[:,1]
 end
+
+function getdiff(d, n, n2)
+    d[:,n] .- d[:,n2]
+end
+
 function getdiff(d)
     d[:,end] .- d[:,1]
 end
@@ -198,7 +211,7 @@ begin
     gl = f[3,:] = GridLayout()
     for (i, sol) in enumerate([local_sols, global_sols, diffusion_sols, logistic_sols])
         start = 1.0
-        stop = 4.0
+        stop = 2.0
         border = 0.25
         ax = Axis(g[1, i][1, 1],  
                 xlabel="SUVR", 
@@ -219,15 +232,15 @@ begin
         lines!(start:0.1:stop + 0.1, start:0.1:stop + 0.1, color=(:grey, 0.75), linewidth=2, linestyle=:dash)
         # for j in 1:insample_n_pos
         for (scan, col) in zip(collect(2:4), alphacolor.(cols, [1.0,0.5,0.25]))
-            for j in 1:insample_n_pos
-                if size(insample_pos_data[j], 2) >= scan
-                    scatter!(insample_pos_data[j][:,scan], sol[j][:,scan], color=col, markersize=15, marker='o', label="Scan $(scan)")
+            for j in 1:insample_n_neg
+                if size(insample_neg_data[j], 2) >= scan
+                    scatter!(insample_neg_data[j][:,scan], sol[j][:,scan], color=col, markersize=15, marker='o', label="Scan $(scan)")
                 end
             end
         end
         # end
-        start = -1.0
-        stop = 1.0
+        start = -0.5
+        stop = 0.5
         ax = Axis(g[2, i][1,1], 
                 xlabel="Δ SUVR",
                 ylabel="Δ Prediction",
@@ -247,11 +260,11 @@ begin
         lines!(start:0.1:stop, start:0.1:stop, color=(:grey, 0.75), linewidth=2, linestyle=:dash)
         for (scan, col) in zip(collect(2:4), alphacolor.(cols, [1.0,0.5,0.25]))
             if scan < 4
-                diffs = getdiff.(insample_pos_data, scan)
+                diffs = getdiff.(insample_neg_data, scan)
                 soldiff = getdiff.(sol, scan)
             else
-                idx = findall(x -> size(x,2) == scan, insample_pos_data)
-                diffs = getdiff.(insample_pos_data[idx], scan)
+                idx = findall(x -> size(x,2) == scan, insample_neg_data)
+                diffs = getdiff.(insample_neg_data[idx], scan)
                 soldiff = getdiff.(sol[idx], scan)
             end
 
@@ -300,66 +313,155 @@ begin
     f = Figure(resolution=(2000, 1100), fontsize=40);
     g = [f[i, j] = GridLayout() for i in 1:2, j in 1:4]
     gl = f[3,:] = GridLayout()
-    for (i, sol) in enumerate([local_sols, global_sols, diffusion_sols, logistic_sols])
+    for (i, _sol) in enumerate([local_sols, global_sols, diffusion_sols, logistic_sols])
         start = 1.0
-        stop = 2.0
-        border = 0.05
+        stop = 1.35
+        border = 0.025
         ax = Axis(g[1, i][1, 1],  
                 xlabel="SUVR", 
                 ylabel="Prediction", 
                 title=titles[i],
                 titlesize=titlesize, xlabelsize=xlabelsize, ylabelsize=ylabelsize, 
                 xticklabelsize=xticklabelsize, yticklabelsize=xticklabelsize,
-                xticks=start:0.25:stop, yticks=start:0.25:stop, 
-                xtickformat = "{:.1f}", ytickformat = "{:.1f}")
+                xticks=start:0.20:stop, yticks=start:0.20:stop, 
+                xminorticks=start:0.10:stop+border, xminorticksvisible=true, xminorgridvisible=true,
+                xminorgridcolor=RGBAf(0, 0, 0, 0.15), xgridcolor=RGBAf(0, 0, 0, 0.15),
+                yminorticks=start:0.10:stop+border, yminorticksvisible=true, yminorgridvisible=true,
+                yminorgridcolor=RGBAf(0, 0, 0, 0.15), ygridcolor=RGBAf(0, 0, 0, 0.15),
+                xtickformat = "{:.2f}", ytickformat = "{:.2f}")
         if i > 1
-            hideydecorations!(ax, ticks=false, grid=false)
+            hideydecorations!(ax, minorgrid=false, minorticks=false, ticks=false, grid=false)
         end
         xlims!(ax, start, stop + border)
         ylims!(ax, start, stop + border)
         lines!(start:0.05:stop+border, start:0.05:stop+border, color=(:grey, 0.75), linewidth=5, linestyle=:dash)
 
-        preds = reduce(hcat, [get_sol_mean_t(sol, i) for i in 1:4])
-        obs = reduce(hcat, [get_sol_mean_t(insample_pos_data, i) for i in 1:4])
+        preds = reduce(hcat, [get_sol_mean_t(_sol, i) for i in 1:4])
+        obs = reduce(hcat, [get_sol_mean_t(insample_neg_data, i) for i in 1:4])
+        fidx = findall(x -> length(x) == 4, insample_neg_times)
+        fpreds = reduce(hcat, [get_sol_mean_t(_sol[fidx], i) for i in 1:4])
+        fobs = reduce(hcat, [get_sol_mean_t(insample_neg_data[fidx], i) for i in 1:4])
+
         # for j in 1:insample_n_pos
         for (scan, col) in zip(collect(2:4), alphacolor.(cols, [1.0,0.5,0.3]))
             scatter!(obs[:,scan], preds[:,scan], color=col, markersize=15, marker='●', label="Scan $(scan)")
         end
         # end
 
-        start = -0.5
-        stop = 0.5
+        start = -0.05
+        stop = 0.05
         border = 0.05
         ax = Axis(g[2, i][1,1], 
                 xlabel="Δ SUVR",
                 ylabel="Δ Prediction",
                 titlesize=titlesize, xlabelsize=xlabelsize, ylabelsize=ylabelsize, 
                 xticklabelsize=xticklabelsize, yticklabelsize=xticklabelsize, 
-                xticks=collect(start:0.25:stop), yticks=collect(start:0.25:stop),
-                xtickformat = "{:.1f}", ytickformat = "{:.1f}")
+                xticks=0:0.1:stop+border, yticks=0:0.1:stop+border, 
+                xminorticks=0:0.05:stop+border, xminorticksvisible=true, xminorgridvisible=true,
+                xminorgridcolor=RGBAf(0, 0, 0, 0.15), xgridcolor=RGBAf(0, 0, 0, 0.15),
+                yminorticks=0:0.05:stop+border, yminorticksvisible=true, yminorgridvisible=true,
+                yminorgridcolor=RGBAf(0, 0, 0, 0.15), ygridcolor=RGBAf(0, 0, 0, 0.15),
+                xtickformat = "{:.2f}", ytickformat = "{:.2f}")
         if i > 1
-            hideydecorations!(ax, ticks=false, grid=false)
+            hideydecorations!(ax, minorgrid=false, minorticks=false, ticks=false, grid=false)
         end
         xlims!(ax, start, stop + border)
         ylims!(ax, start, stop + border)
-        lines!(start:0.1:stop, start:0.1:stop, color=(:grey, 0.75), linewidth=2, linestyle=:dash)
+        lines!(start:0.01:stop + border, start:0.01:stop + border, color=(:grey, 0.75), linewidth=2, linestyle=:dash)
 
-        for (scan, col) in zip(collect(2:4), alphacolor.(cols, [1.0,0.5,0.3]))
+        for (scan, col) in zip(2:3, alphacolor.(cols, [1.0,0.5,0.5]))
             diffs = getdiff(obs, scan)
             soldiff = getdiff(preds, scan)
             scatter!(diffs, soldiff, color=col, markersize=15, marker='●', label="Scan $(scan)")
         end
+        fdiff = getdiff(fobs, 4)
+        fsoldiff = getdiff(fpreds, 4)
+        scatter!(fdiff, fsoldiff, color=(cols[3], 0.3), markersize=20, marker='●', label="Scan 4")
+
         Legend(gl[1, 1],
                 [MarkerElement(color = col, marker= '●', markersize=30) for col in cols],
                 ["Scan 2", "Scan 3", "Scan 4"],
                 patchsize = (35, 35), rowgap = 10, orientation = :horizontal, framevisible=false)
-
-
     end
     f
 end
 save(projectdir("visualisation/inference/model-selection/output/model-fits-roi-average.pdf"), f)
 
+function get_sol_t_end(sols)
+    asols = Array.(sols)
+    n_sols = Vector{Vector{Float64}}()
+    for sol in asols
+        push!(n_sols, sol[:,end])
+    end
+    reduce(hcat, n_sols)
+end
+
+begin 
+    col = ColorSchemes.seaborn_colorblind[1]
+    titlesize = 40
+    xlabelsize = 25 
+    ylabelsize = 25
+    xticklabelsize = 20 
+    yticklabelsize = 20
+    f = Figure(resolution=(2000, 1000), fontsize=40);
+    g = [f[i, j] = GridLayout() for i in 1:2, j in 1:4]
+    for (i, _sol) in enumerate([local_sols, global_sols, diffusion_sols, logistic_sols])
+        start = 1.0
+        stop = 1.70
+        border = 0.025
+        ax = Axis(g[1, i][1, 1],  
+                xlabel="SUVR", 
+                ylabel="Prediction", 
+                title=titles[i],
+                titlesize=titlesize, xlabelsize=xlabelsize, ylabelsize=ylabelsize, 
+                xticklabelsize=xticklabelsize, yticklabelsize=xticklabelsize,
+                xticks=start:0.20:stop, yticks=start:0.20:stop, 
+                xminorticks=start:0.10:stop, xminorticksvisible=true, xminorgridvisible=true,
+                xminorgridcolor=RGBAf(0, 0, 0, 0.15), xgridcolor=RGBAf(0, 0, 0, 0.15),
+                yminorticks=start:0.10:stop, yminorticksvisible=true, yminorgridvisible=true,
+                yminorgridcolor=RGBAf(0, 0, 0, 0.15), ygridcolor=RGBAf(0, 0, 0, 0.15),
+                xtickformat = "{:.2f}", ytickformat = "{:.2f}")
+        if i > 1
+            hideydecorations!(ax, minorgrid=false, minorticks=false, ticks=false, grid=false)
+        end
+        xlims!(ax, start, stop + border)
+        ylims!(ax, start, stop + border)
+        lines!(start:0.01:stop+border, start:0.01:stop+border, color=(:grey, 0.75), linewidth=5, linestyle=:dash)
+
+
+        final_obs = mean(get_sol_t_end(insample_pos_data), dims=2) |> vec
+        final_preds = mean(get_sol_t_end(_sol), dims=2) |> vec
+        scatter!(final_obs, final_preds, color=(col, 0.5), markersize=20, marker='●')
+
+        # end
+        start = -0.05
+        stop = 0.15
+        border = 0.01
+        ax = Axis(g[2, i][1,1], 
+                xlabel="Δ SUVR",
+                ylabel="Δ Prediction",
+                titlesize=titlesize, xlabelsize=xlabelsize, ylabelsize=ylabelsize, 
+                xticklabelsize=xticklabelsize, yticklabelsize=xticklabelsize, 
+                xticks=start:0.05:stop, yticks=start:0.05:stop, 
+                xminorticks=start:0.025:stop, xminorticksvisible=true, xminorgridvisible=true,
+                xminorgridcolor=RGBAf(0, 0, 0, 0.15), xgridcolor=RGBAf(0, 0, 0, 0.15),
+                yminorticks=start:0.025:stop, yminorticksvisible=true, yminorgridvisible=true,
+                yminorgridcolor=RGBAf(0, 0, 0, 0.15), ygridcolor=RGBAf(0, 0, 0, 0.15),
+                xtickformat = "{:.2f}", ytickformat = "{:.2f}")
+        if i > 1
+            hideydecorations!(ax, minorgrid=false, minorticks=false, ticks=false, grid=false)
+        end
+        xlims!(ax, start, stop + border)
+        ylims!(ax, start, stop + border)
+        lines!(start:0.1:stop, start:0.1:stop, color=(:grey, 0.75), linewidth=2, linestyle=:dash)
+
+        final_diffs = mean(getdiff.(insample_pos_data))
+        final_soldiffs =  mean(getdiff.(_sol))
+        scatter!(final_diffs, final_soldiffs, color=(col, 0.5), markersize=20, marker='●')
+    end
+    f
+end
+save(projectdir("visualisation/inference/model-selection/output/model-fits-roi-average-final-scan.pdf"), f)
 #-------------------------------------------------------------------------------
 # Out of Sample Models
 #-------------------------------------------------------------------------------
