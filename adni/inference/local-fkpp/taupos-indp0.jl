@@ -96,29 +96,26 @@ end
 
 vecsubdata = reduce(vcat, reduce(hcat, subdata))
 
-initial_conditions = reduce(hcat, [sd[:,1] for sd in subdata])
+function percent_signal(inits, u0, cc)
+    (inits .- u0) ./ (cc .- u0)
+end
+
+initial_conditions_vec = [sd[:,1] for sd in subdata]
+initial_conditions_var_prior = [percent_signal(inits, u0, cc) .* 0.5 for inits in initial_conditions_vec]
+initial_conditions_arr = reduce(hcat,initial_conditions_vec)
+
 times =  [get_times(data, i) for i in tau_pos]
 maxt = maximum(reduce(vcat, times))
 
 prob = ODEProblem(NetworkLocalFKPP, 
-                  initial_conditions[:,1], 
+                  initial_conditions_arr[:,1], 
                   (0., maxt), 
                   [1.0,1.0])
                   
 sol = solve(prob, Tsit5())
 
-ensemble_prob = EnsembleProblem(prob, prob_func=make_prob_func(initial_conditions, ones(n_pos), ones(n_pos), times), output_func=output_func)
+ensemble_prob = EnsembleProblem(prob, prob_func=make_prob_func(initial_conditions_arr, ones(n_pos), ones(n_pos), times), output_func=output_func)
 ensemble_sol = solve(ensemble_prob, Tsit5(), trajectories=n_pos)
-
-@inline function allequal(x)
-    length(x) < 2 && return true
-    e1 = x[1]
-    i = 2
-    @inbounds for i=2:length(x)
-        x[i] == e1 || return false
-    end
-    return true
-end
 
 function get_retcodes(es)
     [sol.retcode for sol in es]
@@ -131,7 +128,7 @@ end
 #-------------------------------------------------------------------------------
 # Inference 
 #-------------------------------------------------------------------------------
-@model function localfkpp(data, prob, times, u0, cc, n)
+@model function localfkpp(data, prob, times, inits, vars, u0, cc, n)
     σ ~ LogNormal(0.0, 1.0)
     
     Pm ~ LogNormal(0.0, 1.0)
@@ -143,10 +140,11 @@ end
     ρ ~ filldist(truncated(Normal(Pm, Ps), lower=0), n)
     α ~ filldist(Normal(Am, As), n)
 
-    u ~ arraydist(reduce(hcat, [Uniform.(u0, cc) for _ in 1:n]))
+    u ~ arraydist(truncated.(Normal.(inits, vars .+ 1e-5), u0, cc))
+    _inits = reshape(u, 72, n)
 
     ensemble_prob = EnsembleProblem(prob, 
-                                    prob_func=make_prob_func(u, ρ, α, times), 
+                                    prob_func=make_prob_func(_inits, ρ, α, times), 
                                     output_func=output_func)
 
     ensemble_sol = solve(ensemble_prob, 
@@ -168,12 +166,23 @@ end
 setadbackend(:zygote)
 Random.seed!(1234)
 
-m = localfkpp(vecsubdata, prob, times, u0, cc, n_pos);
+inits_vec = reduce(vcat, initial_conditions_vec)
+inits_vars = reduce(vcat, initial_conditions_var_prior)
+u0_vec = reduce(vcat, fill(u0, n_pos))
+cc_vec = reduce(vcat, fill(cc, n_pos))
+
+m = localfkpp(vecsubdata, prob, times,
+              inits_vec, inits_vars,
+              u0_vec, cc_vec, n_pos);
 m();
 
+n_samples = 1_000
+n_chains = 4
 pst = sample(m, 
              Turing.NUTS(0.8),
-             1_000, 
+             MCMCSerial(),
+             n_samples, 
+             n_chains,
              progress=true)
 
-serialize(projectdir("adni/chains/local-fkpp/pst-taupos-1000-indp0.jls"), pst)
+serialize(projectdir("adni/chains/local-fkpp/pst-taupos-$(n_samples)x$(n_chains)-indp0.jls"), pst)
