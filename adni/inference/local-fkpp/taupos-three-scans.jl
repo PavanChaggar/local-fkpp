@@ -128,7 +128,7 @@ end
 #-------------------------------------------------------------------------------
 # Inference 
 #-------------------------------------------------------------------------------
-@model function localfkpp(data, prob, initial_conditions, times, n)
+@model function localfkpp(data, prob, times, inits, vars, u0, cc, n)
     σ ~ LogNormal(0.0, 1)
     
     Pm ~ LogNormal(0.0, 1.0)
