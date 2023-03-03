@@ -95,26 +95,34 @@ sol = solve(prob, Tsit5())
 #-------------------------------------------------------------------------------
 # Posterior simulations
 #-------------------------------------------------------------------------------
-
-pst = deserialize(projectdir("adni/chains/local-fkpp/pst-taupos-4x2000-three.jls"));
+pst = deserialize(projectdir("adni/chains/local-fkpp/pst-taupos-1x2000-three-indp0.jls"));
 
 meanpst = mean(pst);
 params = [[meanpst[Symbol("ρ[$i]"), :mean], meanpst[Symbol("α[$i]"), :mean]] for i in foursubs_idx];
+
+foursubs_vec_idx = reshape(1:1944, 72, 27)[:, foursubs_idx]
+
+_all_inits_vec = [pst["u[$i]"] for i in vec(foursubs_vec_idx)]
+_all_inits = reshape(_all_inits_vec, 72, 3)
+inits = [transpose(reduce(hcat, _all_inits[:, i])) for i in 1:3]
+
+mean_inits = vec.(mean.(inits, dims=2))
+
 meansols = [solve(
     ODEProblem(NetworkLocalFKPP, 
                init, (0.0,15.0), p), 
                Tsit5(), saveat=0.1) 
-    for (init, t, p) in zip(initial_conditions[foursubs_idx], times[foursubs_idx], params)];
+    for (init, t, p) in zip(mean_inits, times[foursubs_idx], params)];
 
 
 sols = Vector{Vector{Array{Float64}}}();
 
-for i in foursubs_idx
+for (i, j) in enumerate(foursubs_idx)
     isols = Vector{Array{Float64}}()
-    for s in 1:8:8000
-        params = [pst[Symbol("ρ[$i]")][s], pst[Symbol("α[$i]")][s]]
+    for s in 1:2000
+        params = [pst[Symbol("ρ[$j]")][s], pst[Symbol("α[$j]")][s]]
         σ = pst[:σ][s]
-        sol = solve(ODEProblem(NetworkLocalFKPP, initial_conditions[i], (0.0,15.0), params), Tsit5(), saveat=0.1)
+        sol = solve(ODEProblem(NetworkLocalFKPP, inits[i][:,s], (0.0,15.0), params), Tsit5(), saveat=0.1)
         noise = (randn(size(Array(sol))) .* σ)
         push!(isols, Array(sol) .+ noise)
     end
@@ -125,100 +133,12 @@ mean_all_sols = mean.(meansols, dims=1)
 mean_sols = [mean.(sols[i], dims=1) for i in 1:3]
 mean_data = mean.(foursubs, dims=1)
 
-
 function get_quantiles(mean_sols)
     [vec(mapslices(x -> quantile(x, q), mean_sols, dims = 2)) for q in [0.975, 0.025, 0.5]]
 end
 
 using CairoMakie; CairoMakie.activate!()
-
-begin
-    nodes = zip([27, 25, 29],["Entorhinal Ctx", "Fusiform Gyrus", "Lateral Temporal"])
-    cols = Makie.wong_colors()
-
-    samples = 1000
-    f = Figure(resolution=(2000,1500))
-    g1 = [f[1,i] = GridLayout() for i in 1:3]
-    g2 = [f[2,i] = GridLayout() for i in 1:3]
-    g3 = [f[3,i] = GridLayout() for i in 1:3]
-    gs = [g1, g2, g3]
-    ga = [f[4,i] = GridLayout() for i in 1:3]
-    gl = f[:, 4] = GridLayout()
-    for (i, node) in enumerate(nodes)
-        for sub in 1:3
-            q1, q2, q3 = get_quantiles(reduce(hcat, [sols[sub][i][node[1], :] for i in 1:samples]))
-
-            ax = Axis(gs[i][sub][1, 1], 
-                    ylabel="SUVR", ylabelsize=40,
-                    yticks = 1.0:0.5:3.5, yticksize=20, yticklabelsize=30,
-                    yminorticks = 1.0:0.25:3.25, yminorticksize=15,
-                    yminorgridvisible=true, yminorticksvisible=true,
-                    yminorgridcolor=RGBAf(0, 0, 0, 0.15), ygridcolor=RGBAf(0, 0, 0, 0.15),
-                    xlabel="Time / years", xlabelsize=40,
-                    xticks = 0.0:5.0:15.0, xticksize=20, xticklabelsize=30,
-                    xminorticks = 0.0:2.5:15.0, xminorticksize=15,
-                    xminorgridvisible=true, xminorticksvisible=true, 
-                    xminorgridcolor=RGBAf(0, 0, 0, 0.15), xgridcolor=RGBAf(0, 0, 0, 0.15))
-
-            ylims!(ax, 1.0,3.25)
-            xlims!(ax, -1.0,15)
-            # if i < 3
-                hidexdecorations!(ax, minorgrid=false, grid=false)
-            # end
-            if sub > 1
-                hideydecorations!(ax, minorgrid=false, grid=false)
-            end
-            band!(0.0:0.1:15.0, q1, q2, color=(:grey, 0.5), label=" %95 quantile")
-            lines!(meansols[sub].t, meansols[sub][node[1],:], color=(:red, 0.8), linewidth=3, label="Mean")
-            scatter!(times[foursubs_idx][sub][1:3], subdata[foursubs_idx][sub][node[1],1:3], 
-                    markersize=30, color=(cols[1], 0.7),label="Insample data")
-            scatter!(times[foursubs_idx][sub][4], subdata[foursubs_idx][sub][node[1],4], 
-                    markersize=30, color=(cols[2], 0.7),label="Outsample data")
-            Label(f[i,0], node[2], tellheight=false, rotation=pi/2, fontsize=40)
-        end
-    end
-    for sub in 1:3
-        q1, q2, q3 = get_quantiles(transpose(reduce(vcat, mean_sols[sub])))
-
-        ax = Axis(ga[sub][1, 1], 
-                ylabel="SUVR", ylabelsize=40,
-                yticks = 1.0:0.5:3.5, yticksize=20, yticklabelsize=30,
-                yminorticks = 80.0:15.0:200.0, yminorticksize=15,
-                yminorgridvisible=true, yminorticksvisible=true,
-                yminorgridcolor=RGBAf(0, 0, 0, 0.15), ygridcolor=RGBAf(0, 0, 0, 0.15),
-                xlabel="Time / years", xlabelsize=40,
-                xticks = 0.0:5.0:15.0, xticksize=20, xticklabelsize=30,
-                xminorticks = 0.0:2.5:15.0, xminorticksize=15,
-                xminorgridvisible=true, xminorticksvisible=true, 
-                xminorgridcolor=RGBAf(0, 0, 0, 0.15), xgridcolor=RGBAf(0, 0, 0, 0.15))
-
-        ylims!(ax, 1.0,3.25)
-        xlims!(ax, -1.0,15)
-        if sub > 1
-            hideydecorations!(ax, minorgrid=false, grid=false)
-        end
-        band!(0.0:0.1:15.0, q1, q2, color=(:grey, 0.5), label=" %95 quantile")
-        lines!(meansols[sub].t, mean_all_sols[sub][1,:], color=(:red, 0.8), linewidth=3, label="Mean")
-        scatter!(times[foursubs_idx][sub][1:3], mean_data[sub][1,1:3], 
-                markersize=30, color=(cols[1], 0.7),label="Insample data")
-        scatter!(times[foursubs_idx][sub][4], mean_data[sub][1,4], 
-                markersize=30, color=(cols[2], 0.7),label="Outsample data")
-        Label(f[4,0], "Total", tellheight=false, rotation=pi/2, fontsize=40)
-    end
-
-
-
-    elem_1 = LineElement(color = (:red, 0.6), linewidth=5)
-    elem_2 = PolyElement(color = (:lightgrey, 1.0))
-    elem_3 = MarkerElement(color = (cols[1], 0.7), marker='●', markersize=30)
-    elem_4 = MarkerElement(color = (cols[2], 0.7), marker='●', markersize=30)
-    legend = Legend(gl[1,1],
-           [elem_1, elem_2, elem_3, elem_4],
-           [" Mean Predictions", " 95% Quantile", "In-sample data", "Out-sample data"],
-           patchsize = (30, 30), rowgap = 10, labelsize=40, framevisible=false)
-    f
-end
-save(projectdir("visualisation/inference/pstpred/output/pstpred-outsample.pdf"), f)
+using ColorSchemes, Colors
 
 begin
     nodes = zip([27, 25, 29],["Entorhinal Ctx", "Fusiform Gyrus", "Lateral Temporal"])

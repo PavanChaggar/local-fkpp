@@ -102,7 +102,7 @@ begin
     hideydecorations!(ax11, label=false)
     hidexdecorations!(ax11, label=false, ticks=false, grid=false)
     hidespines!(ax11, :t, :r, :l)
-    for i in 1:25
+    for i in 1:27
         hist!(ax11, vec(pst[Symbol("α[$i]")]), bins=50, color=(:red, 0.6), normalization=:pdf, label=L"A\beta^+ \tau^+")
     end
 
@@ -132,7 +132,7 @@ begin
     hideydecorations!(ax21, label=false)
     hidexdecorations!(ax21, label=false, ticks=false, grid=false)
     hidespines!(ax21, :t, :r, :l)
-    for i in 1:25
+    for i in 1:27
         hist!(ax21, vec(pst[Symbol("ρ[$i]")]), bins=50, color=(:red, 0.6), normalization=:pdf, label=L"A\beta^+ \tau^+")
     end
 
@@ -146,7 +146,7 @@ begin
     hideydecorations!(ax23, label=false)
     hidexdecorations!(ax23, label=false, ticks=false, ticklabels=false, grid=false)
     hidespines!(ax23, :t, :r, :l)
-    xlims!(-0.001, 1.0)
+    xlims!(-0.001, 0.2)
     for i in 1:39
         hist!(ax23, vec(pst3[Symbol("ρ[$i]")]), bins=50, color=(:green, 0.6), normalization=:pdf, label=L"A\beta^-")
     end

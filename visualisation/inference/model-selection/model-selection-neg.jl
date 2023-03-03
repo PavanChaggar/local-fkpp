@@ -429,7 +429,7 @@ begin
         lines!(start:0.01:stop+border, start:0.01:stop+border, color=(:grey, 0.75), linewidth=5, linestyle=:dash)
 
 
-        final_obs = mean(get_sol_t_end(insample_pos_data), dims=2) |> vec
+        final_obs = mean(get_sol_t_end(insample_neg_data), dims=2) |> vec
         final_preds = mean(get_sol_t_end(_sol), dims=2) |> vec
         scatter!(final_obs, final_preds, color=(col, 0.5), markersize=20, marker='●')
 
@@ -455,7 +455,7 @@ begin
         ylims!(ax, start, stop + border)
         lines!(start:0.1:stop, start:0.1:stop, color=(:grey, 0.75), linewidth=2, linestyle=:dash)
 
-        final_diffs = mean(getdiff.(insample_pos_data))
+        final_diffs = mean(getdiff.(insample_neg_data))
         final_soldiffs =  mean(getdiff.(_sol))
         scatter!(final_diffs, final_soldiffs, color=(col, 0.5), markersize=20, marker='●')
     end
@@ -495,27 +495,27 @@ end
 p, a = local_pst[:Pm, :mean], local_pst[:Am, :mean]
 outsample_local_sols = simulate(NetworkLocalFKPP, 
                                 outsample_initial_conditions, 
-                                collect(zip(ones(outsample_n_pos) .* p, ones(outsample_n_pos) .* a)), 
+                                collect(zip(ones(outsample_n_neg) .* p, ones(outsample_n_neg) .* a)), 
                                 outsample_times);
 
 p, a = global_pst[:Pm, :mean], global_pst[:Am, :mean]
 outsample_global_sols = simulate(NetworkGlobalFKPP, 
                                 outsample_initial_conditions, 
-                                collect(zip(ones(outsample_n_pos) .* p, 
-                                            ones(outsample_n_pos) .* a, 
-                                            ones(outsample_n_pos) .* max_suvr)), 
+                                collect(zip(ones(outsample_n_neg) .* p, 
+                                            ones(outsample_n_neg) .* a, 
+                                            ones(outsample_n_neg) .* max_suvr)), 
                                 outsample_times);
                                 
 p  = diffusion_pst[:Pm, :mean]
 outsample_diffusion_sols = simulate(NetworkDiffusion, 
                                 outsample_initial_conditions, 
-                                ones(outsample_n_pos) .* p, 
+                                ones(outsample_n_neg) .* p, 
                                 outsample_times);
 
 a = logistic_pst[:Am, :mean]
 outsample_logistic_sols = simulate(NetworkLogistic, 
                                 outsample_initial_conditions, 
-                                ones(outsample_n_pos) .* a, 
+                                ones(outsample_n_neg) .* a, 
                                 outsample_times);
 
 #-------------------------------------------------------------------------------
@@ -546,7 +546,7 @@ begin
         ylims!(ax, 0.8, 4.0)
         lines!(0.8:0.1:4.0, 0.8:0.1:4.0, color=(:grey, 0.75), linewidth=2, linestyle=:dash)
 
-        for j in 1:outsample_n_pos
+        for j in 1:outsample_n_neg
             scatter!(outsample_subdata[j][:,end], sol[j][:,end], color=(:grey ,0.25), markersize=20, marker='o')
         end
 
@@ -566,7 +566,7 @@ begin
         ylims!(ax, start + (start * 0.05), stop + (stop * 0.05))
         lines!(start:0.1:stop, start:0.1:stop, color=(:grey, 0.75), linewidth=2, linestyle=:dash)
 
-        for j in 1:outsample_n_pos
+        for j in 1:outsample_n_neg
             diffs = getdiff(outsample_subdata[j], 2)
             soldiff = getdiff(sol[j], 2)
             scatter!(diffs, soldiff, color=(:grey,0.25), markersize=20, marker='o')

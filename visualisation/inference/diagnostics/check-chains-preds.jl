@@ -63,7 +63,6 @@ gmm_moments = CSV.read(projectdir("adni/data/component_moments.csv"), DataFrame)
 ubase, upath = get_dkt_moments(gmm_moments, dktnames)
 u0 = mean.(ubase)
 cc = quantile.(upath, .99);
-
 #-------------------------------------------------------------------------------
 # Connectome + ODEE
 #-------------------------------------------------------------------------------
@@ -96,10 +95,11 @@ subdata = [normalise(sd, u0, cc) for sd in _subdata];
 initial_conditions = [sd[:,1] for sd in subdata];
 times =  [get_times(data, i) for i in tau_pos];
 
-pst = deserialize(projectdir("adni/chains/local-fkpp/pst-taupos-4x2000-vc.jls"));
+pst = deserialize(projectdir("adni/chains/local-fkpp/pst-taupos-1000-indp0.jls"));
 
 meanpst = mean(pst);
 params = [[meanpst[Symbol("ρ[$i]"), :mean], meanpst[Symbol("α[$i]"), :mean]] for i in 1:27];
+initial_conditions = [[meanpst["u[$i,$j]",:mean] for i in 1:72] for j in 1:27]
 sols = [solve(ODEProblem(NetworkLocalFKPP, init, (0.0,5.0), p), Tsit5(), saveat=t) for (init, t, p) in zip(initial_conditions, times, params)];
 
 using CairoMakie; CairoMakie.activate!()
@@ -218,7 +218,13 @@ save(projectdir("adni/visualisation/hier-inf/pred-delta-taupos.pdf"), f)
 #     f
 # end
 # save(projectdir("adni/visualisation/hier-inf/pred-delta-totaltaupos.png"), f)
+L = laplacian_matrix(c)
 
+vols = [get_vol(data, i) for i in tau_neg]
+init_vols = [v[:,1] for v in vols]
+max_norm_vols = reduce(hcat, [v ./ maximum(v) for v in init_vols])
+mean_norm_vols = vec(mean(max_norm_vols, dims=2))
+Lv = sparse(inv(diagm(mean_norm_vols)) * L)
 
 subsuvr = [calc_suvr(data, i) for i in tau_neg]
 _subdata = [normalise(sd, u0) for sd in subsuvr]
@@ -234,11 +240,12 @@ initial_conditions = [sd[:,1] for sd in subdata]
 _times =  [get_times(data, i) for i in tau_neg]
 times = _times[nonzerosubs]
 
-pst2 = deserialize(projectdir("adni/hierarchical-inference/local-fkpp/chains/hier-local-pst-tauneg-uniform-4x2000.jls"));
+pst2 = deserialize(projectdir("adni/chains/local-fkpp/pst-taupos-1000-indp0.jls"));
 
 meanpst = mean(pst2)
 params = [[meanpst[Symbol("ρ[$i]"), :mean], meanpst[Symbol("α[$i]"), :mean]] for i in 1:21]
-sols = [solve(ODEProblem(NetworkExFKPP, init, (0.0,10.0), p), Tsit5(), saveat=t) for (init, t, p) in zip(initial_conditions, times, params)];
+initial_conditions = [[meanpst["u[$i,$j]",:mean] for i in 1:72] for j in 1:21]
+sols = [solve(ODEProblem(NetworkLocalFKPP, init, (0.0,10.0), p), Tsit5(), saveat=t) for (init, t, p) in zip(initial_conditions, times, params)];
 totalsols = sum.(sols, dims=1)
 
 begin
