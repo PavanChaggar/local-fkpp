@@ -103,7 +103,6 @@ prob = ODEProblem(NetworkLocalFKPP,
                   (0.,maximum(reduce(vcat, times))), 
                   [1.0,1.0])
                   
-                  
 sol = solve(prob, Tsit5())
 
 ensemble_prob = EnsembleProblem(prob, prob_func=make_prob_func(initial_conditions, ones(n_pos), ones(n_pos), times), output_func=output_func)
@@ -166,5 +165,5 @@ pst = sample(m,
              MCMCSerial(), 
              n_samples, 
              n_chains,
-             progress=false)
+             progress=true)
 serialize(projectdir("adni/chains/local-fkpp/pst-taupos-$(n_chains)x$(n_samples).jls"), pst)
