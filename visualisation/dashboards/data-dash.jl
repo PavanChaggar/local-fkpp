@@ -1,5 +1,5 @@
 using Pkg
-Pkg.activate("/Users/pavanchaggar/Projects/model-selection")
+Pkg.activate("/Users/pavanchaggar/Projects/local-fkpp")
 using GLMakie
 using Connectomes
 using DifferentialEquations
@@ -8,10 +8,9 @@ using DrWatson
 using Distributions
 using Serialization
 using Colors
-include(projectdir("adni/adni.jl"))
-include(projectdir("adni/plotting-functions.jl"))
-include(projectdir("adni/braak-regions.jl"))
-# Loading all data
+using CSV, DataFrames
+using ADNIDatasets
+include(projectdir("functions.jl"))
 
 #-------------------------------------------------------------------------------
 # Connectome and ROIs
@@ -30,7 +29,7 @@ neo = findall(x -> x ∈ neo_regions, cortex.Label)
 #-------------------------------------------------------------------------------
 # Data 
 #-------------------------------------------------------------------------------
-sub_data_path = projectdir("data/adni-data/AV1451_Diagnosis-STATUS-STIME-braak-regions.csv")
+sub_data_path = projectdir("adni/data/AV1451_Diagnosis-STATUS-STIME-braak-regions.csv")
 alldf = CSV.read(sub_data_path, DataFrame)
 
 posdf = filter(x -> x.STATUS == "POS", alldf)
@@ -38,7 +37,7 @@ posdf = filter(x -> x.STATUS == "POS", alldf)
 dktdict = Connectomes.node2FS()
 dktnames = [dktdict[i] for i in cortex.ID]
 
-data = ADNIDataSet(posdf, dktnames; min_scans=3)
+data = ADNIDataset(posdf, dktnames; min_scans=3)
 n_data = length(data)
 
 function regional_mean(data, rois, sub)
@@ -58,13 +57,13 @@ tau_neg = findall(x -> x ∉ tau_pos, 1:n_data)
 n_pos = length(tau_pos)
 n_neg = length(tau_neg)
 
-gmm_moments = CSV.read(projectdir("data/adni-data/component_moments.csv"), DataFrame)
+gmm_moments = CSV.read(projectdir("adni/data/component_moments.csv"), DataFrame)
 ubase, upath = get_dkt_moments(gmm_moments, dktnames)
 u0 = mean.(ubase)
 cc = quantile.(upath, .95)
 
-subjects = tau_pos
-n_subjects = length(tau_pos)
+subjects = tau_neg
+n_subjects = length(subjects)
 
 data_all = [calc_suvr(data, i) for i in subjects]
 [normalise!(data_all[i], u0) for i in 1:n_subjects]
