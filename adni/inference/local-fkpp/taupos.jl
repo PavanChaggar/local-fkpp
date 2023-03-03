@@ -70,14 +70,14 @@ cc = quantile.(upath, .99)
 #-------------------------------------------------------------------------------
 L = laplacian_matrix(c)
 
-vols = [get_vol(data, i) for i in tau_pos]
-init_vols = [v[:,1] for v in vols]
-max_norm_vols = reduce(hcat, [v ./ maximum(v) for v in init_vols])
-mean_norm_vols = vec(mean(max_norm_vols, dims=2))
-Lv = sparse(inv(diagm(mean_norm_vols)) * L)
+# vols = [get_vol(data, i) for i in tau_pos]
+# init_vols = [v[:,1] for v in vols]
+# max_norm_vols = reduce(hcat, [v ./ maximum(v) for v in init_vols])
+# mean_norm_vols = vec(mean(max_norm_vols, dims=2))
+# Lv = sparse(inv(diagm(mean_norm_vols)) * L)
 
-function NetworkLocalFKPP(du, u, p, t; Lv = Lv, u0 = u0, cc = cc)
-    du .= -p[1] * Lv * (u .- u0) .+ p[2] .* (u .- u0) .* ((cc .- u0) .- (u .- u0))
+function NetworkLocalFKPP(du, u, p, t; L = L, u0 = u0, cc = cc)
+    du .= -p[1] * L * (u .- u0) .+ p[2] .* (u .- u0) .* ((cc .- u0) .- (u .- u0))
 end
 
 function make_prob_func(initial_conditions, p, a, times)
@@ -90,10 +90,8 @@ function output_func(sol,i)
     (sol,false)
 end
 
-subdata = [calc_suvr(data, i) for i in tau_pos]
-for i in 1:n_pos
-    normalise!(subdata[i], u0, cc)
-end
+_subdata = [calc_suvr(data, i) for i in tau_pos]
+subdata = normalise(subdata[i], u0, cc)
 
 vecsubdata = reduce(vcat, reduce(hcat, subdata))
 
@@ -102,8 +100,9 @@ times =  [get_times(data, i) for i in tau_pos]
 
 prob = ODEProblem(NetworkLocalFKPP, 
                   initial_conditions[1], 
-                  (0.,15.), 
+                  (0.,maximum(reduce(vcat, times))), 
                   [1.0,1.0])
+                  
                   
 sol = solve(prob, Tsit5())
 
@@ -124,7 +123,7 @@ end
 @model function localfkpp(data, prob, initial_conditions, times, n)
     σ ~ LogNormal(0.0, 1.0)
 
-    Pm ~ truncated(Normal(0.0, 1.0), lower=0)
+    Pm ~ LogNormal(0.0, 1.0)
     Ps ~ LogNormal(0.0, 1.0)
 
     Am ~ Normal(0.0, 1.0)
@@ -160,12 +159,12 @@ Random.seed!(1234)
 m = localfkpp(vecsubdata, prob, initial_conditions, times, n_pos);
 m();
 
-n_chains = 4
-n_samples = 1_000
+n_chains = 1
+n_samples = 2_000
 pst = sample(m, 
              Turing.NUTS(0.8),
              MCMCSerial(), 
              n_samples, 
              n_chains,
              progress=false)
-serialize(projectdir("adni/chains/local-fkpp/pst-taupos-$(n_chains)x$(n_samples)-vc-tn.jls"), pst)
+serialize(projectdir("adni/chains/local-fkpp/pst-taupos-$(n_chains)x$(n_samples).jls"), pst)
