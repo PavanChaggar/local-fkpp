@@ -91,7 +91,7 @@ function output_func(sol,i)
 end
 
 _subdata = [calc_suvr(data, i) for i in tau_pos]
-subdata = normalise(_subdata[i], u0, cc)
+subdata = [normalise(sd, u0, cc) for sd in _subdata]
 
 vecsubdata = reduce(vcat, reduce(hcat, subdata))
 
