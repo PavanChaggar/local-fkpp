@@ -108,7 +108,6 @@ prob = ODEProblem(NetworkLocalFKPP,
                   [1.0,1.0])
                   
 sol = solve(prob, Tsit5())
-plot(sol, labels=false)
 
 ensemble_prob = EnsembleProblem(prob, prob_func=make_prob_func(initial_conditions, ones(n_pos), ones(n_pos), times), output_func=output_func)
 ensemble_sol = solve(ensemble_prob, Tsit5(), trajectories=n_pos)
