@@ -69,7 +69,6 @@ cc = quantile.(upath, .99)
 #-------------------------------------------------------------------------------
 L = laplacian_matrix(c)
 
-
 vols = [get_vol(data, i) for i in tau_pos]
 init_vols = [v[:,1] for v in vols]
 # max_norm_vols = reduce(hcat, [v ./ maximum(v) for v in init_vols])
@@ -78,7 +77,6 @@ init_vols = [v[:,1] for v in vols]
 
 v = vec(mean(reduce(hcat, init_vols), dims=2))
 Lv = inv(1 / mean(v) * diagm(v)) * L
-
 
 function NetworkLocalFKPP(du, u, p, t; L = Lv, u0 = u0, cc = cc)
     du .= -p[1] * L * (u .- u0) .+ p[2] .* (u .- u0) .* ((cc .- u0) .- (u .- u0))
@@ -119,7 +117,6 @@ end
 function vec_sol(es)
     reduce(vcat, [vec(sol) for sol in es])
 end
-
 #-------------------------------------------------------------------------------
 # Inference 
 #-------------------------------------------------------------------------------
@@ -162,7 +159,7 @@ Random.seed!(1234)
 m = localfkpp(vecsubdata, prob, initial_conditions, times, n_pos);
 m();
 
-n_chains = 1
+n_chains = 4
 n_samples = 2_000
 pst = sample(m, 
              Turing.NUTS(0.8),
