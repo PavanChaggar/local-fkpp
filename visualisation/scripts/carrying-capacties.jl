@@ -5,20 +5,20 @@ using Colors
 using DrWatson
 using CSV, DataFrames
 using Distributions
-include(projectdir("adni/adni.jl"))
+include(projectdir("functions.jl"))
 GLMakie.activate!()
 
 c = Connectomes.connectome_path() |> Connectome
 
 cortex = filter(x -> x.Lobe != "subcortex", c.parc)
-left_cortex = filter(x -> x.Hemisphere == "left", cortex)
+right_cortex = filter(x -> x.Hemisphere == "right", cortex)
 
 dktdict = Connectomes.node2FS()
-dktnames = [dktdict[i] for i in left_cortex.ID]
-gmm_moments = CSV.read(projectdir("data/adni-data/component_moments.csv"), DataFrame)
+dktnames = [dktdict[i] for i in right_cortex.ID]
+gmm_moments = CSV.read(projectdir("adni/data/component_moments.csv"), DataFrame)
 norm, path = get_dkt_moments(gmm_moments, dktnames)
 u0 = mean.(norm)
-cc = quantile.(path, .95)
+cc = quantile.(path, .99)
 
 describe(u0)
 std(u0)
@@ -26,10 +26,12 @@ std(u0)
 describe(cc)
 std(cc)
 
+scaled_cc = cc .- minimum(u0)
+
 begin
     GLMakie.activate!()
     cmap = ColorSchemes.RdYlBu |> reverse
-    f = Figure(resolution=(2560,840))
+    f = Figure(resolution=(1500,700))
 
     ax = Axis3(f[1,1], 
                aspect = :data, 
@@ -38,8 +40,8 @@ begin
                #protrusions=(0.0,1.0,50.0,1.0))
     hidedecorations!(ax)
     hidespines!(ax)
-    for (i, j) in enumerate(left_cortex.ID)
-        w =  cc[i] / maximum(cc)
+    for (i, j) in enumerate(right_cortex.ID)
+        w =  scaled_cc[i] / maximum(scaled_cc)
         plot_roi!(j, get(cmap,w))
     end
     ax = Axis3(f[1,2], 
@@ -50,8 +52,8 @@ begin
                
     hidedecorations!(ax)
     hidespines!(ax)
-    for (i, j) in enumerate(left_cortex.ID)
-        w =  cc[i] / maximum(cc)
+    for (i, j) in enumerate(right_cortex.ID)
+        w =  scaled_cc[i] / maximum(scaled_cc)
         plot_roi!(j, get(cmap,w))
     end
 
@@ -79,7 +81,7 @@ begin
     # end
     
 
-    c = Colorbar(f[1, 0], limits = (0, maximum(cc)), colormap = cmap,
+    Colorbar(f[1, 0], limits = (minimum(u0), maximum(cc)), colormap = cmap,
     vertical = true, label = "SUVR", labelsize=25, flipaxis=false,
     ticksize=18, ticklabelsize=20, labelpadding=3)
     f

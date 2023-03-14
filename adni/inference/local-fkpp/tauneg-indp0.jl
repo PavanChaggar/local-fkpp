@@ -159,7 +159,8 @@ end
                                     output_func=output_func)
 
     ensemble_sol = solve(ensemble_prob, 
-                         Tsit5(), 
+                         Tsit5(),
+                         EnsembleSerial(),
                          abstol = 1e-6, 
                          reltol = 1e-6, 
                          trajectories=n,
@@ -188,13 +189,17 @@ m = localfkpp(vecsubdata, prob, times,
               u0_vec, cc_vec, n_neg);
 m();
 
+
+n_samples = 1_000
+n_chains = 4
 pst = sample(m, 
-             Turing.NUTS(0.65),
-             1_000, 
+             Turing.NUTS(0.8),
+             MCMCThreads(),
+             n_samples, 
+             n_chains,
              progress=true)
 
-serialize(projectdir("adni/chains/local-fkpp/pst-tauneg-1000-indp0-scaled-priors.jls"), pst)
-
+serialize(projectdir("adni/chains/local-fkpp/pst-tauneg-$(n_chains)x$(n_samples)-indp0.jls"), pst)
 
 # using CairoMakie
 

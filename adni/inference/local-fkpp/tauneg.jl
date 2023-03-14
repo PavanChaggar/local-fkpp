@@ -133,7 +133,7 @@ end
 @model function localfkpp(data, prob, initial_conditions, times, n)
     σ ~ LogNormal(0.0, 1.0)
     
-    Pm ~ truncated(Normal(0.0, 1.0), lower=0)
+    Pm ~ LogNormal(0.0, 1.0)
     Ps ~ LogNormal(0.0, 1.0)
 
     Am ~ Normal(0.0, 1.0)
@@ -169,11 +169,11 @@ m = localfkpp(vecsubdata, prob, initial_conditions, times, n_neg)
 m();
 
 n_chains = 4
-n_samples = 1_000
+n_samples = 2_000
 pst = sample(m, 
              Turing.NUTS(0.8),
              MCMCSerial(), 
              n_samples, 
              n_chains,
              progress=false)
-serialize(projectdir("adni/chains/local-fkpp/pst-tauneg-$(n_chains)x$(n_samples)-vc-tn.jls"), pst)
+serialize(projectdir("adni/chains/local-fkpp/pst-tauneg-$(n_chains)x$(n_samples)-vc.jls"), pst)
