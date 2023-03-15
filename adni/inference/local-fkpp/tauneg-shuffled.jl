@@ -174,18 +174,18 @@ Random.seed!(1234);
 
 for i in 1:10
     println("Starting chain $i")
-    shuffled_data = shuffle_cols.(subdata)
+    _shuffled_data = shuffle_cols.(subdata)
 
-    shuffled_vecsubdata = reduce(vcat, reduce(hcat, shuffled_data))
+    _shuffled_vecsubdata = reduce(vcat, reduce(hcat, _shuffled_data))
 
-    initial_conditions = [sd[:,1] for sd in shuffled_data]
+    _initial_conditions = [sd[:,1] for sd in shuffled_data]
 
-    prob = ODEProblem(NetworkLocalFKPP, 
-                    initial_conditions[1], 
+    _prob = ODEProblem(NetworkLocalFKPP, 
+                    _initial_conditions[1], 
                     (0.,maximum(reduce(vcat, times))), 
                     [1.0,1.0])
 
-    m = localfkpp(shuffled_vecsubdata, prob, initial_conditions, times, n_neg)
+    m = localfkpp(_shuffled_vecsubdata, _prob, _initial_conditions, times, n_neg)
     m();
 
     n_samples = 1_000
