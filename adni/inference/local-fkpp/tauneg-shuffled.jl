@@ -103,7 +103,9 @@ nonzerosubs = findall(x -> sum(x) < 2, [sum(sd, dims=1) .== 0 for sd in blsd])
 subdata = _subdata[nonzerosubs]
 
 function shuffle_cols(arr)
-    reduce(hcat, [shuffle(view(arr, :, i)) for i in 1:size(arr, 2)])
+    idx = shuffle(collect(1:72))
+    # reduce(hcat, [shuffle(view(arr, :, i)) for i in 1:size(arr, 2)])
+    arr[idx, :]
 end
 
 shuffled_data = shuffle_cols.(subdata)
