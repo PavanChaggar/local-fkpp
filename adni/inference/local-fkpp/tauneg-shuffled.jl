@@ -172,15 +172,26 @@ end
 Turing.setadbackend(:zygote)
 Random.seed!(1234); 
 
-m = localfkpp(vecsubdata, prob, initial_conditions, times, n_neg)
-m();
+for i in 1:10
+    println("Starting chain $i")
+    shuffled_data = shuffle_cols.(subdata)
 
-n_chains = 2
-n_samples = 1_000
-pst = sample(m, 
-             Turing.NUTS(0.8),
-             MCMCSerial(), 
-             n_samples, 
-             n_chains,
-             progress=false)
-serialize(projectdir("adni/chains/local-fkpp/pst-tauneg-$(n_chains)x$(n_samples)-vc-shuffled.jls"), pst)
+    shuffled_vecsubdata = reduce(vcat, reduce(hcat, shuffled_data))
+
+    initial_conditions = [sd[:,1] for sd in shuffled_data]
+
+    prob = ODEProblem(NetworkLocalFKPP, 
+                    initial_conditions[1], 
+                    (0.,maximum(reduce(vcat, times))), 
+                    [1.0,1.0])
+
+    m = localfkpp(shuffled_vecsubdata, prob, initial_conditions, times, n_neg)
+    m();
+
+    n_samples = 1_000
+    pst = sample(m,
+                Turing.NUTS(0.8),
+                n_samples, 
+                progress=false)
+    serialize(projectdir("adni/chains/local-fkpp/shuffled/pst-tauneg-$(n_samples)-vc-shuffled-$(i).jls"), pst)
+end
