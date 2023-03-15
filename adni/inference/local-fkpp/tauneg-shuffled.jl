@@ -180,7 +180,7 @@ for i in 1:10
 
     _shuffled_vecsubdata = reduce(vcat, reduce(hcat, _shuffled_data))
 
-    _initial_conditions = [sd[:,1] for sd in shuffled_data]
+    _initial_conditions = [sd[:,1] for sd in _shuffled_data]
 
     _prob = ODEProblem(NetworkLocalFKPP, 
                     _initial_conditions[1], 
