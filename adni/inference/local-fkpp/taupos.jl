@@ -120,10 +120,10 @@ end
 @model function localfkpp(data, prob, initial_conditions, times, n)
     σ ~ LogNormal(0.0, 1.0)
 
-    Pm ~ Uniform(0.0, 1.0)
+    Pm ~ Uniform(0.0, 1.0) # LogNormal(0.0,1.0)
     Ps ~ LogNormal(0.0, 1.0)
 
-    Am ~ Uniform(-1.0, 1.0)
+    Am ~ Uniform(-1.0, 1.0) # Normal(0.0,1.0)
     As ~ LogNormal(0.0, 1.0)
 
     ρ ~ filldist(truncated(Normal(Pm, Ps), lower=0), n)
