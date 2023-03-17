@@ -71,12 +71,9 @@ L = laplacian_matrix(c)
 
 vols = [get_vol(data, i) for i in tau_pos]
 init_vols = [v[:,1] for v in vols]
-# max_norm_vols = reduce(hcat, [v ./ maximum(v) for v in init_vols])
-# mean_norm_vols = vec(mean(max_norm_vols, dims=2))
-# Lv = sparse(inv(diagm(mean_norm_vols)) * L)
-
-v = vec(mean(reduce(hcat, init_vols), dims=2))
-Lv = inv(1 / mean(v) * diagm(v)) * L
+max_norm_vols = reduce(hcat, [v ./ maximum(v) for v in init_vols])
+mean_norm_vols = vec(mean(max_norm_vols, dims=2))
+Lv = sparse(inv(diagm(mean_norm_vols)) * L)
 
 function NetworkLocalFKPP(du, u, p, t; L = Lv, u0 = u0, cc = cc)
     du .= -p[1] * L * (u .- u0) .+ p[2] .* (u .- u0) .* ((cc .- u0) .- (u .- u0))
@@ -123,12 +120,11 @@ end
 @model function localfkpp(data, prob, initial_conditions, times, n)
     σ ~ LogNormal(0.0, 1.0)
 
-    Pm ~ LogNormal(0.0, 1.0)
+    Pm ~ Uniform(0.0, 1.0)
     Ps ~ LogNormal(0.0, 1.0)
 
-    Am ~ Normal(0.0, 1.0)
+    Am ~ Uniform(-1.0, 1.0)
     As ~ LogNormal(0.0, 1.0)
-
 
     ρ ~ filldist(truncated(Normal(Pm, Ps), lower=0), n)
     α ~ filldist(Normal(Am, As), n)
@@ -160,7 +156,7 @@ m = localfkpp(vecsubdata, prob, initial_conditions, times, n_pos);
 m();
 
 n_chains = 4
-n_samples = 2_000
+n_samples = 1_000
 pst = sample(m, 
              Turing.NUTS(0.8),
              MCMCSerial(), 

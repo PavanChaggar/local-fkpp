@@ -59,11 +59,14 @@ cc = quantile.(upath, .99)
 #-------------------------------------------------------------------------------
 L = laplacian_matrix(c)
 
-vols = [get_vol(data, i) for i in 1:n_subjects]
+vols = [get_vol(data, i) for i in tau_pos]
 init_vols = [v[:,1] for v in vols]
-max_norm_vols = reduce(hcat, [v ./ maximum(v) for v in init_vols])
-mean_norm_vols = vec(mean(max_norm_vols, dims=2))
-Lv = sparse(inv(diagm(mean_norm_vols)) * L)
+# max_norm_vols = reduce(hcat, [v ./ maximum(v) for v in init_vols])
+# mean_norm_vols = vec(mean(max_norm_vols, dims=2))
+# Lv = sparse(inv(diagm(mean_norm_vols)) * L)
+
+v = vec(mean(reduce(hcat, init_vols), dims=2))
+Lv = inv(1 / mean(v) * diagm(v)) * L
 
 function NetworkLocalFKPP(du, u, p, t; Lv = Lv, u0 = u0, cc = cc)
     du .= -p[1] * Lv * (u .- u0) .+ p[2] .* (u .- u0) .* ((cc .- u0) .- (u .- u0))
@@ -116,10 +119,10 @@ end
 @model function localfkpp(data, prob, initial_conditions, times, n)
     σ ~ LogNormal(0.0, 1.0)
     
-    Pm ~ truncated(Normal(0.0, 1.0), lower=0)
+    Pm ~ Uniform(0.0, 1.0)
     Ps ~ LogNormal(0.0, 1.0)
 
-    Am ~ Normal(0.0, 1.0)
+    Am ~ Uniform(-1.0, 1.0)
     As ~ LogNormal(0.0, 1.0)
 
     ρ ~ filldist(truncated(Normal(Pm, Ps), lower=0), n)
@@ -159,4 +162,4 @@ pst = sample(m,
              n_samples, 
              n_chains,
              progress=false)
-serialize(projectdir("adni/chains/local-fkpp/pst-abneg-$(n_chains)x$(n_samples)-vc-tn.jls"), pst)
+serialize(projectdir("adni/chains/local-fkpp/pst-abneg-uniform-$(n_chains)x$(n_samples)-vc-tn.jls"), pst)

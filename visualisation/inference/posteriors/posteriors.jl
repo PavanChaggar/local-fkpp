@@ -11,8 +11,10 @@ using MCMCChains
 # Hierarchical Distributions -- ADNI
 #-------------------------------------------------------------------------------
 pst = deserialize(projectdir("adni/chains/local-fkpp/pst-taupos-4x2000-vc.jls"));
-pst2 = deserialize(projectdir("adni/chains/local-fkpp/pst-tauneg-4x2000-vc.jls"));
+pst2 = deserialize(projectdir("adni/chains/logistic/pst-tauneg-4x2000.jls"));
 pst3 = deserialize(projectdir("adni/chains/local-fkpp/pst-abneg-4x2000-vc.jls"));
+
+shuffled = [deserialize(projectdir("adni/chains/local-fkpp/shuffled/pst-tauneg-1000-vc-shuffled-$i.jls")) for i in 1:5]
 
 [p[:numerical_error] |> sum for p in [pst, pst2, pst3]]
 
