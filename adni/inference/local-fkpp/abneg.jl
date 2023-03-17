@@ -59,11 +59,11 @@ cc = quantile.(upath, .99)
 #-------------------------------------------------------------------------------
 L = laplacian_matrix(c)
 
-vols = [get_vol(data, i) for i in tau_pos]
+vols = [get_vol(data, i) for i in 1:n_subjects]
 init_vols = [v[:,1] for v in vols]
-# max_norm_vols = reduce(hcat, [v ./ maximum(v) for v in init_vols])
-# mean_norm_vols = vec(mean(max_norm_vols, dims=2))
-# Lv = sparse(inv(diagm(mean_norm_vols)) * L)
+max_norm_vols = reduce(hcat, [v ./ maximum(v) for v in init_vols])
+mean_norm_vols = vec(mean(max_norm_vols, dims=2))
+Lv = sparse(inv(diagm(mean_norm_vols)) * L)
 
 v = vec(mean(reduce(hcat, init_vols), dims=2))
 Lv = inv(1 / mean(v) * diagm(v)) * L
