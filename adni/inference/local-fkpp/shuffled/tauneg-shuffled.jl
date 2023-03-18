@@ -184,7 +184,7 @@ end
     data ~ MvNormal(vecsol, σ^2 * I)
 end
 
-Turing.setadbackend(:zygote)
+Turing.setadbackend(:forwarddiff)
 Random.seed!(1234); 
 
 for i in 1:1
