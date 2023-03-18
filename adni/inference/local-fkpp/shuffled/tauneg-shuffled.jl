@@ -211,6 +211,6 @@ for i in 1:1
     pst = sample(m,
                 Turing.NUTS(0.8),
                 n_samples, 
-                progress=false)
+                progress=true)
     serialize(projectdir("adni/chains/local-fkpp/shuffled/pst-tauneg-$(n_samples)-shuffled-$(i).jls"), pst)
 end
