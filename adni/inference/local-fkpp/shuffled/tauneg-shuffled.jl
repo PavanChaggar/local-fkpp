@@ -109,32 +109,32 @@ function shuffle_cols(arr)
     idx, arr[idx, :]
 end
 
-shuffles = shuffle_cols.(subdata)
-idx = [sh[1] for sh in shuffles]
-shuffled_data = [sh[2] for sh in shuffles]
+# shuffles = shuffle_cols.(subdata)
+# idx = [sh[1] for sh in shuffles]
+# shuffled_data = [sh[2] for sh in shuffles]
 
-vecsubdata = reduce(vcat, reduce(hcat, shuffled_data))
+# vecsubdata = reduce(vcat, reduce(hcat, shuffled_data))
 
-initial_conditions = [sd[:,1] for sd in shuffled_data]
+# initial_conditions = [sd[:,1] for sd in shuffled_data]
 _times =  [get_times(data, i) for i in tau_neg]
 times = _times[nonzerosubs]
 
 n_neg = length(nonzerosubs)
 
-prob = ODEProblem(NetworkLocalFKPP, 
-                  initial_conditions[1], 
-                  (0.,maximum(reduce(vcat, times))), 
-                  [1.0,1.0, u0[idx[1]], cc[idx[1]]])
+# prob = ODEProblem(NetworkLocalFKPP, 
+#                   initial_conditions[1], 
+#                   (0.,maximum(reduce(vcat, times))), 
+#                   [1.0,1.0, u0[idx[1]], cc[idx[1]]])
                   
-sol = solve(prob, Tsit5())
+# sol = solve(prob, Tsit5())
 
-ensemble_prob = EnsembleProblem(prob, 
-                                prob_func=make_prob_func(initial_conditions, 
-                                                        ones(n_neg), ones(n_neg), 
-                                                        u0, cc, idx, times), 
-                                output_func=output_func)
+# ensemble_prob = EnsembleProblem(prob, 
+#                                 prob_func=make_prob_func(initial_conditions, 
+#                                                         ones(n_neg), ones(n_neg), 
+#                                                         u0, cc, idx, times), 
+#                                 output_func=output_func)
 
-ensemble_sol = solve(ensemble_prob, Tsit5(), trajectories=n_neg)
+# ensemble_sol = solve(ensemble_prob, Tsit5(), trajectories=n_neg)
 
 function get_retcodes(es)
     [sol.retcode for sol in es]
@@ -178,6 +178,7 @@ end
         println("failed")
         return nothing
     end
+
     vecsol = vec_sol(ensemble_sol)
 
     data ~ MvNormal(vecsol, σ^2 * I)
@@ -193,17 +194,17 @@ for i in 1:1
     idx = [sh[1] for sh in shuffles]
     shuffled_data = [sh[2] for sh in shuffles]
 
-    _shuffled_vecsubdata = reduce(vcat, reduce(hcat, _shuffled_data))
+    shuffled_vecsubdata = reduce(vcat, reduce(hcat, shuffled_data))
 
-    _shuffled_initial_conditions = [sd[:,1] for sd in _shuffled_data]
+    shuffled_initial_conditions = [sd[:,1] for sd in shuffled_data]
 
-    _prob = ODEProblem(NetworkLocalFKPP, 
-                    _shuffled_initial_conditions[1], 
+    prob = ODEProblem(NetworkLocalFKPP, 
+                    shuffled_initial_conditions[1], 
                     (0.,maximum(reduce(vcat, times))), 
-                    [1.0,1.0, u0[_idx[1]], cc[_idx[1]]])
+                    [1.0,1.0, u0[idx[1]], cc[idx[1]]])
 
-    m = localfkpp(_shuffled_vecsubdata, _prob, _shuffled_initial_conditions, 
-                  times, u0, cc, _idx, n_neg)
+    m = localfkpp(shuffled_vecsubdata, prob, shuffled_initial_conditions, 
+                  times, u0, cc, idx, n_neg)
     m();
 
     n_samples = 1_000
@@ -211,5 +212,5 @@ for i in 1:1
                 Turing.NUTS(0.8),
                 n_samples, 
                 progress=false)
-    serialize(projectdir("adni/chains/local-fkpp/shuffled/pst-tauneg-$(n_samples)-vc-shuffled-$(i).jls"), pst)
+    serialize(projectdir("adni/chains/local-fkpp/shuffled/pst-tauneg-$(n_samples)-shuffled-$(i).jls"), pst)
 end
