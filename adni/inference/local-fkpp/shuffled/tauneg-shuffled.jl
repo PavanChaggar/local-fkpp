@@ -150,10 +150,10 @@ end
 @model function localfkpp(data, prob, initial_conditions, times, u0, cc, idx, n)
     σ ~ LogNormal(0.0, 1.0)
     
-    Pm ~ LogNormal(0.0, 1.0)
+    Pm ~ Uniform(0.0, 1.0)
     Ps ~ LogNormal(0.0, 1.0)
 
-    Am ~ Normal(0.0, 1.0)
+    Am ~ Uniform(-1.0, 1.0)
     As ~ LogNormal(0.0, 1.0)
 
     ρ ~ filldist(truncated(Normal(Pm, Ps), lower=0), n)
@@ -187,7 +187,7 @@ end
 Turing.setadbackend(:forwarddiff)
 Random.seed!(1234); 
 
-for i in 1:5
+for i in 1:1
     println("Starting chain $i")
 
     shuffles = shuffle_cols.(subdata)
@@ -212,5 +212,5 @@ for i in 1:5
                 Turing.NUTS(0.8),
                 n_samples, 
                 progress=true)
-    serialize(projectdir("adni/chains/local-fkpp/shuffled/pst-tauneg-$(n_samples)-shuffled-$(i).jls"), pst)
+    serialize(projectdir("adni/chains/local-fkpp/shuffled/pst-tauneg-uniform-$(n_samples)-shuffled-$(i).jls"), pst)
 end
