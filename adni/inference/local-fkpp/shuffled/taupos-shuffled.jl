@@ -79,9 +79,10 @@ function NetworkLocalFKPP(du, u, p, t; L = Lv, u0 = u0, cc = cc)
     du .= -p[1] * L * (u .- u0) .+ p[2] .* (u .- u0) .* ((cc .- u0) .- (u .- u0))
 end
 
-function make_prob_func(initial_conditions, p, a, times)
+function make_prob_func(initial_conditions, p, a, u0, cc, idx, times)
     function prob_func(prob,i,repeat)
-        remake(prob, u0=initial_conditions[i], p=[p[i], a[i]], saveat=times[i])
+        _idx = idx[i]
+        remake(prob, u0=initial_conditions[i], p=[p[i], a[i], u0[_idx], cc[_idx]], saveat=times[i])
     end
 end
 
@@ -92,20 +93,26 @@ end
 _subdata = [calc_suvr(data, i) for i in tau_pos]
 subdata = [normalise(sd, u0, cc) for sd in _subdata]
 
-vecsubdata = reduce(vcat, reduce(hcat, subdata))
+function shuffle_cols(arr)
+    idx = shuffle(collect(1:72))
+    # reduce(hcat, [shuffle(view(arr, :, i)) for i in 1:size(arr, 2)])
+    idx, arr[idx, :]
+end
 
-initial_conditions = [sd[:,1] for sd in subdata]
+# vecsubdata = reduce(vcat, reduce(hcat, subdata))
+
+# # initial_conditions = [sd[:,1] for sd in subdata]
 times =  [get_times(data, i) for i in tau_pos]
 
-prob = ODEProblem(NetworkLocalFKPP, 
-                  initial_conditions[1], 
-                  (0.,maximum(reduce(vcat, times))), 
-                  [1.0,1.0])
+# prob = ODEProblem(NetworkLocalFKPP, 
+#                   initial_conditions[1], 
+#                   (0.,maximum(reduce(vcat, times))), 
+#                   [1.0,1.0])
                   
-sol = solve(prob, Tsit5())
+# sol = solve(prob, Tsit5())
 
-ensemble_prob = EnsembleProblem(prob, prob_func=make_prob_func(initial_conditions, ones(n_pos), ones(n_pos), times), output_func=output_func)
-ensemble_sol = solve(ensemble_prob, Tsit5(), trajectories=n_pos)
+# ensemble_prob = EnsembleProblem(prob, prob_func=make_prob_func(initial_conditions, ones(n_pos), ones(n_pos), times), output_func=output_func)
+# ensemble_sol = solve(ensemble_prob, Tsit5(), trajectories=n_pos)
 
 function get_retcodes(es)
     [sol.retcode for sol in es]
@@ -117,20 +124,23 @@ end
 #-------------------------------------------------------------------------------
 # Inference 
 #-------------------------------------------------------------------------------
-@model function localfkpp(data, prob, initial_conditions, times, n)
+@model function localfkpp(data, prob, initial_conditions, times, u0, cc, idx, n)
     σ ~ LogNormal(0.0, 1.0)
-
-    Pm ~ LogNormal(0.0,1.0)
+    
+    Pm ~ LogNormal(0.0, 1.0)
     Ps ~ LogNormal(0.0, 1.0)
 
-    Am ~ Normal(0.0,1.0)
+    Am ~ Normal(0.0, 1.0)
     As ~ LogNormal(0.0, 1.0)
 
     ρ ~ filldist(truncated(Normal(Pm, Ps), lower=0), n)
     α ~ filldist(Normal(Am, As), n)
 
     ensemble_prob = EnsembleProblem(prob, 
-                                    prob_func=make_prob_func(initial_conditions, ρ, α, times), 
+                                    prob_func=make_prob_func(initial_conditions, 
+                                                             ρ, α, 
+                                                             u0, cc, idx, 
+                                                             times), 
                                     output_func=output_func)
 
     ensemble_sol = solve(ensemble_prob, 
@@ -139,31 +149,45 @@ end
                          reltol = 1e-9, 
                          trajectories=n, 
                          sensealg=InterpolatingAdjoint(autojacvec=ReverseDiffVJP(true)))
+
     if !allequal(get_retcodes(ensemble_sol)) 
         Turing.@addlogprob! -Inf
         println("failed")
         return nothing
     end
+
     vecsol = vec_sol(ensemble_sol)
 
     data ~ MvNormal(vecsol, σ^2 * I)
 end
 
-setadbackend(:zygote)
+setadbackend(:forwarddiff)
 Random.seed!(1234)
 
-m = localfkpp(vecsubdata, prob, initial_conditions, times, n_pos);
-m();
+for i in 1:5
+    println("Starting chain $i")
 
-prior = sample(m, Prior(), 8_000)
-serialize(projectdir("adni/chains/local-fkpp/prior-taupos-8000.jls"), prior)
+    shuffles = shuffle_cols.(subdata)
+    idx = [sh[1] for sh in shuffles]
+    shuffled_data = [sh[2] for sh in shuffles]
 
-n_chains = 4
-n_samples = 2_000
-pst = sample(m, 
-             Turing.NUTS(0.8),
-             MCMCSerial(), 
-             n_samples, 
-             n_chains,
-             progress=true)
-serialize(projectdir("adni/chains/local-fkpp/pst-taupos-$(n_chains)x$(n_samples).jls"), pst)
+    shuffled_vecsubdata = reduce(vcat, reduce(hcat, shuffled_data))
+
+    shuffled_initial_conditions = [sd[:,1] for sd in shuffled_data]
+
+    prob = ODEProblem(NetworkLocalFKPP, 
+                    shuffled_initial_conditions[1], 
+                    (0.,maximum(reduce(vcat, times))), 
+                    [1.0,1.0, u0[idx[1]], cc[idx[1]]])
+
+    m = localfkpp(shuffled_vecsubdata, prob, shuffled_initial_conditions, 
+                  times, u0, cc, idx, n_pos)
+    m();
+
+    n_samples = 1_000
+    pst = sample(m,
+                Turing.NUTS(0.8),
+                n_samples, 
+                progress=true)
+    serialize(projectdir("adni/chains/local-fkpp/shuffled/pst-taupos-$(n_samples)-shuffled-$(i).jls"), pst)
+end
