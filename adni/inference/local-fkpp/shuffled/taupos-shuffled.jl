@@ -68,15 +68,14 @@ cc = quantile.(upath, .99)
 # Connectome + ODEE
 #-------------------------------------------------------------------------------
 L = laplacian_matrix(c)
-
 vols = [get_vol(data, i) for i in tau_pos]
 init_vols = [v[:,1] for v in vols]
 max_norm_vols = reduce(hcat, [v ./ maximum(v) for v in init_vols])
 mean_norm_vols = vec(mean(max_norm_vols, dims=2))
 Lv = sparse(inv(diagm(mean_norm_vols)) * L)
 
-function NetworkLocalFKPP(du, u, p, t; L = Lv, u0 = u0, cc = cc)
-    du .= -p[1] * L * (u .- u0) .+ p[2] .* (u .- u0) .* ((cc .- u0) .- (u .- u0))
+function NetworkLocalFKPP(du, u, p, t; Lv = Lv)
+    du .= -p[1] * Lv * (u .- p[3]) .+ p[2] .* (u .- p[3]) .* ((p[4] .- p[3]) .- (u .- p[3]))
 end
 
 function make_prob_func(initial_conditions, p, a, u0, cc, idx, times)
@@ -95,24 +94,10 @@ subdata = [normalise(sd, u0, cc) for sd in _subdata]
 
 function shuffle_cols(arr)
     idx = shuffle(collect(1:72))
-    # reduce(hcat, [shuffle(view(arr, :, i)) for i in 1:size(arr, 2)])
     idx, arr[idx, :]
 end
 
-# vecsubdata = reduce(vcat, reduce(hcat, subdata))
-
-# # initial_conditions = [sd[:,1] for sd in subdata]
 times =  [get_times(data, i) for i in tau_pos]
-
-# prob = ODEProblem(NetworkLocalFKPP, 
-#                   initial_conditions[1], 
-#                   (0.,maximum(reduce(vcat, times))), 
-#                   [1.0,1.0])
-                  
-# sol = solve(prob, Tsit5())
-
-# ensemble_prob = EnsembleProblem(prob, prob_func=make_prob_func(initial_conditions, ones(n_pos), ones(n_pos), times), output_func=output_func)
-# ensemble_sol = solve(ensemble_prob, Tsit5(), trajectories=n_pos)
 
 function get_retcodes(es)
     [sol.retcode for sol in es]
