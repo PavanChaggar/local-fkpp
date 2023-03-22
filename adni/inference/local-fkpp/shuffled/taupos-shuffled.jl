@@ -149,7 +149,7 @@ end
 setadbackend(:forwarddiff)
 Random.seed!(1234)
 
-for i in 1:5
+for i in 1:100
     println("Starting chain $i")
 
     shuffles = shuffle_cols.(subdata)
@@ -174,5 +174,5 @@ for i in 1:5
                 Turing.NUTS(0.8),
                 n_samples, 
                 progress=true)
-    serialize(projectdir("adni/chains/local-fkpp/shuffled/pst-taupos-$(n_samples)-shuffled-$(i).jls"), pst)
+    serialize(projectdir("adni/chains/local-fkpp/shuffled/pos/pst-taupos-$(n_samples)-shuffled-$(i).jls"), pst)
 end
