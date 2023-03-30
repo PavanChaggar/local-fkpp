@@ -209,3 +209,12 @@ elppd_df = DataFrame("Local" => local_elppd - max_elppd,
                      "Global" => global_elppd - max_elppd, 
                      "Logistic" => logistic_elppd - max_elppd, 
                      "Diffusion" => diffusion_elppd - max_elppd)
+
+local_ll = deserialize(projectdir("adni/chains/local-fkpp/ll-tauneg-4x2000.jls"));
+global_ll = deserialize(projectdir("adni/chains/global-fkpp/ll-tauneg-4x2000.jls"));
+diffusion_ll = deserialize(projectdir("adni/chains/diffusion/ll-tauneg-4x2000.jls"));
+logistic_ll = deserialize(projectdir("adni/chains/logistic/ll-tauneg-4x2000.jls"));
+
+max_lls= [maximum(dict["data"]) for dict in [local_ll, global_ll, diffusion_ll, logistic_ll]]
+
+ll_df = DataFrame(zip(["Local", "Global", "Diffusion", "Logistic"], max_lls .- maximum(max_lls)))

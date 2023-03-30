@@ -11,10 +11,9 @@ using MCMCChains
 # Hierarchical Distributions -- ADNI
 #-------------------------------------------------------------------------------
 pst = deserialize(projectdir("adni/chains/local-fkpp/pst-taupos-4x2000-vc.jls"));
-pst2 = deserialize(projectdir("adni/chains/logistic/pst-tauneg-4x2000.jls"));
+pst2 = deserialize(projectdir("adni/chains/local-fkpp/pst-tauneg-4x2000-vc.jls"));
 pst3 = deserialize(projectdir("adni/chains/local-fkpp/pst-abneg-4x2000-vc.jls"));
-
-shuffled = [deserialize(projectdir("adni/chains/local-fkpp/shuffled/pst-tauneg-1000-vc-shuffled-$i.jls")) for i in 1:5]
+prior = deserialize(projectdir("adni/chains/local-fkpp/prior-taupos-8000.jls"));
 
 [p[:numerical_error] |> sum for p in [pst, pst2, pst3]]
 
@@ -22,47 +21,7 @@ using CairoMakie; CairoMakie.activate!()
 using Colors
 
 begin
-    f = Figure(resolution=(1500, 500), fontsize=50)
-    g1 = f[1, 1] = GridLayout()
-    g2 = f[1, 2] = GridLayout()
-    g3 = f[1, 3] = GridLayout()
-
-    ax = Axis(g1[1,1], 
-            xticklabelsize=20, xlabelsize=30, xlabel="1 / yr", 
-            yticklabelsize=20, ylabelsize=30, ylabel="Density",
-            titlesize=40, title="Diffusion", xticks=LinearTicks(6))
-            xlims!(ax, -0.005, 0.105)
-    hideydecorations!(ax, label=false)
-    hidexdecorations!(ax, label=false, ticks=false, ticklabels=false)
-    hidespines!(ax, :t, :r, :l)
-
-    hist!(vec(pst[:Pm]), bins=50, color=(:blue, 0.6), label=L"A\beta^+ \tau P^+", normalization=:pdf, strokewidth=1, strokecolor=:blue)
-    hist!(vec(pst2[:Pm]), bins=50, color=(:red, 0.6), label=L"A\beta^+ \tau P^-", normalization=:pdf, strokewidth=1, strokecolor=:red)
-    hist!(vec(pst3[:Pm]), bins=50, color=(:green, 0.6), label=L"A\beta^-", normalization=:pdf, strokewidth=1, strokecolor=:green)
-    
-    ax = Axis(g2[1,1], 
-            xticklabelsize=20, xlabelsize=30, xlabel="1 / yr", 
-            yticklabelsize=20, ylabelsize=30, ylabel="Density",
-            titlesize=40, title="Growth", xticks=LinearTicks(6))
-            xlims!(ax, -0.35, 0.35)
-    hideydecorations!(ax)
-    hidexdecorations!(ax, label=false, ticks=false, ticklabels=false)
-    hidespines!(ax, :t, :r, :l)
-    
-    hist!(vec(pst[:Am]), bins=50, color=(:blue, 0.6), label=L"A\beta^+ \tau P^+", normalization=:pdf, strokewidth=1, strokecolor=:blue)
-    hist!(vec(pst2[:Am]), bins=50, color=(:red, 0.6), label=L"A\beta^+ \tau P^-", normalization=:pdf, strokewidth=1, strokecolor=:red)
-    hist!(vec(pst3[:Am]), bins=50, color=(:green, 0.6), label=L"A\beta^-", normalization=:pdf, strokewidth=1, strokecolor=:green)
-
-    Legend(g3[1,1], ax, framevisible = false)
-    colgap!(f.layout, 1, 50)
-    f
-end
-save(projectdir("adni/visualisation/hier-inf/c99/hier-dsts.pdf"), f)
-save(projectdir("adni/visualisation/hier-inf/png/c99/hier-dsts.png"), f)
-
-
-begin
-    n_samples = 8000
+    n_samples = 4000
     f = Figure(resolution=(2000, 750), fontsize=50)
     g1 = f[1, 1] = GridLayout()
     g2 = f[1, 2] = GridLayout()
@@ -85,8 +44,9 @@ begin
     hidespines!(ax, :t, :r, :l)
 
     rainclouds!(ax, category_labels, data_array;
-                orientation = :horizontal, gap=-1.5,
-                plot_boxplots = true, cloud_width=0.5,
+                orientation = :horizontal, gap=0.0,
+                plot_boxplots = true, cloud_width=0.25,
+                clouds=hist, hist_bins=50,
                 color = colors[indexin(category_labels, unique(category_labels))])
 
     category_labels = reduce(vcat, fill.(_category_label, n_samples))    
@@ -103,10 +63,11 @@ begin
     hidespines!(ax, :t, :r, :l)
 
     rainclouds!(ax, category_labels, data_array;
-    orientation = :horizontal, gap=-1.5,
-    plot_boxplots = true, cloud_width=0.5,
-    color = colors[indexin(category_labels, unique(category_labels))])
-    
+                orientation = :horizontal, gap=0.0,
+                plot_boxplots = true, cloud_width=0.25,
+                clouds=hist, hist_bins=50,
+                color = colors[indexin(category_labels, unique(category_labels))])
+
     colgap!(f.layout, 1, 50)
     f
 end
@@ -174,3 +135,20 @@ begin
         f
 end 
 save(projectdir("visualisation/inference/posteriors/output/bf-posteriors.pdf"), f)
+
+# shuffled data
+shuffled = [deserialize(projectdir("adni/chains/local-fkpp/shuffled/pst-tauneg-1000-shuffled-$i.jls")) for i in 1:5]
+
+f = Figure(resolution=(1000, 500))
+ax = Axis(f[1,1], title="growth")
+am = reduce(vcat, [vec(Array(sh[:Am])) for sh in shuffled])
+hist!(am, bins=50, normalization=:pdf, color=:grey)
+hist!(pst[:Am] |> vec, bins=50, normalization=:pdf, color=(:blue, 0.5))
+
+ax = Axis(f[1,2], title="diffusion")
+pm = reduce(vcat, [vec(Array(sh[:Pm])) for sh in shuffled])
+hist!(pm, bins=50, normalization=:pdf, color=:grey, label="shuffled")
+hist!(pst[:Pm] |> vec, bins=50, normalization=:pdf, color=(:blue, 0.5), label="A+T+")
+# hist!(pst3[:Pm] |> vec, bins=50, normalization=:pdf, color=(:green, 0.5), label="A-")
+axislegend()
+f

@@ -162,3 +162,8 @@ pst = sample(m,
              progress=false)
 
 serialize(projectdir("adni/chains/logistic/pst-tauneg-$(n_chains)x2000.jls"), pst)
+
+# calc log likelihood 
+pst = deserialize(projectdir("adni/chains/logistic/pst-tauneg-4x2000.jls"));
+log_likelihood = pointwise_loglikelihoods(m, MCMCChains.get_sections(pst, :parameters));
+serialize(projectdir("adni/chains/logistic/ll-tauneg-$(n_chains)x$(n_samples).jls"), log_likelihood)

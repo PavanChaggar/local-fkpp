@@ -133,10 +133,10 @@ end
 @model function localfkpp(data, prob, initial_conditions, times, n)
     σ ~ LogNormal(0.0, 1.0)
     
-    Pm ~ Uniform(0.0, 1.0)
+    Pm ~ LogNormal(0.0, 1.0)
     Ps ~ LogNormal(0.0, 1.0)
 
-    Am ~ Uniform(-1.0, 1.0)
+    Am ~ Normal(0.0, 1.0)
     As ~ LogNormal(0.0, 1.0)
 
     ρ ~ filldist(truncated(Normal(Pm, Ps), lower=0), n)
@@ -169,11 +169,16 @@ m = localfkpp(vecsubdata, prob, initial_conditions, times, n_neg)
 m();
 
 n_chains = 4
-n_samples = 1_000
+n_samples = 2_000
 pst = sample(m, 
              Turing.NUTS(0.8),
              MCMCSerial(), 
              n_samples, 
              n_chains,
              progress=false)
-serialize(projectdir("adni/chains/local-fkpp/pst-tauneg-uniform-$(n_chains)x$(n_samples)-vc.jls"), pst)
+serialize(projectdir("adni/chains/local-fkpp/pst-tauneg-$(n_chains)x$(n_samples).jls"), pst)
+
+# calc log likelihood 
+pst = deserialize(projectdir("adni/chains/local-fkpp/pst-tauneg-4x2000-vc.jls"));
+log_likelihood = pointwise_loglikelihoods(m, MCMCChains.get_sections(pst, :parameters));
+serialize(projectdir("adni/chains/local-fkpp/ll-tauneg-$(n_chains)x$(n_samples).jls"), log_likelihood)

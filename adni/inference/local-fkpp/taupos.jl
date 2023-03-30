@@ -156,7 +156,7 @@ m = localfkpp(vecsubdata, prob, initial_conditions, times, n_pos);
 m();
 
 n_chains = 4
-n_samples = 1_000
+n_samples = 2_000
 pst = sample(m, 
              Turing.NUTS(0.8),
              MCMCSerial(), 
@@ -164,3 +164,8 @@ pst = sample(m,
              n_chains,
              progress=true)
 serialize(projectdir("adni/chains/local-fkpp/pst-taupos-$(n_chains)x$(n_samples).jls"), pst)
+
+# calc log likelihood 
+pst = deserialize(projectdir("adni/chains/local-fkpp/pst-taupos-4x2000-vc.jls"));
+log_likelihood = pointwise_loglikelihoods(m, MCMCChains.get_sections(pst, :parameters));
+serialize(projectdir("adni/chains/local-fkpp/ll-taupos-$(n_chains)x$(n_samples).jls"), log_likelihood)

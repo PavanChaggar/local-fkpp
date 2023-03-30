@@ -149,10 +149,16 @@ m = logistic(vecsubdata, prob, initial_conditions, times, n_pos);
 m();
 
 n_chains = 4
+samples = 2000
 pst = sample(m, 
              Turing.NUTS(0.8),
              MCMCSerial(), 
-             2_000, 
+             samples, 
              n_chains,
              progress=false)
-serialize(projectdir("adni/chains/logistic/pst-taupos-$(n_chains)x2000.jls"), pst)
+serialize(projectdir("adni/chains/logistic/pst-taupos-$(n_chains)x$(samples).jls"), pst)
+
+# calc log likelihood 
+pst = deserialize(projectdir("adni/chains/logistic/pst-taupos-4x2000.jls"));
+log_likelihood = pointwise_loglikelihoods(m, MCMCChains.get_sections(pst, :parameters));
+serialize(projectdir("adni/chains/logistic/ll-taupos-$(n_chains)x$(n_samples).jls"), log_likelihood)

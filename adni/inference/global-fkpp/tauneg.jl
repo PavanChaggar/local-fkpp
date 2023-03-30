@@ -171,10 +171,16 @@ m = globalfkpp(vecsubdata, prob, initial_conditions, max_suvr, times, n_neg);
 m();
 
 n_chains = 4
+samples = 2000
 pst = sample(m, 
              Turing.NUTS(0.8),
              MCMCSerial(), 
-             2_000, 
+             samples, 
              n_chains,
              progress=false)
-serialize(projectdir("adni/chains/global-fkpp/pst-tauneg-$(n_chains)x2000-vc.jls"), pst)
+serialize(projectdir("adni/chains/global-fkpp/pst-tauneg-$(n_chains)x$(samples)-vc.jls"), pst)
+
+# calc log likelihood 
+pst = deserialize(projectdir("adni/chains/global-fkpp/pst-tauneg-4x2000-vc.jls"));
+log_likelihood = pointwise_loglikelihoods(m, MCMCChains.get_sections(pst, :parameters));
+serialize(projectdir("adni/chains/global-fkpp/ll-tauneg-$(n_chains)x$(n_samples).jls"), log_likelihood)
