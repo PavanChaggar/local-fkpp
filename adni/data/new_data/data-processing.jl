@@ -8,6 +8,7 @@ abdata =  CSV.read(projectdir("adni/data/new_data/UCBERKELEYAV45_8mm_02_17_23.cs
 
 # replace missing ab status with 0
 abstatus = abdata[:, "SUMMARYSUVR_COMPOSITE_REFNORM_0.78CUTOFF"]
+findall(x -> x isa Missing, abstatus)
 abdata[:, "SUMMARYSUVR_COMPOSITE_REFNORM_0.78CUTOFF"] = coalesce.(abdata[:,"SUMMARYSUVR_COMPOSITE_REFNORM_0.78CUTOFF"], 0)
 
 # check all ab positive ids are the same
@@ -17,7 +18,7 @@ zipped_abstatus = zip(findall(x -> x isa Int && x == 1, abstatus),
 allequal(allequal.(zipped_abstatus))
 
 # make column in tau data for ab status
-taudata.AB_Status = fill(0,size(taudata, 1))
+taudata.AB_Status = fill(-1,size(taudata, 1))
 
 function get_sub_scans(df, id)
     filter(X -> X.RID == id, df)
@@ -27,7 +28,7 @@ function get_ab_status(taudf, abdf, id)
     tau_scans = get_sub_scans(taudf, id)
     ab_scans = get_sub_scans(abdf, id)
     if size(ab_scans, 1) == 0
-        return 0
+        return -1
     else
         init_tau_date = minimum(tau_scans.EXAMDATE)
         ab_scan_dates = ab_scans.EXAMDATE
