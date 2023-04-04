@@ -37,17 +37,16 @@ neo = findall(x -> x ∈ neo_regions, cortex.Label)
 #-------------------------------------------------------------------------------
 # Data 
 #-------------------------------------------------------------------------------
-sub_data_path = projectdir("adni/data/AV1451_Diagnosis-STATUS-STIME-braak-regions.csv")
+sub_data_path = projectdir("adni/data/new_data/UCBERKELEYAV1451_8mm_02_17_23_AB_Status.csv")
 alldf = CSV.read(sub_data_path, DataFrame)
 
-posdf = filter(x -> x.STATUS == "NEG", alldf)
+negdf = filter(x -> x.AB_Status == 0, alldf)
 
 dktdict = Connectomes.node2FS()
 dktnames = [dktdict[i] for i in cortex.ID]
 
-data = ADNIDataset(posdf, dktnames; min_scans=3)
+data = ADNIDataset(negdf, dktnames; min_scans=3)
 n_subjects = length(data)
-
 
 gmm_moments = CSV.read(projectdir("adni/data/component_moments.csv"), DataFrame)
 ubase, upath = get_dkt_moments(gmm_moments, dktnames)
@@ -154,7 +153,7 @@ Random.seed!(1234);
 m = localfkpp(vecsubdata, prob, initial_conditions, times, n_subjects)
 m();
 
-n_chains = 4
+n_chains = 1
 n_samples = 2_000
 pst = sample(m, 
              Turing.NUTS(0.8),
