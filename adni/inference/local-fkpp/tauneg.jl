@@ -165,7 +165,7 @@ Random.seed!(1234);
 m = localfkpp(vecsubdata, prob, initial_conditions, times, n_neg)
 m();
 
-n_chains = 1
+n_chains = 4
 n_samples = 2_000
 pst = sample(m, 
              Turing.NUTS(0.8),

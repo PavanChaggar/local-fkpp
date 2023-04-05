@@ -156,14 +156,14 @@ Random.seed!(1234)
 m = localfkpp(vecsubdata, prob, initial_conditions, times, n_pos);
 m();
 
-n_chains = 1
+n_chains = 4
 n_samples = 2_000
 pst = sample(m, 
              Turing.NUTS(0.8),
              MCMCSerial(), 
              n_samples, 
              n_chains,
-             progress=true)
+             progress=false)
 serialize(projectdir("adni/chains/local-fkpp/pst-taupos-$(n_chains)x$(n_samples).jls"), pst)
 
 # calc log likelihood 
