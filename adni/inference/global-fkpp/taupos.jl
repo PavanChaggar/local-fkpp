@@ -162,6 +162,7 @@ Random.seed!(1234);
 m = globalfkpp(vecsubdata, prob, initial_conditions, max_suvr, times, n_pos);
 m();
 
+println("starting inference")
 n_chains = 4
 samples = 2000
 pst = sample(m, 
@@ -169,7 +170,7 @@ pst = sample(m,
              MCMCThreads(), 
              samples, 
              n_chains,
-             progress=false)
+             progress=true)
 serialize(projectdir("adni/chains/global-fkpp/pst-taupos-$(n_chains)x$(samples).jls"), pst)
 
 
