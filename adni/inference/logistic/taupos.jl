@@ -82,10 +82,8 @@ function output_func(sol,i)
     (sol,false)
 end
 
-subdata = [calc_suvr(data, i) for i in tau_pos]
-for i in 1:n_pos
-    normalise!(subdata[i], u0, cc)
-end
+_subdata = [calc_suvr(data, i) for i in tau_pos]
+subdata = [normalise(sd, u0, cc) for sd in _subdata]
 
 vecsubdata = reduce(vcat, reduce(hcat, subdata))
 
@@ -94,7 +92,7 @@ times =  [get_times(data, i) for i in tau_pos]
 
 prob = ODEProblem(NetworkLogistic, 
                   initial_conditions[1], 
-                  (0.,5.), 
+                  (0.,maximum(reduce(vcat, times))), 
                   1.0)
                   
 sol = solve(prob, Tsit5())
@@ -109,7 +107,6 @@ end
 function vec_sol(es)
     reduce(vcat, [vec(sol) for sol in es])
 end
-
 #-------------------------------------------------------------------------------
 # Inference 
 #-------------------------------------------------------------------------------
