@@ -37,25 +37,27 @@ neo = findall(x -> x ∈ neo_regions, cortex.Label)
 #-------------------------------------------------------------------------------
 # Data 
 #-----------------------------------------------------------------------------
-sub_data_path = projectdir("adni/data/AV1451_Diagnosis-STATUS-STIME-braak-regions.csv")
+sub_data_path = projectdir("adni/data/new_data/UCBERKELEYAV1451_8mm_02_17_23_AB_Status.csv")
 alldf = CSV.read(sub_data_path, DataFrame)
 
-posdf = filter(x -> x.STATUS == "POS", alldf)
+#posdf = filter(x -> x.STATUS == "POS", alldf)
+posdf = filter(x -> x.AB_Status == 1, alldf)
 
 dktdict = Connectomes.node2FS()
 dktnames = [dktdict[i] for i in cortex.ID]
 
 data = ADNIDataset(posdf, dktnames; min_scans=3)
+n_data = length(data)
 
 # Ask Jake where we got these cutoffs from? 
 mtl_cutoff = 1.375
 neo_cutoff = 1.395
 
-mtl_pos = filter(x -> regional_mean(data, mtl, x) >= mtl_cutoff, 1:50)
-neo_pos = filter(x -> regional_mean(data, neo, x) >= neo_cutoff, 1:50)
+mtl_pos = filter(x -> regional_mean(data, mtl, x) >= mtl_cutoff, 1:n_data)
+neo_pos = filter(x -> regional_mean(data, neo, x) >= neo_cutoff, 1:n_data)
 
-tau_pos = findall(x -> x ∈ unique([mtl_pos; neo_pos]), 1:50)
-tau_neg = findall(x -> x ∉ tau_pos, 1:50)
+tau_pos = findall(x -> x ∈ unique([mtl_pos; neo_pos]), 1:n_data)
+tau_neg = findall(x -> x ∉ tau_pos, 1:n_data)
 
 n_pos = length(tau_pos)
 n_neg = length(tau_neg)
@@ -131,6 +133,7 @@ end
 
     ensemble_sol = solve(ensemble_prob, 
                          Tsit5(), 
+                         EnsembleSerial(),
                          abstol = 1e-9, 
                          reltol = 1e-9, 
                          trajectories=n, 
@@ -154,16 +157,16 @@ m = logistic(vecsubdata, prob, initial_conditions, times, n_neg);
 m();
 
 n_chains = 4
+n_samples = 2000
 pst = sample(m, 
              Turing.NUTS(0.8),
-             MCMCSerial(), 
-             2_000, 
+             MCMCThreads(), 
+             n_samples, 
              n_chains,
-             progress=false)
-
-serialize(projectdir("adni/chains/logistic/pst-tauneg-$(n_chains)x2000.jls"), pst)
+             progress=true)
+serialize(projectdir("adni/chains/logistic/pst-tauneg-$(n_chains)x$(n_samples).jls"), pst)
 
 # calc log likelihood 
-pst = deserialize(projectdir("adni/chains/logistic/pst-tauneg-4x2000.jls"));
+pst = deserialize(projectdir("adni/chains/logistic/pst-tauneg-$(n_chains)x$(n_samples).jls"));
 log_likelihood = pointwise_loglikelihoods(m, MCMCChains.get_sections(pst, :parameters));
 serialize(projectdir("adni/chains/logistic/ll-tauneg-$(n_chains)x$(n_samples).jls"), log_likelihood)
