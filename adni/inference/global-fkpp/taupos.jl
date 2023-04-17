@@ -61,7 +61,6 @@ n_pos = length(tau_pos)
 n_neg = length(tau_neg)
 
 gmm_moments = CSV.read(projectdir("adni/data/component_moments.csv"), DataFrame)
-#gmm_moments2 = CSV.read(projectdir("data/adni-data/component_moments-bothcomps.csv"), DataFrame)
 ubase, upath = get_dkt_moments(gmm_moments, dktnames)
 u0 = mean.(ubase)
 cc = quantile.(upath, .99)
@@ -164,15 +163,14 @@ m();
 
 println("starting inference")
 n_chains = 4
-samples = 2000
+n_samples = 2000
 pst = sample(m, 
              Turing.NUTS(0.8),
              MCMCThreads(), 
-             samples, 
+             n_samples, 
              n_chains,
              progress=true)
-serialize(projectdir("adni/chains/global-fkpp/pst-taupos-$(n_chains)x$(samples).jls"), pst)
-
+serialize(projectdir("adni/chains/global-fkpp/pst-taupos-$(n_chains)x$(n_samples).jls"), pst)
 
 # calc log likelihood 
 pst = deserialize(projectdir("adni/chains/global-fkpp/pst-taupos-4x2000.jls"));
