@@ -139,7 +139,6 @@ end
 
     ensemble_sol = solve(ensemble_prob, 
                          Tsit5(), 
-                         EnsembleSerial(),
                          abstol = 1e-9, 
                          reltol = 1e-9, 
                          trajectories=n, 
@@ -164,9 +163,9 @@ m();
 println("starting inference")
 n_chains = 4
 n_samples = 2000
-pst = sample(m, 
+pst = sample(m,
              Turing.NUTS(0.8),
-             MCMCThreads(), 
+             MCMCSerial(),
              n_samples, 
              n_chains,
              progress=true)
