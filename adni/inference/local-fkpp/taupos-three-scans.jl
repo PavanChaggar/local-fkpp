@@ -35,25 +35,25 @@ neo = findall(x -> x ∈ neo_regions, cortex.Label)
 #-------------------------------------------------------------------------------
 # Data 
 #-----------------------------------------------------------------------------
-sub_data_path = projectdir("adni/data/AV1451_Diagnosis-STATUS-STIME-braak-regions.csv")
+sub_data_path = projectdir("adni/data/new_data/UCBERKELEYAV1451_8mm_02_17_23_AB_Status.csv")
 alldf = CSV.read(sub_data_path, DataFrame)
 
-posdf = filter(x -> x.STATUS == "POS", alldf)
+posdf = filter(x -> x.AB_Status == 1, alldf)
 
 dktdict = Connectomes.node2FS()
 dktnames = [dktdict[i] for i in cortex.ID]
 
 data = ADNIDataset(posdf, dktnames; min_scans=3)
-
+n_data = length(data)
 # Ask Jake where we got these cutoffs from? 
 mtl_cutoff = 1.375
 neo_cutoff = 1.395
 
-mtl_pos = filter(x -> regional_mean(data, mtl, x) >= mtl_cutoff, 1:50)
-neo_pos = filter(x -> regional_mean(data, neo, x) >= neo_cutoff, 1:50)
+mtl_pos = filter(x -> regional_mean(data, mtl, x) >= mtl_cutoff, 1:n_data)
+neo_pos = filter(x -> regional_mean(data, neo, x) >= neo_cutoff, 1:n_data)
 
-tau_pos = findall(x -> x ∈ unique([mtl_pos; neo_pos]), 1:50)
-tau_neg = findall(x -> x ∉ tau_pos, 1:50)
+tau_pos = findall(x -> x ∈ unique([mtl_pos; neo_pos]), 1:n_data)
+tau_neg = findall(x -> x ∉ tau_pos, 1:n_data)
 
 n_pos = length(tau_pos)
 n_neg = length(tau_neg)
@@ -89,9 +89,7 @@ function output_func(sol,i)
 end
 
 _subdata = [calc_suvr(data, i) for i in tau_pos]
-for i in 1:n_pos
-    normalise!(_subdata[i], u0, cc)
-end
+[normalise!(_subdata[i], u0, cc) for i in 1:n_pos]
 
 subdata = [sd[:, 1:3] for sd in _subdata]
 vecsubdata = reduce(vcat, reduce(hcat, subdata))
@@ -113,7 +111,7 @@ prob = ODEProblem(NetworkLocalFKPP,
                   (0., maxt), 
                   [1.0,1.0])
                   
-                  sol = solve(prob, Tsit5())
+sol = solve(prob, Tsit5())
 
 ensemble_prob = EnsembleProblem(prob, prob_func=make_prob_func(initial_conditions_arr, ones(n_pos), ones(n_pos), times), output_func=output_func)
 ensemble_sol = solve(ensemble_prob, Tsit5(), trajectories=n_pos)
