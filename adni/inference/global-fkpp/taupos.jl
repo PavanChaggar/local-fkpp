@@ -36,7 +36,7 @@ neo = findall(x -> x ∈ neo_regions, cortex.Label)
 #-------------------------------------------------------------------------------
 # Data 
 #-----------------------------------------------------------------------------
-sub_data_path = projectdir("adni/data/new_data/UCBERKELEYAV1451_8mm_02_17_23_AB_Status.csv")
+sub_data_path = projectdir("adni/data/new_data/UCBERKELEYAV1451_04_26_22_AB_Status.csv")
 alldf = CSV.read(sub_data_path, DataFrame)
 
 #posdf = filter(x -> x.STATUS == "POS", alldf)
