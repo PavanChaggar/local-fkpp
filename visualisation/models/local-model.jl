@@ -36,16 +36,16 @@ seed = filter(x -> x.Label ∈ seed_regions, cortex)
 seed_value = mean([cc[seed.rID] p0[seed.rID]], dims=2)
 p0[seed.rID] .= seed_value 
 
-r = 0.1
+r = 0.15
 a = 1.1
 prob = ODEProblem(NetworkExFKPP, p0, (0.0,10.0), [r,a, u0, cc])
 
-ts = range(0.0, 10.0, 5)
+ts = range(0.0, 8.0, 5)
 n = length(ts)
 sol = solve(prob, Rodas4(), reltol=1e-12, saveat=ts);
 allsol = solve(prob, Rodas4(), reltol=1e-12, saveat=0.1)
 
-Plots.plot(sol, vars=(1:36), labels=false)
+# Plots.plot(sol, vars=(1:36), labels=false)
 
 solcol = [(sol[i] .- minimum(u0)) ./ (maximum(cc) .- minimum(u0)) for i in 1:n]
 
