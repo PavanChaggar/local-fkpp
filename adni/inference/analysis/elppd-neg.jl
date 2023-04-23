@@ -30,30 +30,26 @@ neo = findall(x -> x ∈ neo_regions, cortex.Label)
 #-------------------------------------------------------------------------------
 # Data 
 #-----------------------------------------------------------------------------
-sub_data_path = projectdir("adni/data/AV1451_Diagnosis-STATUS-STIME-braak-regions.csv");
+sub_data_path = projectdir("adni/data/new_data/UCBERKELEYAV1451_8mm_02_17_23_AB_Status.csv")
 alldf = CSV.read(sub_data_path, DataFrame)
 
-posdf = filter(x -> x.STATUS == "POS", alldf)
+posdf = filter(x -> x.AB_Status == 1, alldf)
 
 dktdict = Connectomes.node2FS()
 dktnames = [dktdict[i] for i in cortex.ID]
 
 data = ADNIDataset(posdf, dktnames; min_scans=2, max_scans=2)
-
+n_data = length(data)
 # Ask Jake where we got these cutoffs from? 
+
 mtl_cutoff = 1.375
 neo_cutoff = 1.395
 
-function regional_mean(data, rois, sub)
-    subsuvr = calc_suvr(data, sub)
-    mean(subsuvr[rois,1])
-end
+mtl_pos = filter(x -> regional_mean(data, mtl, x) >= mtl_cutoff, 1:n_data)
+neo_pos = filter(x -> regional_mean(data, neo, x) >= neo_cutoff, 1:n_data)
 
-mtl_pos = filter(x -> regional_mean(data, mtl, x) >= mtl_cutoff, 1:50)
-neo_pos = filter(x -> regional_mean(data, neo, x) >= neo_cutoff, 1:50)
-
-tau_pos = findall(x -> x ∈ unique([mtl_pos; neo_pos]), 1:50)
-tau_neg = findall(x -> x ∉ tau_pos, 1:50)
+tau_pos = findall(x -> x ∈ unique([mtl_pos; neo_pos]), 1:n_data)
+tau_neg = findall(x -> x ∉ tau_pos, 1:n_data)
 
 n_pos = length(tau_pos)
 n_neg = length(tau_neg)
@@ -93,7 +89,7 @@ _times =  [get_times(data, i) for i in tau_neg]
 times = _times[nonzerosubs]
 second_times = [t[2] for t in times]
 
-local_pst = deserialize(projectdir("adni/chains/local-fkpp/pst-tauneg-4x2000-vc.jls"));
+local_pst = deserialize(projectdir("adni/chains/local-fkpp/pst-tauneg-4x2000.jls"));
 #-------------------------------------------------------------------------------
 # Global FKPP
 #-------------------------------------------------------------------------------
@@ -103,7 +99,7 @@ end
 
 max_suvr = maximum(reduce(vcat, reduce(hcat, subdata)))
 
-global_pst = deserialize(projectdir("adni/chains/global-fkpp/pst-tauneg-4x2000-vc.jls"));
+global_pst = deserialize(projectdir("adni/chains/global-fkpp/pst-tauneg-4x2000.jls"));
 #-------------------------------------------------------------------------------
 # Diffusion
 #-------------------------------------------------------------------------------
@@ -111,7 +107,7 @@ function NetworkDiffusion(du, u, p, t; Lv = Lv)
     du .= -p[1] * Lv * u
 end
 
-diffusion_pst = deserialize(projectdir("adni/chains/diffusion/pst-tauneg-4x2000-vc.jls"));
+diffusion_pst = deserialize(projectdir("adni/chains/diffusion/pst-tauneg-4x2000.jls"));
 #-------------------------------------------------------------------------------
 # Logistic
 #-------------------------------------------------------------------------------
@@ -195,20 +191,12 @@ end
 
 diffusion_elppd = elppd_diffusion(local_pst, initial_conditions, subdata, second_times)
 
-local_map, global_map, logistic_map, diffusion_map = maximum(local_pst[:lp]), maximum(global_pst[:lp]), maximum(logistic_pst[:lp]), maximum(diffusion_pst[:lp])
-max_map = maximum([local_map, global_map, logistic_map, diffusion_map])
-
-map_df = DataFrame("Local" => local_map - max_map, 
-                   "Global" => global_map - max_map, 
-                   "Diffusion" => diffusion_map - max_map,
-                   "Logistic" => logistic_map - max_map)
-
 max_elppd = maximum([local_elppd, global_elppd, logistic_elppd, diffusion_elppd])
 
 elppd_df = DataFrame("Local" => local_elppd - max_elppd, 
                      "Global" => global_elppd - max_elppd, 
-                     "Logistic" => logistic_elppd - max_elppd, 
-                     "Diffusion" => diffusion_elppd - max_elppd)
+                     "Diffusion" => diffusion_elppd - max_elppd,
+                     "Logistic" => logistic_elppd - max_elppd)
 
 local_ll = deserialize(projectdir("adni/chains/local-fkpp/ll-tauneg-4x2000.jls"));
 global_ll = deserialize(projectdir("adni/chains/global-fkpp/ll-tauneg-4x2000.jls"));
