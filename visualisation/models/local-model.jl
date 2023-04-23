@@ -40,7 +40,7 @@ r = 0.15
 a = 1.1
 prob = ODEProblem(NetworkExFKPP, p0, (0.0,10.0), [r,a, u0, cc])
 
-ts = range(0.0, 8.0, 5)
+ts = range(0.0, 10.0, 5)
 n = length(ts)
 sol = solve(prob, Rodas4(), reltol=1e-12, saveat=ts);
 allsol = solve(prob, Rodas4(), reltol=1e-12, saveat=0.1)

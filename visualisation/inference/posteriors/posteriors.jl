@@ -10,10 +10,9 @@ using MCMCChains
 #-------------------------------------------------------------------------------
 # Hierarchical Distributions -- ADNI
 #-------------------------------------------------------------------------------
-pst = deserialize(projectdir("adni/chains/local-fkpp/pst-taupos-4x2000-vc.jls"));
-pst2 = deserialize(projectdir("adni/chains/local-fkpp/pst-tauneg-4x2000-vc.jls"));
-pst3 = deserialize(projectdir("adni/chains/local-fkpp/pst-abneg-4x2000-vc.jls"));
-prior = deserialize(projectdir("adni/chains/local-fkpp/prior-taupos-8000.jls"));
+pst = deserialize(projectdir("adni/chains/local-fkpp/pst-taupos-4x2000.jls"));
+pst2 = deserialize(projectdir("adni/chains/local-fkpp/pst-tauneg-4x2000.jls"));
+pst3 = deserialize(projectdir("adni/chains/local-fkpp/pst-abneg-4x2000.jls"));
 
 [p[:numerical_error] |> sum for p in [pst, pst2, pst3]]
 
@@ -21,7 +20,7 @@ using CairoMakie; CairoMakie.activate!()
 using Colors
 
 begin
-    n_samples = 4000
+    n_samples = 8000
     f = Figure(resolution=(2000, 750), fontsize=50)
     g1 = f[1, 1] = GridLayout()
     g2 = f[1, 2] = GridLayout()
@@ -35,18 +34,18 @@ begin
     ax = Axis(g2[1,1], 
             xticklabelsize=30, xlabelsize=30, xlabel="1 / yr", 
             yticklabelsize=40,
-            titlesize=40, title="Diffusion", xticks=0.0:0.025:0.075,
-            xminorticks=0.0:0.0125:0.075, xminorticksvisible=true, 
+            titlesize=40, title="Diffusion", xticks=0.0:0.025:0.1,
+            xminorticks=0.0:0.0125:0.1, xminorticksvisible=true, 
             xticksize=20, xminorticksize=15, xgridcolor=RGBAf(0, 0, 0, 0.25))
-            xlims!(ax, -0.005, 0.077)
+            xlims!(ax, -0.005, 0.105)
     hideydecorations!(ax)
     hidexdecorations!(ax, grid=false, minorticks=false, label=false, ticks=false, ticklabels=false)
     hidespines!(ax, :t, :r, :l)
 
     rainclouds!(ax, category_labels, data_array;
                 orientation = :horizontal, gap=0.0,
-                plot_boxplots = true, cloud_width=0.25,
-                clouds=hist, hist_bins=50,
+                plot_boxplots = true, cloud_width=0.5,
+                clouds=hist, hist_bins=100,
                 color = colors[indexin(category_labels, unique(category_labels))])
 
     category_labels = reduce(vcat, fill.(_category_label, n_samples))    
@@ -54,18 +53,18 @@ begin
     ax = Axis(g1[1,1], 
             xticklabelsize=30, xlabelsize=30, xlabel="1 / yr", 
             yticklabelsize=40, ylabelsize=30, ylabel="Density",
-            titlesize=40, title="Growth", xticks=-0.25:0.125:0.25, 
-            xminorticks=-0.25:0.125:0.25, xminorticksvisible=true, 
+            titlesize=40, title="Growth", xticks=-0.2:0.1:0.2, 
+            xminorticks=-0.2:0.05:0.2, xminorticksvisible=true, 
             xticksize=20, xminorticksize=15, xgridcolor=RGBAf(0, 0, 0, 0.25))
-            xlims!(ax, -0.275, 0.275)
+            xlims!(ax, -0.225, 0.225)
         hideydecorations!(ax, label=false, ticklabels=false)
         hidexdecorations!(ax, grid=false, minorticks=false, label=false, ticks=false, ticklabels=false)
     hidespines!(ax, :t, :r, :l)
 
     rainclouds!(ax, category_labels, data_array;
                 orientation = :horizontal, gap=0.0,
-                plot_boxplots = true, cloud_width=0.25,
-                clouds=hist, hist_bins=50,
+                plot_boxplots = true, cloud_width=0.5,
+                clouds=hist, hist_bins=100,
                 color = colors[indexin(category_labels, unique(category_labels))])
 
     colgap!(f.layout, 1, 50)
@@ -107,8 +106,9 @@ begin
         hidespines!(ax, :t, :r, :l)
 
         rainclouds!(ax, category_labels, data_array;
-                        orientation = :horizontal, gap=-1.5,
+                        orientation = :horizontal, gap=0.0,
                         plot_boxplots = true, cloud_width=0.5,
+                        clouds=hist, hist_bins=100,
                         color = colors[indexin(category_labels, unique(category_labels))])
 
         category_labels = reduce(vcat, fill.(_category_label, n_samples))    
@@ -127,8 +127,9 @@ begin
         hidespines!(ax, :t, :r, :l)
 
         rainclouds!(ax, category_labels, data_array;
-        orientation = :horizontal, gap=-1.5,
+        orientation = :horizontal, gap=0.0,
         plot_boxplots = true, cloud_width=0.5,
+        clouds=hist, hist_bins=100,
         color = colors[indexin(category_labels, unique(category_labels))])
 
         colgap!(f.layout, 1, 50)

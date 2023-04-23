@@ -14,7 +14,7 @@ cortex = filter(x -> x.Lobe != "subcortex", c.parc)
 right_cortex = filter(x -> x.Hemisphere == "right", cortex)
 
 dktdict = Connectomes.node2FS()
-dktnames = [dktdict[i] for i in right_cortex.ID]
+dktnames = [dktdict[i] for i in cortex.ID]
 gmm_moments = CSV.read(projectdir("adni/data/component_moments.csv"), DataFrame)
 norm, path = get_dkt_moments(gmm_moments, dktnames)
 u0 = mean.(norm)
@@ -26,12 +26,12 @@ std(u0)
 describe(cc)
 std(cc)
 
-scaled_cc = cc .- minimum(u0)
+scaled_cc = (cc .- minimum(u0)) ./ (maximum(cc) .- minimum(u0))
 
 begin
     GLMakie.activate!()
     cmap = ColorSchemes.RdYlBu |> reverse
-    f = Figure(resolution=(1500,700))
+    f = Figure(resolution=(1200,600))
 
     ax = Axis3(f[1,1], 
                aspect = :data, 
@@ -87,4 +87,4 @@ begin
     f
 end
 
-save(projectdir("adni/visualisation/models/carrying-capacities.jpeg"), f)
+save(projectdir("visualisation/models/output/carrying-capacities.jpeg"), f)
