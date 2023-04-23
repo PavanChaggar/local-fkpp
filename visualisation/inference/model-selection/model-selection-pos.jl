@@ -30,24 +30,24 @@ neo = findall(x -> x ∈ neo_regions, cortex.Label)
 #-------------------------------------------------------------------------------
 # Data 
 #-------------------------------------------------------------------------------
-sub_data_path = projectdir("adni/data/AV1451_Diagnosis-STATUS-STIME-braak-regions.csv")
+sub_data_path = projectdir("adni/data/new_data/UCBERKELEYAV1451_8mm_02_17_23_AB_Status.csv")
 alldf = CSV.read(sub_data_path, DataFrame)
 
-posdf = filter(x -> x.STATUS == "POS", alldf)
+posdf = filter(x -> x.AB_Status == 1, alldf)
 
 dktdict = Connectomes.node2FS()
 dktnames = [dktdict[i] for i in cortex.ID]
 
 insample_data = ADNIDataset(posdf, dktnames; min_scans=3)
-
+insample_n_data = length(insample_data)
 mtl_cutoff = 1.375
 neo_cutoff = 1.395
 
-insample_mtl_pos = filter(x -> regional_mean(insample_data, mtl, x) >= mtl_cutoff, 1:50)
-insample_neo_pos = filter(x -> regional_mean(insample_data, neo, x) >= neo_cutoff, 1:50)
+insample_mtl_pos = filter(x -> regional_mean(insample_data, mtl, x) >= mtl_cutoff, 1:insample_n_data)
+insample_neo_pos = filter(x -> regional_mean(insample_data, neo, x) >= neo_cutoff, 1:insample_n_data)
 
-insample_tau_pos = findall(x -> x ∈ unique([insample_mtl_pos; insample_neo_pos]), 1:50)
-insample_tau_neg = findall(x -> x ∉ insample_tau_pos, 1:50)
+insample_tau_pos = findall(x -> x ∈ unique([insample_mtl_pos; insample_neo_pos]), 1:insample_n_data)
+insample_tau_neg = findall(x -> x ∉ insample_tau_pos, 1:insample_n_data)
 
 insample_n_pos = length(insample_tau_pos)
 insample_n_neg = length(insample_tau_neg)
@@ -56,7 +56,6 @@ gmm_moments = CSV.read(projectdir("adni/data/component_moments.csv"), DataFrame)
 ubase, upath = get_dkt_moments(gmm_moments, dktnames)
 u0 = mean.(ubase)
 cc = quantile.(upath, .99)
-
 #-------------------------------------------------------------------------------
 # Pos data 
 #-------------------------------------------------------------------------------
@@ -73,12 +72,13 @@ insample_max_t = maximum(reduce(vcat, insample_pos_times))
 # Out of sample pos data 
 #-------------------------------------------------------------------------------
 outsample_data = ADNIDataset(posdf, dktnames; min_scans=2, max_scans=2)
+outsample_n_data = length(outsample_data)
 
-outsample_mtl_pos = filter(x -> regional_mean(outsample_data, mtl, x) >= mtl_cutoff, 1:50)
-outsample_neo_pos = filter(x -> regional_mean(outsample_data, neo, x) >= neo_cutoff, 1:50)
+outsample_mtl_pos = filter(x -> regional_mean(outsample_data, mtl, x) >= mtl_cutoff, 1:outsample_n_data)
+outsample_neo_pos = filter(x -> regional_mean(outsample_data, neo, x) >= neo_cutoff, 1:outsample_n_data)
 
-outsample_tau_pos = findall(x -> x ∈ unique([outsample_mtl_pos; outsample_neo_pos]), 1:50)
-outsample_tau_neg = findall(x -> x ∉ outsample_tau_pos, 1:50)
+outsample_tau_pos = findall(x -> x ∈ unique([outsample_mtl_pos; outsample_neo_pos]), 1:outsample_n_data)
+outsample_tau_neg = findall(x -> x ∉ outsample_tau_pos, 1:outsample_n_data)
 
 outsample_n_pos = length(outsample_tau_pos)
 outsample_n_neg = length(outsample_tau_neg)
@@ -119,9 +119,9 @@ end
 #-------------------------------------------------------------------------------
 # Posteriors
 #-------------------------------------------------------------------------------
-local_pst = mean(deserialize(projectdir("adni/chains/local-fkpp/pst-taupos-4x2000-vc.jls")));
-global_pst = mean(deserialize(projectdir("adni/chains/global-fkpp/pst-taupos-4x2000-vc.jls")));
-diffusion_pst = mean(deserialize(projectdir("adni/chains/diffusion/pst-taupos-4x2000-vc.jls")));
+local_pst = mean(deserialize(projectdir("adni/chains/local-fkpp/pst-taupos-4x2000.jls")));
+global_pst = mean(deserialize(projectdir("adni/chains/global-fkpp/pst-taupos-4x2000.jls")));
+diffusion_pst = mean(deserialize(projectdir("adni/chains/diffusion/pst-taupos-4x2000.jls")));
 logistic_pst = mean(deserialize(projectdir("adni/chains/logistic/pst-taupos-4x2000.jls")));
 
 #-------------------------------------------------------------------------------
@@ -169,10 +169,6 @@ diffusion_sols = simulate(NetworkDiffusion,
 αs = [logistic_pst["α[$i]", :mean] for i in 1:insample_n_pos]
 
 logistic_sols = simulate(NetworkLogistic, insample_pos_initial_conditions, αs, insample_pos_times);
-#-------------------------------------------------------------------------------
-# Fits
-#-------------------------------------------------------------------------------
-
 #-------------------------------------------------------------------------------
 # Tau Positive Prediction Plot
 #-------------------------------------------------------------------------------
@@ -276,7 +272,6 @@ begin
 end
 save(projectdir("visualisation/inference/model-selection/output/model-fits.pdf"), f)
 
-
 #-------------------------------------------------------------------------------
 # Regional average
 #-------------------------------------------------------------------------------
@@ -328,11 +323,11 @@ begin
         ylims!(ax, start, stop + border)
         lines!(start:0.05:stop+border, start:0.05:stop+border, color=(:grey, 0.75), linewidth=5, linestyle=:dash)
 
-        preds = reduce(hcat, [get_sol_mean_t(_sol, i) for i in 1:4])
-        obs = reduce(hcat, [get_sol_mean_t(insample_pos_data, i) for i in 1:4])
-        fidx = [7, 10, 12]
-        fpreds = reduce(hcat, [get_sol_mean_t(_sol[fidx], i) for i in 1:4])
-        fobs = reduce(hcat, [get_sol_mean_t(insample_pos_data[fidx], i) for i in 1:4])
+        preds = reduce(hcat, [get_sol_mean_t(_sol, j) for j in 1:4])
+        obs = reduce(hcat, [get_sol_mean_t(insample_pos_data, j) for j in 1:4])
+        fidx = findall(x -> length(x) > 3, insample_pos_times)
+        fpreds = reduce(hcat, [get_sol_mean_t(_sol[fidx], j) for j in 1:4])
+        fobs = reduce(hcat, [get_sol_mean_t(insample_pos_data[fidx], j) for j in 1:4])
 
         # for j in 1:insample_n_pos
         for (scan, col) in zip(collect(2:4), alphacolor.(cols, [1.0,0.5,0.3]))
@@ -602,14 +597,14 @@ begin
         
         scatter!(obs[:,end], preds[:,end], color=Colors.alphacolor(col, 0.5), markersize=20)
 
-        start = -0.1
-        stop = 0.1
+        start = -0.025
+        stop = 0.105
         ax = Axis(g[2, i][1,1], 
                 xlabel="Δ SUVR",
                 ylabel="Δ Prediction",
                 titlesize=titlesize, xlabelsize=xlabelsize, ylabelsize=ylabelsize, 
                 xticklabelsize=xticklabelsize, yticklabelsize=xticklabelsize, 
-                xticks=collect(start:0.05:stop), yticks=collect(start:0.05:stop),
+                xticks=collect(0:0.05:0.1), yticks=collect(0:0.05:0.1),
                 xminorgridvisible=true,yminorgridvisible=true,
                 xminorticksvisible=true, yminorticksvisible=true,
                 xminorticks=collect(start:0.025:stop),yminorticks=collect(start:0.025:stop),
@@ -619,7 +614,7 @@ begin
         end
         xlims!(ax, start, stop + (stop * 0.1))
         ylims!(ax, start, stop + (stop * 0.1))
-        lines!(start:0.1:stop, start:0.1:stop, color=(:grey, 0.75), linewidth=2, linestyle=:dash)
+        lines!(start:0.01:stop + (stop * 0.1), start:0.01:stop + (stop * 0.1), color=(:grey, 0.75), linewidth=2, linestyle=:dash)
 
         diffs = getdiff(obs, 2)
         soldiff = getdiff(preds, 2)
