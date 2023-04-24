@@ -135,6 +135,7 @@ end
 
     ensemble_sol = solve(ensemble_prob, 
                          Tsit5(), 
+                         EnsembleSerial(),
                          abstol = 1e-9, 
                          reltol = 1e-9, 
                          trajectories=n, 
@@ -159,7 +160,7 @@ n_chains = 4
 n_samples = 2_000
 pst = sample(m, 
              Turing.NUTS(0.8),
-             MCMCSerial(), 
+             MCMCThreads(), 
              n_samples, 
              n_chains,
              progress=false)
