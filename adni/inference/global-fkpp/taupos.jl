@@ -22,7 +22,7 @@ include(projectdir("functions.jl"))
 # Connectome and ROIs
 #-------------------------------------------------------------------------------
 connectome_path = Connectomes.connectome_path()
-all_c = filter(Connectome(connectome_path; norm=true), 1e-2);
+all_c = filter(Connectome(connectome_path; norm=true, weight_function = (n, l) -> n ./ l), 1e-2);
 
 subcortex = filter(x -> x.Lobe == "subcortex", all_c.parc);
 cortex = filter(x -> x.Lobe != "subcortex", all_c.parc);
@@ -139,6 +139,7 @@ end
 
     ensemble_sol = solve(ensemble_prob, 
                          Tsit5(), 
+                         EnsembleSerial(),
                          abstol = 1e-9, 
                          reltol = 1e-9, 
                          trajectories=n, 
@@ -165,7 +166,7 @@ n_chains = 4
 n_samples = 2000
 pst = sample(m,
              Turing.NUTS(0.8),
-             MCMCSerial(),
+             MCMCThreads(),
              n_samples, 
              n_chains,
              progress=true)

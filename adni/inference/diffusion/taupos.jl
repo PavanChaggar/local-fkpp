@@ -22,7 +22,7 @@ include(projectdir("functions.jl"))
 # Connectome and ROIs
 #-------------------------------------------------------------------------------
 connectome_path = Connectomes.connectome_path()
-all_c = filter(Connectome(connectome_path; norm=true), 1e-2);
+all_c = filter(Connectome(connectome_path; norm=true, weight_function = (n, l) -> n ./ l), 1e-2);
 
 subcortex = filter(x -> x.Lobe == "subcortex", all_c.parc);
 cortex = filter(x -> x.Lobe != "subcortex", all_c.parc);
@@ -109,7 +109,7 @@ prob = ODEProblem(NetworkDiffusion,
 sol = solve(prob, Tsit5())
 
 ensemble_prob = EnsembleProblem(prob, prob_func=make_prob_func(initial_conditions, collect(1:n_pos), times), output_func=output_func)
-ensemble_sol = solve(ensemble_prob, Tsit5(), trajectories=n_pos)
+ensemble_sol = solve(ensemble_prob, Tsit5(), EnsembleSerial(), trajectories=n_pos)
 
 function get_retcodes(es)
     [sol.retcode for sol in es]
