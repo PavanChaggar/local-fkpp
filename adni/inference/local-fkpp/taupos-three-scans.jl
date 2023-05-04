@@ -165,10 +165,8 @@ n_chains = 1
 n_samples = 2_000
 pst = sample(m, 
              Turing.NUTS(0.8),
-             MCMCThreads(), 
              n_samples, 
-             n_chains,
-             progress=false)
+             progress=true)
 serialize(projectdir("adni/chains/local-fkpp/pst-taupos-$(n_chains)x$(n_samples)-three.jls"), pst)
 
 # calc log likelihood 
