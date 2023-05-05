@@ -129,8 +129,9 @@ end
 
     ensemble_sol = solve(ensemble_prob, 
                          Tsit5(), 
-                         abstol = 1e-9, 
-                         reltol = 1e-9, 
+                         EnsembleSerial(),
+                         abstol = 1e-6, 
+                         reltol = 1e-6, 
                          trajectories=n, 
                          sensealg=InterpolatingAdjoint(autojacvec=ReverseDiffVJP(true)))
 
@@ -148,7 +149,7 @@ end
 setadbackend(:zygote)
 Random.seed!(1234)
 
-for i in 1:10
+Threads.@threads for i in 1:10
     println("Starting chain $i")
 
     shuffles = shuffle_cols.(subdata)
