@@ -83,7 +83,7 @@ end
 
 function make_prob_func(initial_conditions, p, a, times)
     function prob_func(prob,i,repeat)
-        remake(prob, u0=initial_conditions[i], p=[p[i], a[i]], saveat=times[i])
+        remake(prob, u0=initial_conditions[:,i], p=[p[i], a[i]], saveat=times[i])
     end
 end
 
@@ -100,20 +100,28 @@ nonzerosubs = findall(x -> sum(x) < 2, [sum(sd, dims=1) .== 0 for sd in blsd])
 subdata = [sd[:, 1:3] for sd in _subdata[nonzerosubs]]
 vecsubdata = reduce(vcat, reduce(hcat, subdata))
 
-initial_conditions = [sd[:,1] for sd in subdata]
+function percent_signal(inits, u0, cc)
+    (inits .- u0) ./ (cc .- u0)
+end
+
+initial_conditions_vec = [sd[:,1] for sd in subdata]
+initial_conditions_var_prior = [percent_signal(inits, u0, cc) .* 0.5 for inits in initial_conditions_vec]
+initial_conditions_arr = reduce(hcat, initial_conditions_vec)
+
 _times =  [get_times(data, i) for i in tau_neg]
 times = [t[1:3] for t in _times[nonzerosubs]]
+maxt = maximum(reduce(vcat, times))
 
 n_neg = length(nonzerosubs)
 
 prob = ODEProblem(NetworkLocalFKPP, 
-                  initial_conditions[1], 
-                  (0.,maximum(reduce(vcat, times))), 
+                  initial_conditions_arr[:,1], 
+                  (0., maxt), 
                   [1.0,1.0])
                   
 sol = solve(prob, Tsit5())
 
-ensemble_prob = EnsembleProblem(prob, prob_func=make_prob_func(initial_conditions, ones(n_neg), ones(n_neg), times), output_func=output_func)
+ensemble_prob = EnsembleProblem(prob, prob_func=make_prob_func(initial_conditions_arr, ones(n_neg), ones(n_neg), times), output_func=output_func)
 ensemble_sol = solve(ensemble_prob, Tsit5(), trajectories=n_neg)
 
 function get_retcodes(es)
@@ -127,8 +135,8 @@ end
 #-------------------------------------------------------------------------------
 # Inference 
 #-------------------------------------------------------------------------------
-@model function localfkpp(data, prob, initial_conditions, times, n)
-    σ ~ LogNormal(0.0, 1.0)
+@model function localfkpp(data, prob, times, inits, vars, u0, cc, n)
+    σ ~ LogNormal(0.0, 1)
     
     Pm ~ LogNormal(0.0, 1.0)
     Ps ~ LogNormal(0.0, 1.0)
@@ -139,15 +147,17 @@ end
     ρ ~ filldist(truncated(Normal(Pm, Ps), lower=0), n)
     α ~ filldist(Normal(Am, As), n)
 
+    u ~ arraydist(truncated.(Normal.(inits, vars), u0, cc))
+    _inits = reshape(u, 72, n)
+
     ensemble_prob = EnsembleProblem(prob, 
-                                    prob_func=make_prob_func(initial_conditions, ρ, α, times), 
+                                    prob_func=make_prob_func(_inits, ρ, α, times), 
                                     output_func=output_func)
 
     ensemble_sol = solve(ensemble_prob, 
                          Tsit5(), 
-                         EnsembleSerial(),
-                         abstol = 1e-9, 
-                         reltol = 1e-9, 
+                         abstol = 1e-6, 
+                         reltol = 1e-6, 
                          trajectories=n, 
                          sensealg=InterpolatingAdjoint(autojacvec=ReverseDiffVJP(true)))
     if !allequal(get_retcodes(ensemble_sol)) 
@@ -163,17 +173,26 @@ end
 Turing.setadbackend(:zygote)
 Random.seed!(1234); 
 
-m = localfkpp(vecsubdata, prob, initial_conditions, times, n_neg)
+inits_vec = reduce(vcat, initial_conditions_vec)
+inits_vars = reduce(vcat, initial_conditions_var_prior)
+zero_idx = findall(x -> x == 0, inits_vars)
+inits_vars[zero_idx] .+= 1e-5
+
+u0_vec = reduce(vcat, fill(u0, n_neg))
+cc_vec = reduce(vcat, fill(cc, n_neg))
+
+m = localfkpp(vecsubdata, prob, times,
+              inits_vec, inits_vars,
+              u0_vec, cc_vec, n_neg);
 m();
 
 n_chains = 1
 n_samples = 2_000
 pst = sample(m, 
              Turing.NUTS(0.8),
-             n_samples, 
+             MCMCSerial(), 
+             2_000, 
+             n_chains,
              progress=true)
-serialize(projectdir("adni/chains/local-fkpp/pst-tauneg-$(n_chains)x$(n_samples)-three.jls"), pst)
 
-# calc log likelihood 
-log_likelihood = pointwise_loglikelihoods(m, MCMCChains.get_sections(pst, :parameters));
-serialize(projectdir("adni/chains/local-fkpp/ll-tauneg-$(n_chains)x$(n_samples)-three.jls"), log_likelihood)
+serialize(projectdir("adni/chains/local-fkpp/pst-tauneg-$(n_chains)x$(n_samples)-three-indp0.jls"), pst)
