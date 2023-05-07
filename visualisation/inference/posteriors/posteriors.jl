@@ -34,10 +34,10 @@ begin
     ax = Axis(g2[1,1], 
             xticklabelsize=30, xlabelsize=30, xlabel="1 / yr", 
             yticklabelsize=40,
-            titlesize=40, title="Diffusion", xticks=0.0:0.025:0.1,
-            xminorticks=0.0:0.0125:0.1, xminorticksvisible=true, 
+            titlesize=40, title="Diffusion", xticks=0.0:0.05:0.25,
+            xminorticks=0.0:0.025:0.25, xminorticksvisible=true, 
             xticksize=20, xminorticksize=15, xgridcolor=RGBAf(0, 0, 0, 0.25))
-            xlims!(ax, -0.005, 0.105)
+            xlims!(ax, -0.005, 0.27)
     hideydecorations!(ax)
     hidexdecorations!(ax, grid=false, minorticks=false, label=false, ticks=false, ticklabels=false)
     hidespines!(ax, :t, :r, :l)

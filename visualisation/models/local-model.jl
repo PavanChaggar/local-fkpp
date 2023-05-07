@@ -5,7 +5,7 @@ using Distributions
 include(projectdir("functions.jl"))
 
 connectome_path = Connectomes.connectome_path()
-all_c = filter(Connectome(connectome_path; norm=true), 1e-2);
+all_c = filter(Connectome(connectome_path; norm=true, weight_function = (n, l) -> n ./ l), 1e-2);
 
 subcortex = filter(x -> x.Lobe == "subcortex", all_c.parc)
 cortex = filter(x -> x.Lobe != "subcortex", all_c.parc)
@@ -37,7 +37,7 @@ seed_value = mean([cc[seed.rID] p0[seed.rID]], dims=2)
 p0[seed.rID] .= seed_value 
 
 r = 0.15
-a = 1.1
+a = 1.5
 prob = ODEProblem(NetworkExFKPP, p0, (0.0,10.0), [r,a, u0, cc])
 
 ts = range(0.0, 10.0, 5)
@@ -49,7 +49,7 @@ allsol = solve(prob, Rodas4(), reltol=1e-12, saveat=0.1)
 
 solcol = [(sol[i] .- minimum(u0)) ./ (maximum(cc) .- minimum(u0)) for i in 1:n]
 
-using GLMakie
+using GLMakie; GLMakie.activate!()
 using ColorSchemes
 
 begin
