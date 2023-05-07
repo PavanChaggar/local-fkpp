@@ -1,7 +1,6 @@
 using Pkg
 cd("/home/chaggar/Projects/local-fkpp")
 Pkg.activate(".")
-println(@__DIR__)
 
 using Connectomes
 using ADNIDatasets
@@ -19,14 +18,15 @@ using Random
 using LinearAlgebra
 using SparseArrays
 include(projectdir("functions.jl"))
+  
 #-------------------------------------------------------------------------------
 # Connectome and ROIs
 #-------------------------------------------------------------------------------
 connectome_path = Connectomes.connectome_path()
-all_c = filter(Connectome(connectome_path; norm=true), 1e-2);
+all_c = filter(Connectome(connectome_path; norm=true, weight_function = (n, l) -> n ./ l), 1e-2);
 
-subcortex = filter(x -> x.Lobe == "subcortex", all_c.parc);
-cortex = filter(x -> x.Lobe != "subcortex", all_c.parc);
+subcortex = filter(x -> x.Lobe == "subcortex", all_c.parc)
+cortex = filter(x -> x.Lobe != "subcortex", all_c.parc)
 
 c = slice(all_c, cortex) |> filter
 
@@ -36,7 +36,7 @@ neo_regions = ["inferiortemporal", "middletemporal"]
 neo = findall(x -> x ∈ neo_regions, cortex.Label)
 #-------------------------------------------------------------------------------
 # Data 
-#-----------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
 sub_data_path = projectdir("adni/data/new_data/UCBERKELEYAV1451_8mm_02_17_23_AB_Status.csv")
 alldf = CSV.read(sub_data_path, DataFrame)
 
@@ -49,7 +49,6 @@ dktnames = [dktdict[i] for i in cortex.ID]
 data = ADNIDataset(posdf, dktnames; min_scans=3)
 n_data = length(data)
 
-# Ask Jake where we got these cutoffs from? 
 mtl_cutoff = 1.375
 neo_cutoff = 1.395
 
@@ -66,16 +65,25 @@ gmm_moments = CSV.read(projectdir("adni/data/component_moments.csv"), DataFrame)
 ubase, upath = get_dkt_moments(gmm_moments, dktnames)
 u0 = mean.(ubase)
 cc = quantile.(upath, .99)
+
 #-------------------------------------------------------------------------------
 # Connectome + ODEE
 #-------------------------------------------------------------------------------
-function NetworkLogistic(du, u, p, t; u0 = u0, cc = cc)
-    du .= p[1] .* (u .- u0) .* ((cc .- u0) .- (u .- u0))
+L = laplacian_matrix(c)
+
+vols = [get_vol(data, i) for i in tau_neg]
+init_vols = [v[:,1] for v in vols]
+max_norm_vols = reduce(hcat, [v ./ maximum(v) for v in init_vols])
+mean_norm_vols = vec(mean(max_norm_vols, dims=2))
+Lv = sparse(inv(diagm(mean_norm_vols)) * L)
+
+function NetworkGlobalFKPP(du, u, p, t; Lv = Lv)
+    du .= -p[1] * Lv * u .+ p[2] .* u .* (1 .- ( u ./ p[3]))
 end
 
-function make_prob_func(initial_conditions, p, times)
+function make_prob_func(initial_conditions, p, a, p_max, times)
     function prob_func(prob,i,repeat)
-        remake(prob, u0=initial_conditions[i], p=[p[i]], saveat=times[i])
+        remake(prob, u0=initial_conditions[i], p=[p[i], a[i], p_max], saveat=times[i])
     end
 end
 
@@ -92,21 +100,25 @@ nonzerosubs = findall(x -> sum(x) < 2, [sum(sd, dims=1) .== 0 for sd in blsd])
 subdata = [sd[:, 1:3] for sd in _subdata[nonzerosubs]]
 vecsubdata = reduce(vcat, reduce(hcat, subdata))
 
+max_suvr = maximum(vecsubdata)
+
 initial_conditions = [sd[:,1] for sd in subdata]
 _times =  [get_times(data, i) for i in tau_neg]
 times = [t[1:3] for t in _times[nonzerosubs]]
 
+max_t = maximum(reduce(vcat, times))
+
 n_neg = length(nonzerosubs)
 
-prob = ODEProblem(NetworkLogistic, 
+prob = ODEProblem(NetworkGlobalFKPP, 
                   initial_conditions[1], 
-                  (0.,maximum(reduce(vcat, times))), 
-                  [1.0,1.0])
-                  
+                  (0.,max_t), 
+                  [1.0,1.0, max_suvr])
+
 sol = solve(prob, Tsit5())
 
-ensemble_prob = EnsembleProblem(prob, prob_func=make_prob_func(initial_conditions, ones(n_neg), times), output_func=output_func)
-ensemble_sol = solve(ensemble_prob, Tsit5(), trajectories=n_neg)
+ensemble_prob = EnsembleProblem(prob, prob_func=make_prob_func(initial_conditions, ones(n_neg), ones(n_neg), max_suvr, times), output_func=output_func)
+ensemble_sol = solve(ensemble_prob, Tsit5(), EnsembleSerial(), trajectories=n_neg)
 
 function get_retcodes(es)
     [sol.retcode for sol in es]
@@ -119,51 +131,58 @@ end
 #-------------------------------------------------------------------------------
 # Inference 
 #-------------------------------------------------------------------------------
-@model function logistic(data, prob, initial_conditions, times, n)
+@model function globalfkpp(data, prob, initial_conditions, max_suvr, times, n)
     σ ~ LogNormal(0.0, 1.0)
+    
+    Pm ~ LogNormal(0.0, 1.0)
+    Ps ~ LogNormal(0.0, 1.0)
 
     Am ~ Normal(0.0, 1.0)
     As ~ LogNormal(0.0, 1.0)
 
+    ρ ~ filldist(truncated(Normal(Pm, Ps), lower=0), n)
     α ~ filldist(Normal(Am, As), n)
 
     ensemble_prob = EnsembleProblem(prob, 
-                                    prob_func=make_prob_func(initial_conditions, α, times), 
+                                    prob_func=make_prob_func(initial_conditions, ρ, α, max_suvr, times), 
                                     output_func=output_func)
 
     ensemble_sol = solve(ensemble_prob, 
-                         Tsit5(), 
+                         Tsit5(),
                          EnsembleSerial(),
                          abstol = 1e-9, 
                          reltol = 1e-9, 
                          trajectories=n, 
                          sensealg=InterpolatingAdjoint(autojacvec=ReverseDiffVJP(true)))
-
+                         
     if !allequal(get_retcodes(ensemble_sol)) 
         Turing.@addlogprob! -Inf
         println("failed")
         return nothing
     end
-
     vecsol = vec_sol(ensemble_sol)
 
     data ~ MvNormal(vecsol, σ^2 * I)
 end
 
 setadbackend(:zygote)
-Random.seed!(1234)
+Random.seed!(1234);
 
-m = logistic(vecsubdata, prob, initial_conditions, times, n_neg);
+m = globalfkpp(vecsubdata, prob, initial_conditions, max_suvr, times, n_neg);
 m();
 
-n_chains = 1
-n_samples = 2_000
+println("starting inference")
+n_chains = 4
+n_samples = 2000
 pst = sample(m, 
              Turing.NUTS(0.8),
+             MCMCThreads(), 
              n_samples, 
+             n_chains,
              progress=true)
-serialize(projectdir("adni/chains/logistic/pst-tauneg-$(n_chains)x$(n_samples)-three.jls"), pst)
+serialize(projectdir("adni/chains/global-fkpp/pst-tauneg-$(n_chains)x$(n_samples).jls"), pst)
 
 # calc log likelihood 
+pst = deserialize(projectdir("adni/chains/global-fkpp/pst-tauneg-4x2000.jls"));
 log_likelihood = pointwise_loglikelihoods(m, MCMCChains.get_sections(pst, :parameters));
-serialize(projectdir("adni/chains/logistic/ll-tauneg-$(n_chains)x$(n_samples)-three.jls"), log_likelihood)
+serialize(projectdir("adni/chains/global-fkpp/ll-tauneg-$(n_chains)x$(n_samples).jls"), log_likelihood)
