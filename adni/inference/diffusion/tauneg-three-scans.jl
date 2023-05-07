@@ -156,24 +156,21 @@ end
     data ~ MvNormal(vecsol, σ^2 * I)
 end
 
-setadbackend(:zygote)
+setadbackend(:forwarddiff)
 Random.seed!(1234);
 
 m = diffusion(vecsubdata, prob, initial_conditions, times, n_neg);
 m();
 
 println("starting inference")
-n_chains = 4
-n_samples = 2000
+n_chains = 1
+n_samples = 2_000
 pst = sample(m, 
-             Turing.NUTS(0.8), #, metricT=AdvancedHMC.DenseEuclideanMetric), 
-             MCMCThreads(), 
+             Turing.NUTS(0.8),
              n_samples, 
-             n_chains,
-             progress=false)
-serialize(projectdir("adni/chains/diffusion/pst-tauneg-$(n_chains)x$(n_samples).jls"), pst)
+             progress=true)
+serialize(projectdir("adni/chains/diffusion/pst-tauneg-$(n_chains)x$(n_samples)-three.jls"), pst)
 
 # calc log likelihood 
-pst = deserialize(projectdir("adni/chains/diffusion/pst-tauneg-4x2000.jls"));
 log_likelihood = pointwise_loglikelihoods(m, MCMCChains.get_sections(pst, :parameters));
-serialize(projectdir("adni/chains/diffusion/ll-tauneg-$(n_chains)x$(n_samples).jls"), log_likelihood)
+serialize(projectdir("adni/chains/diffusion/ll-tauneg-$(n_chains)x$(n_samples)-three.jls"), log_likelihood)
