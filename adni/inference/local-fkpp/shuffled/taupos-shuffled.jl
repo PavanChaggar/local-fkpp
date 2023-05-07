@@ -129,7 +129,6 @@ end
 
     ensemble_sol = solve(ensemble_prob, 
                          Tsit5(), 
-                         EnsembleSerial(),
                          abstol = 1e-6, 
                          reltol = 1e-6, 
                          trajectories=n, 
@@ -146,10 +145,10 @@ end
     data ~ MvNormal(vecsol, σ^2 * I)
 end
 
-setadbackend(:zygote)
+setadbackend(:forwarddiff)
 Random.seed!(1234)
 
-Threads.@threads for i in 1:10
+for i in 1:10
     println("Starting chain $i")
 
     shuffles = shuffle_cols.(subdata)
