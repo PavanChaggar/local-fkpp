@@ -23,7 +23,7 @@ include(projectdir("functions.jl"))
 # Connectome and ROIs
 #-------------------------------------------------------------------------------
 connectome_path = Connectomes.connectome_path()
-all_c = filter(Connectome(connectome_path; norm=true), 1e-2);
+all_c = filter(Connectome(connectome_path; norm=true, weight_function = (n, l) -> n ./ l), 1e-2);
 
 subcortex = filter(x -> x.Lobe == "subcortex", all_c.parc)
 cortex = filter(x -> x.Lobe != "subcortex", all_c.parc)
@@ -37,29 +37,24 @@ neo = findall(x -> x ∈ neo_regions, cortex.Label)
 #-------------------------------------------------------------------------------
 # Data 
 #-------------------------------------------------------------------------------
-sub_data_path = projectdir("adni/data/AV1451_Diagnosis-STATUS-STIME-braak-regions.csv")
 alldf = CSV.read(sub_data_path, DataFrame)
 
-posdf = filter(x -> x.STATUS == "POS", alldf)
+posdf = filter(x -> x.AB_Status == 1, alldf)
 
 dktdict = Connectomes.node2FS()
 dktnames = [dktdict[i] for i in cortex.ID]
 
 data = ADNIDataset(posdf, dktnames; min_scans=3)
-
-function regional_mean(data, rois, sub)
-    subsuvr = calc_suvr(data, sub)
-    mean(subsuvr[rois,end])
-end
-
+n_data = length(data)
+# Ask Jake where we got these cutoffs from? 
 mtl_cutoff = 1.375
 neo_cutoff = 1.395
 
-mtl_pos = filter(x -> regional_mean(data, mtl, x) >= mtl_cutoff, 1:50)
-neo_pos = filter(x -> regional_mean(data, neo, x) >= neo_cutoff, 1:50)
+mtl_pos = filter(x -> regional_mean(data, mtl, x) >= mtl_cutoff, 1:n_data)
+neo_pos = filter(x -> regional_mean(data, neo, x) >= neo_cutoff, 1:n_data)
 
-tau_pos = findall(x -> x ∈ unique([mtl_pos; neo_pos]), 1:50)
-tau_neg = findall(x -> x ∉ tau_pos, 1:50)
+tau_pos = findall(x -> x ∈ unique([mtl_pos; neo_pos]), 1:n_data)
+tau_neg = findall(x -> x ∉ tau_pos, 1:n_data)
 
 n_pos = length(tau_pos)
 n_neg = length(tau_neg)
@@ -68,7 +63,6 @@ gmm_moments = CSV.read(projectdir("adni/data/component_moments.csv"), DataFrame)
 ubase, upath = get_dkt_moments(gmm_moments, dktnames)
 u0 = mean.(ubase)
 cc = quantile.(upath, .99)
-
 #-------------------------------------------------------------------------------
 # Connectome + ODEE
 #-------------------------------------------------------------------------------
@@ -109,13 +103,6 @@ function shuffle_cols(arr)
     idx, arr[idx, :]
 end
 
-# shuffles = shuffle_cols.(subdata)
-# idx = [sh[1] for sh in shuffles]
-# shuffled_data = [sh[2] for sh in shuffles]
-
-# vecsubdata = reduce(vcat, reduce(hcat, shuffled_data))
-
-# initial_conditions = [sd[:,1] for sd in shuffled_data]
 _times =  [get_times(data, i) for i in tau_neg]
 times = _times[nonzerosubs]
 
@@ -187,7 +174,7 @@ end
 Turing.setadbackend(:forwarddiff)
 Random.seed!(1234); 
 
-for i in 1:100
+Threads.@threads for i in 1:10
     println("Starting chain $i")
 
     shuffles = shuffle_cols.(subdata)
