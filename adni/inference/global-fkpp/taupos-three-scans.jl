@@ -95,7 +95,7 @@ _subdata = [calc_suvr(data, i) for i in tau_pos]
 subdata = [sd[:, 1:3] for sd in _subdata]
 vecsubdata = reduce(vcat, reduce(hcat, subdata))
 
-max_suvr = maximum(vecsubdata)
+max_suvr = maximum(cc)
 
 initial_conditions = [sd[:,1] for sd in subdata]
 _times =  [get_times(data, i) for i in tau_pos]

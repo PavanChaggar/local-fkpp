@@ -100,7 +100,7 @@ nonzerosubs = findall(x -> sum(x) < 2, [sum(sd, dims=1) .== 0 for sd in blsd])
 subdata = [sd[:, 1:3] for sd in _subdata[nonzerosubs]]
 vecsubdata = reduce(vcat, reduce(hcat, subdata))
 
-max_suvr = maximum(vecsubdata)
+max_suvr = maximum(cc)
 
 initial_conditions = [sd[:,1] for sd in subdata]
 _times =  [get_times(data, i) for i in tau_neg]
