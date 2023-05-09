@@ -177,7 +177,7 @@ end
 Turing.setadbackend(:forwarddiff)
 Random.seed!(1234); 
 
-Threads.@threads for i in 1:10
+for i in 1:10
     println("Starting chain $i")
 
     shuffles = shuffle_cols.(subdata)
