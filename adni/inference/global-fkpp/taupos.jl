@@ -94,7 +94,7 @@ subdata = [normalise(sd, u0, cc) for sd in _subdata]
 
 vecsubdata = reduce(vcat, reduce(hcat, subdata))
 
-max_suvr = maximum(vecsubdata)
+max_suvr = maximum(cc)
 
 initial_conditions = [sd[:,1] for sd in subdata]
 times =  [get_times(data, i) for i in tau_pos]
