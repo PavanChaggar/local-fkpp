@@ -172,7 +172,7 @@ logistic_preds = simulate(NetworkLogistic, insample_inits, logistic_params, time
 # Tau Positive Prediction Plot
 #-------------------------------------------------------------------------------
 using CairoMakie, ColorSchemes, Colors
-
+CairoMakie.activate!()
 function getdiff(d, n)
     d[:,n] .- d[:,1]
 end
@@ -254,8 +254,8 @@ begin
 end
 save(projectdir("visualisation/inference/model-selection/output/out-sample-fit.pdf"), f)
 
-left = [25, 27, 29]
-right = [61, 63, 65]
+right = [25, 27, 29]
+left = [61, 63, 65]
 begin
     cols = ColorSchemes.seaborn_bright
     f = Figure(resolution = (2000, 550), fontsize=20)
@@ -314,6 +314,102 @@ begin
 end
 save(projectdir("visualisation/inference/model-selection/output/out-sample-trajectories.pdf"), f)
 
+right = [25, 27, 29]
+left = [61, 63, 65]
+begin
+    cols = ColorSchemes.seaborn_bright
+    f = Figure(resolution = (2000, 700), fontsize=20)
+    for (i, (left, right, title)) in enumerate(zip(left, right, ["Fusiform", "Entorhinal", "Inf. Temporal"]))
+        ax = Axis(f[1,i], title=title, titlesize=40, ylabel="SUVR", ylabelsize=30,
+                yticks = 1.0:0.5:3.5, yticksize=20, yticklabelsize=30,
+                yminorticks = 1.0:0.25:3.25, yminorticksize=15,
+                yminorgridvisible=true, yminorticksvisible=true,
+                yminorgridcolor=RGBAf(0, 0, 0, 0.15), ygridcolor=RGBAf(0, 0, 0, 0.15),
+                # xlabel="Time / years", xlabelsize=40,
+                xticks = 0.0:5.0:20.0, xticksize=20, xticklabelsize=30,
+                xminorticks = 0.0:2.5:20.0, xminorticksize=15,
+                xminorgridvisible=true, xminorticksvisible=true, 
+                xminorgridcolor=RGBAf(0, 0, 0, 0.15), xgridcolor=RGBAf(0, 0, 0, 0.15))
+        ylims!(ax, 1.0, 3.5)
+        if i == 1
+            hidexdecorations!(ax, grid=false, ticks=false, ticklabels=false, 
+                            minorticks=false, minorgrid=false)
+        else
+            hideydecorations!(ax, grid=false, ticks=false, 
+                            minorticks=false, minorgrid=false)
+            hidexdecorations!(ax, grid=false, ticks=false, ticklabels=false, 
+                            minorticks=false, minorgrid=false)
+        end
+
+        #right
+        q1, q2, q3 = get_quantiles(reduce(hcat, [five_preds[i][right, :] for i in 1:2000]))
+        band!(0.0:0.1:20.0, q1, q2, color=(cols[4], 0.25))
+        lines!(five_pred_mean.t, five_pred_mean[right, :], color=cols[4])
+        scatter!(times[3][1:3], four_subdata[3][right,1:3], color=cols[4], markersize=25)
+        scatter!(times[3][4:end], four_subdata[3][right,4:end], color=cols[4], markersize=25, marker=:rect)
+
+        #left 
+        q1, q2, q3 = get_quantiles(reduce(hcat, [five_preds[i][left, :] for i in 1:2000]))
+        band!(0.0:0.1:20.0, q1, q2, color=(cols[1], 0.25))
+        lines!(five_pred_mean.t, five_pred_mean[left, :], color=cols[1])
+        scatter!(times[3][1:3], four_subdata[3][left,1:3], color=cols[1], markersize=25)
+        scatter!(times[3][4:end], four_subdata[3][left,4:end], color=cols[1], markersize=25, marker=:rect)
+
+    end
+    ax = Axis(f[1, 4], title="Mean", titlesize=40,
+                yticks = 1.0:0.5:3.5, yticksize=20, yticklabelsize=30,
+                yminorticks = 1.0:0.25:3.25, yminorticksize=15,
+                yminorgridvisible=true, yminorticksvisible=true,
+                yminorgridcolor=RGBAf(0, 0, 0, 0.15), ygridcolor=RGBAf(0, 0, 0, 0.15),
+                # xlabel="Time / years", xlabelsize=40,
+                xticks = 0.0:5.0:20.0, xticksize=20, xticklabelsize=30,
+                xminorticks = 0.0:2.5:20.0, xminorticksize=15,
+                xminorgridvisible=true, xminorticksvisible=true, 
+                xminorgridcolor=RGBAf(0, 0, 0, 0.15), xgridcolor=RGBAf(0, 0, 0, 0.15))
+    hideydecorations!(ax, grid=false, ticks=false, 
+                      minorticks=false, minorgrid=false)
+    hidexdecorations!(ax, grid=false, ticks=false, ticklabels=false, 
+                            minorticks=false, minorgrid=false)
+    ylims!(ax, 1.0, 3.5)
+    q1, q2, q3 = get_quantiles(transpose(reduce(vcat, [mean(five_preds[i][1:36,:], dims=1) for i in 1:2000])))
+    band!(0.0:0.1:20.0, q1, q2, color=(cols[4], 0.25))
+    lines!(five_pred_mean.t, vec(mean(five_pred_mean[1:36, :], dims=1)), color=cols[4])
+    scatter!(times[3][1:3], vec(mean(four_subdata[3][1:36,1:3], dims=1)), color=cols[4], markersize=25)
+    scatter!(times[3][4:end], vec(mean(four_subdata[3][1:36,4:end], dims=1)), color=cols[4], markersize=25, marker=:rect)
+
+    q1, q2, q3 = get_quantiles(transpose(reduce(vcat, [mean(five_preds[i][37:72,:], dims=1) for i in 1:2000])))
+    band!(0.0:0.1:20.0, q1, q2, color=(cols[1], 0.25))
+    lines!(five_pred_mean.t, vec(mean(five_pred_mean[37:72,:], dims=1)), color=cols[1])
+    scatter!(times[3][1:3], vec(mean(four_subdata[3][37:72,1:3], dims=1)), color=cols[1], markersize=25)
+    scatter!(times[3][4:end], vec(mean(four_subdata[3][37:72,4:end], dims=1)), color=cols[1], markersize=25, marker=:rect)
+
+    Label(f[2,1:4], "Time / years", tellwidth=false, rotation=0, fontsize=30, padding=(0, 0, 0, -20))
+
+    elem_1 = MarkerElement(color = (cols[1], 0.7), marker='●', markersize=30)
+    elem_2 = MarkerElement(color = (cols[1], 0.7), marker=:rect, markersize=30)
+    elem_3 = MarkerElement(color = (cols[4], 0.7), marker='●', markersize=30)
+    elem_4 = MarkerElement(color = (cols[4], 0.7), marker=:rect, markersize=30)
+    elem_5 = LineElement(color = (cols[1], 0.6), linewidth=5)
+    elem_6 = PolyElement(color = (cols[1], 0.5))
+    elem_7 = LineElement(color = (cols[4], 0.6), linewidth=5)
+    elem_8 = PolyElement(color = (cols[4], 0.5))
+
+    legend = Legend(f[3,:],
+           [elem_1, elem_2, 
+            elem_5, elem_6 ,
+           elem_3, elem_4, 
+           elem_7, elem_8],
+           ["Left In-sample", "Left Out-sample", 
+            "Left Mean Pred.", "Left 95th Quantile", 
+           "Right In-sample", "Right Out-sample", 
+           "Right Mean Pred.", "Right 95th Quantile"],
+           patchsize = (30, 20), rowgap = 10, colgap=20, 
+           labelsize=40, framevisible=false, orientation=:horizontal,
+           nbanks=2)
+    f
+end
+save(projectdir("visualisation/inference/model-selection/output/out-sample-trajectories-hemi.pdf"), f)
+//
 
 # out_sample_fourth_scans = [sd[:,4] for sd in four_subdata]
 # mean_fourth_scan = mean(reduce(hcat, out_sample_fourth_scans), dims=2) |> vec

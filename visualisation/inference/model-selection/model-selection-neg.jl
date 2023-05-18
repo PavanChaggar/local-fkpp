@@ -16,7 +16,7 @@ include(projectdir("functions.jl"))
 # Connectome and ROIs
 #-------------------------------------------------------------------------------
 connectome_path = Connectomes.connectome_path()
-all_c = filter(Connectome(connectome_path; norm=true), 1e-2);
+all_c = filter(Connectome(connectome_path; norm=true, weight_function = (n, l) -> n ./ l), 1e-2);
 
 subcortex = filter(x -> x.Lobe == "subcortex", all_c.parc);
 cortex = filter(x -> x.Lobe != "subcortex", all_c.parc);
@@ -30,24 +30,24 @@ neo = findall(x -> x ∈ neo_regions, cortex.Label)
 #-------------------------------------------------------------------------------
 # Data 
 #-------------------------------------------------------------------------------
-sub_data_path = projectdir("adni/data/AV1451_Diagnosis-STATUS-STIME-braak-regions.csv")
+sub_data_path = projectdir("adni/data/new_data/UCBERKELEYAV1451_8mm_02_17_23_AB_Status.csv")
 alldf = CSV.read(sub_data_path, DataFrame)
 
-posdf = filter(x -> x.STATUS == "POS", alldf)
+posdf = filter(x -> x.AB_Status == 1, alldf)
 
 dktdict = Connectomes.node2FS()
 dktnames = [dktdict[i] for i in cortex.ID]
 
 insample_data = ADNIDataset(posdf, dktnames; min_scans=3)
-
+insample_n_data = length(insample_data)
 mtl_cutoff = 1.375
 neo_cutoff = 1.395
 
-insample_mtl_pos = filter(x -> regional_mean(insample_data, mtl, x) >= mtl_cutoff, 1:50)
-insample_neo_pos = filter(x -> regional_mean(insample_data, neo, x) >= neo_cutoff, 1:50)
+insample_mtl_pos = filter(x -> regional_mean(insample_data, mtl, x) >= mtl_cutoff, 1:insample_n_data)
+insample_neo_pos = filter(x -> regional_mean(insample_data, neo, x) >= neo_cutoff, 1:insample_n_data)
 
-insample_tau_pos = findall(x -> x ∈ unique([insample_mtl_pos; insample_neo_pos]), 1:50)
-insample_tau_neg = findall(x -> x ∉ insample_tau_pos, 1:50)
+insample_tau_pos = findall(x -> x ∈ unique([insample_mtl_pos; insample_neo_pos]), 1:insample_n_data)
+insample_tau_neg = findall(x -> x ∉ insample_tau_pos, 1:insample_n_data)
 
 insample_n_pos = length(insample_tau_pos)
 insample_n_neg = length(insample_tau_neg)
@@ -56,7 +56,6 @@ gmm_moments = CSV.read(projectdir("adni/data/component_moments.csv"), DataFrame)
 ubase, upath = get_dkt_moments(gmm_moments, dktnames)
 u0 = mean.(ubase)
 cc = quantile.(upath, .99)
-
 #-------------------------------------------------------------------------------
 # Pos data 
 #-------------------------------------------------------------------------------
@@ -76,7 +75,6 @@ insample_neg_initial_conditions = [sd[:,1] for sd in insample_neg_data]
 _times =  [get_times(data, i) for i in tau_neg]
 insample_neg_times = _times[nonzerosubs]
 insample_max_t = maximum(reduce(vcat, insample_neg_times))
-
 #-------------------------------------------------------------------------------
 # Out of sample pos data 
 #-------------------------------------------------------------------------------
@@ -127,9 +125,9 @@ end
 #-------------------------------------------------------------------------------
 # Posteriors
 #-------------------------------------------------------------------------------
-local_pst = mean(deserialize(projectdir("adni/chains/local-fkpp/pst-tauneg-4x2000-vc.jls")));
-global_pst = mean(deserialize(projectdir("adni/chains/global-fkpp/pst-tauneg-4x2000-vc.jls")));
-diffusion_pst = mean(deserialize(projectdir("adni/chains/diffusion/pst-tauneg-4x2000-vc.jls")));
+local_pst2 = mean(deserialize(projectdir("adni/chains/local-fkpp/pst-tauneg-4x2000.jls")));
+global_pst = mean(deserialize(projectdir("adni/chains/global-fkpp/pst-tauneg-4x2000.jls")));
+diffusion_pst = mean(deserialize(projectdir("adni/chains/diffusion/pst-tauneg-4x2000.jls")));
 logistic_pst = mean(deserialize(projectdir("adni/chains/logistic/pst-tauneg-4x2000.jls")));
 
 #-------------------------------------------------------------------------------

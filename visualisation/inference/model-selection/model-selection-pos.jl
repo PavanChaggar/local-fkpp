@@ -16,12 +16,12 @@ include(projectdir("functions.jl"))
 # Connectome and ROIs
 #-------------------------------------------------------------------------------
 connectome_path = Connectomes.connectome_path()
-all_c = filter(Connectome(connectome_path; norm=true), 1e-2);
+all_c = filter(Connectome(connectome_path; norm=true, weight_function = (n, l) -> n ./ l), 1e-2);
 
 subcortex = filter(x -> x.Lobe == "subcortex", all_c.parc);
 cortex = filter(x -> x.Lobe != "subcortex", all_c.parc);
 
-c = slice(all_c, cortex) |> filter
+c = slice(all_c, cortex; norm=true) |> filter
 
 mtl_regions = ["entorhinal", "Left-Amygdala", "Right-Amygdala"]
 mtl = findall(x -> x ∈ mtl_regions, cortex.Label)

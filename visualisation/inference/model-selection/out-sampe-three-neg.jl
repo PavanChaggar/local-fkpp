@@ -62,8 +62,8 @@ cc = quantile.(upath, .99)
 #-------------------------------------------------------------------------------
 # Pos data 
 #-------------------------------------------------------------------------------
-_subdata = [calc_suvr(data, i) for i in tau_neg]
-[normalise!(_subdata[i], u0, cc) for i in 1:n_neg]
+subsuvr = [calc_suvr(data, i) for i in tau_neg]
+_subdata = [normalise(sd, u0, cc) for sd in subsuvr]
 
 blsd = [sd .- u0 for sd in _subdata]
 nonzerosubs = findall(x -> sum(x) < 2, [sum(sd, dims=1) .== 0 for sd in blsd])
@@ -78,15 +78,16 @@ insample_subdata = [sd[:, 1:3] for sd in subdata]
 insample_four_subdata = insample_subdata[outsample_idx]
 insample_inits = [d[:,1] for d in insample_four_subdata]
 
-outsample_subdata = [sd[:, 4:end] for sd in subdata[outsample_idx]]
+outsample_subdata = [sd[:, 4:end] for sd in four_subdata]
 
 max_suvr = maximum(reduce(vcat, reduce(hcat, insample_subdata)))
 
-_times =  [get_times(data, i) for i in tau_neg][nonzerosubs]
-times = _times[outsample_idx]
-insample_times = [t[1:3] for t in _times]
+_times =  [get_times(data, i) for i in tau_neg]
+nonzero_times = _times[nonzerosubs]
+times = nonzero_times[outsample_idx]
+insample_times = [t[1:3] for t in times]
 
-outsample_times = [t[4:end] for t in _times[outsample_idx]]
+outsample_times = [t[4:end] for t in times]
 
 #-------------------------------------------------------------------------------
 # Models
@@ -103,6 +104,14 @@ function NetworkLocalFKPP(du, u, p, t; Lv = Lv, u0 = u0, cc = cc)
     du .= -p[1] * Lv * (u .- u0) .+ p[2] .* (u .- u0) .* ((cc .- u0) .- (u .- u0))
 end
 
+function NetworkGlobalFKPP(du, u, p, t; Lv = Lv)
+    du .= -p[1] * Lv * u .+ p[2] .* u .* (1 .- ( u ./ p[3]))
+end
+
+function NetworkDiffusion(du, u, p, t; Lv = Lv)
+    du .= -p[1] * Lv * u
+end
+
 function NetworkLogistic(du, u, p, t; Lv = Lv)
     du .= p[1] .* (u .- u0) .* ((cc .- u0) .- (u .- u0))
 end
@@ -110,25 +119,20 @@ end
 #-------------------------------------------------------------------------------
 # Posteriors
 #-------------------------------------------------------------------------------
-local_pst = deserialize(projectdir("adni/chains/local-fkpp/pst-tauneg-1x2000-three-indp0.jls"));
-logistic_pst = deserialize(projectdir("adni/chains/logistic/pst-tauneg-1x2000-three-indp0.jls"));
+local_pst = deserialize(projectdir("adni/chains/local-fkpp/pst-tauneg-1x2000-three.jls"));
+global_pst = deserialize(projectdir("adni/chains/global-fkpp/pst-tauneg-1x2000-three.jls"));
+diffusion_pst = deserialize(projectdir("adni/chains/diffusion/pst-tauneg-1x2000-three.jls"));
+logistic_pst = deserialize(projectdir("adni/chains/logistic/pst-tauneg-1x2000-three.jls"));
 
-[sum(p[:numerical_error]) for p in [local_pst, logistic_pst]]
+[sum(p[:numerical_error]) for p in [local_pst, global_pst, diffusion_pst, logistic_pst]]
 #-------------------------------------------------------------------------------
 # Local model
 #-------------------------------------------------------------------------------
 local_meanpst = mean(local_pst);
 
-foursubs_vec_idx = reshape(1:1944, 72, 27)[:, outsample_idx];
-
-local_all_inits_vec = [local_pst["u[$i]"] for i in vec(foursubs_vec_idx)]
-local_all_inits = reshape(local_all_inits_vec, 72, 11)
-local_inits = [transpose(reduce(hcat, local_all_inits[:, i])) for i in 1:11]
-
-local_mean_inits = vec.(mean.(local_inits, dims=2))
-
 local_ps = [Array(local_pst[Symbol("ρ[$i]")]) for i in outsample_idx];
 local_as = [Array(local_pst[Symbol("α[$i]")]) for i in outsample_idx];
+local_ss = Array(local_pst[Symbol("σ")]);
 local_params = [[local_meanpst[Symbol("ρ[$i]"), :mean], local_meanpst[Symbol("α[$i]"), :mean]] for i in outsample_idx];
 
 function simulate(f, initial_conditions, params, times)
@@ -137,27 +141,39 @@ function simulate(f, initial_conditions, params, times)
         ODEProblem(
             f, inits, (0, max_t), p
         ), 
-        Tsit5(), saveat=t
+        Tsit5(), abstol=1e-9, reltol=1e-9, saveat=t
     )
     for (inits, p, t) in zip(initial_conditions, params, times)
     ]
 end
 
-local_preds = simulate(NetworkLocalFKPP, local_mean_inits, local_params, times);
+local_preds = simulate(NetworkLocalFKPP, insample_inits, local_params, times);
+#-------------------------------------------------------------------------------
+# Global model
+#-------------------------------------------------------------------------------
+global_meanpst = mean(global_pst);
+
+global_params = [[global_meanpst[Symbol("ρ[$i]"), :mean], global_meanpst[Symbol("α[$i]"), :mean]] for i in outsample_idx];
+
+global_preds = simulate(NetworkGlobalFKPP, insample_inits, vcat.(global_params, max_suvr), times);
+
+#-------------------------------------------------------------------------------
+# Diffusion model
+#-------------------------------------------------------------------------------
+diffusion_meanpst = mean(diffusion_pst);
+
+diffusion_params = [[diffusion_meanpst[Symbol("ρ[$i]"), :mean]] for i in outsample_idx];
+
+diffusion_preds = simulate(NetworkDiffusion, insample_inits, diffusion_params, times);
+
 #-------------------------------------------------------------------------------
 # Logistic model
 #-------------------------------------------------------------------------------
 logistic_meanpst = mean(logistic_pst);
 
-logistic_all_inits_vec = [logistic_pst["u[$i]"] for i in vec(foursubs_vec_idx)]
-logistic_all_inits = reshape(logistic_all_inits_vec, 72, 11)
-logistic_inits = [transpose(reduce(hcat, logistic_all_inits[:, i])) for i in 1:11]
-
-logistic_mean_inits = vec.(mean.(logistic_inits, dims=2))
-
 logistic_params = [[logistic_meanpst[Symbol("α[$i]"), :mean]] for i in outsample_idx];
 
-logistic_preds = simulate(NetworkLogistic, logistic_mean_inits, logistic_params, times);
+logistic_preds = simulate(NetworkLogistic, insample_inits, logistic_params, times);
 #-------------------------------------------------------------------------------
 # Tau Positive Prediction Plot
 #-------------------------------------------------------------------------------
@@ -176,26 +192,64 @@ function getdiff(d)
 end
 
 begin
+    cols = ColorSchemes.seaborn_colorblind[1:10]
     scan = 4
-    f = Figure(resolution = (1000, 1000))
-    for (i, preds) in enumerate([local_preds, logistic_preds])
-    ax = Axis(f[1,i])
-        for j in 1:11
-            scatter!(four_subdata[j][:, scan] |> vec, Array(preds[j])[:, scan]);
-            xlims!(ax, 0.9,2.)
-            ylims!(ax, 0.9,2.)
+    titlesize = 40
+    xlabelsize = 30
+    ylabelsize = 30
+    xticklabelsize = 20 
+    yticklabelsize = 20
+    f = Figure(resolution = (2000, 1000), fontsize=30)
+    gt = f[1,1] = GridLayout()
+    gl = f[2, 1] = GridLayout()
+    gb = f[3, 1] = GridLayout()
+    gl2 = f[4, 1] = GridLayout()
+    for (i, (preds, title)) in enumerate(
+                    zip([local_preds, global_preds, diffusion_preds, logistic_preds], 
+                    ["Local FKPP", "Global FKPP", "Diffusion", "Logistic"]))
+        start = 1.0
+        stop = 2.5
+        ax = Axis(gt[1,i], title=title, titlesize=titlesize,
+                    # xlabel="SUVR", 
+                    ylabel="Prediction", 
+                    xlabelsize=xlabelsize, ylabelsize=ylabelsize, 
+                    xticks = 1.0:0.5:2.5, yticks = 1.0:0.5:2.5,
+                    xticklabelsize=xticklabelsize, yticklabelsize=xticklabelsize,
+                    xminorgridvisible=true,yminorgridvisible=true,
+                    xminorticksvisible=true, yminorticksvisible=true,
+                    xminorticks=collect(start:0.25:stop),yminorticks=collect(start:0.25:stop))
+        if i > 1
+        hideydecorations!(ax, grid=false, ticks=false, minorgrid=false, minorticks=false) 
         end
-    lines!(0.9:0.1:2.7, 0.9:0.1:2.7, color=:grey)
-    ax = Axis(f[2,i])
-        for j in 1:11
+        for j in 1:10
+            scatter!(Array(four_subdata[j][:, scan]), Array(preds[j])[:, scan],
+                     markersize=15, color=(cols[j], 0.75));
+            xlims!(ax, 0.9,2.7)
+            ylims!(ax, 0.9,2.7)
+        end
+        lines!(0.9:0.1:2.7, 0.9:0.1:2.7, color=:grey)
+        ax = Axis(gb[1,i], 
+                # xlabel="Δ SUVR",
+                ylabel="Δ Prediction", 
+                xlabelsize=xlabelsize, ylabelsize=ylabelsize, 
+                xticklabelsize=xticklabelsize, yticklabelsize=xticklabelsize,
+                yticks = -0.25:0.25:2.5, xticks = -0.25:0.25:2.5,
+                xminorgridvisible=true,yminorgridvisible=true,
+                xminorticksvisible=true, yminorticksvisible=true,)
+        if i > 1
+            hideydecorations!(ax, grid=false, ticks=false) 
+        end
+        for j in 1:10
             _data = getdiff(four_subdata[j], scan)
             _preds = getdiff(preds[j], scan)
-            scatter!(_data, _preds);
-            xlims!(ax, -0.3,0.75)
-            ylims!(ax, -0.3,0.75)
+            scatter!(_data, _preds, markersize=15, color=(cols[j], 0.75));
+            xlims!(ax, -0.3,1.05)
+            ylims!(ax, -0.3,1.05)
         end
-    lines!(-0.1:0.01:1.0, -0.1:0.01:1.0, color=:grey)
+        lines!(-0.3:0.01:1.05, -0.3:0.01:1.05, color=:grey)
     end
+    Label(gl[1,1:4], "SUVR", tellwidth=false, rotation=0, padding = (0, 0, -10, -20), fontsize=30)
+    Label(gl2[1,1:4], "Δ SUVR", tellwidth=false, rotation=0, padding = (0, 0, -10, -20), fontsize=30)
     f
 end
 
