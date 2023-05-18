@@ -2,7 +2,6 @@ using Pkg
 Pkg.activate("/Users/pavanchaggar/Projects/local-fkpp")
 using GLMakie
 using Connectomes
-using DifferentialEquations
 using ColorSchemes
 using DrWatson
 using Distributions
@@ -29,10 +28,11 @@ neo = findall(x -> x ∈ neo_regions, cortex.Label)
 #-------------------------------------------------------------------------------
 # Data 
 #-------------------------------------------------------------------------------
-sub_data_path = projectdir("adni/data/AV1451_Diagnosis-STATUS-STIME-braak-regions.csv")
+sub_data_path = projectdir("adni/data/new_data/UCBERKELEYAV1451_8mm_02_17_23_AB_Status.csv")
 alldf = CSV.read(sub_data_path, DataFrame)
 
-posdf = filter(x -> x.STATUS == "POS", alldf)
+#posdf = filter(x -> x.STATUS == "POS", alldf)
+posdf = filter(x -> x.AB_Status == 1, alldf)
 
 dktdict = Connectomes.node2FS()
 dktnames = [dktdict[i] for i in cortex.ID]
@@ -60,7 +60,7 @@ n_neg = length(tau_neg)
 gmm_moments = CSV.read(projectdir("adni/data/component_moments.csv"), DataFrame)
 ubase, upath = get_dkt_moments(gmm_moments, dktnames)
 u0 = mean.(ubase)
-cc = quantile.(upath, .95)
+cc = quantile.(upath, .99)
 
 subjects = tau_neg
 n_subjects = length(subjects)
@@ -74,6 +74,7 @@ alltimes = [get_times(data, i) for i in subjects]
 #-------------------------------------------------------------------------------
 # Figure
 #-------------------------------------------------------------------------------
+begin
 cmap = reverse(ColorSchemes.Spectral);
 
 p1 = Vector{Mesh}(undef, 36)
@@ -155,3 +156,4 @@ end
 GLMakie.scatter!(point, markersize=10, color=:red)
 
 wait(display(f))
+end

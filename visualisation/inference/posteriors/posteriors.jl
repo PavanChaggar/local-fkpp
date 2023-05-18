@@ -75,9 +75,9 @@ save(projectdir("visualisation/inference/posteriors/output/adni-posteriors.pdf")
 #-------------------------------------------------------------------------------
 # Hierarchical Distributions -- BF2
 #-------------------------------------------------------------------------------
-pst = deserialize(projectdir("biofinder/chains/local-fkpp/pst-taupos-4x1000-vc.jls"));
-pst2 = deserialize(projectdir("biofinder/chains/local-fkpp/pst-tauneg-4x1000-vc.jls"));
-pst3 = deserialize(projectdir("biofinder/chains/local-fkpp/pst-abneg-4x1000-vc.jls"));
+pst = deserialize(projectdir("biofinder/chains/local-fkpp/24-04-23/pst-taupos-4x1000-vc.jls"));
+pst2 = deserialize(projectdir("biofinder/chains/local-fkpp/24-04-23/pst-tauneg-4x1000-vc.jls"));
+pst3 = deserialize(projectdir("biofinder/chains/local-fkpp/24-04-23/pst-abneg-4x1000-vc.jls"));
 
 [p[:numerical_error] |> sum for p in [pst, pst2, pst3]]
 
@@ -97,10 +97,10 @@ begin
         ax = Axis(g2[1,1], 
                 xticklabelsize=30, xlabelsize=30, xlabel="1 / yr", 
                 yticklabelsize=40,
-                titlesize=40, title="Diffusion", xticks=0.0:0.01:0.05,
-                xminorticks=0.0:0.01:0.05, xminorticksvisible=true, 
+                titlesize=40, title="Diffusion", xticks=0.0:0.02:0.1,
+                xminorticks=0.0:0.02:0.05, xminorticksvisible=true, 
                 xticksize=20, xminorticksize=15, xgridcolor=RGBAf(0, 0, 0, 0.25))
-                xlims!(ax, -0.0025, 0.05)
+                xlims!(ax, -0.0025, 0.11)
         hideydecorations!(ax)
         hidexdecorations!(ax, grid=false, minorticks=false, label=false, ticks=false, ticklabels=false)
         hidespines!(ax, :t, :r, :l)
@@ -138,18 +138,55 @@ end
 save(projectdir("visualisation/inference/posteriors/output/bf-posteriors.pdf"), f)
 
 # shuffled data
-shuffled = [deserialize(projectdir("adni/chains/local-fkpp/shuffled/pst-tauneg-1000-shuffled-$i.jls")) for i in 1:5]
+pos_shuffled = [deserialize(projectdir("adni/chains/local-fkpp/shuffled/pos/pst-taupos-1000-shuffled-$i.jls")) for i in 1:10]
 
-f = Figure(resolution=(1000, 500))
-ax = Axis(f[1,1], title="growth")
-am = reduce(vcat, [vec(Array(sh[:Am])) for sh in shuffled])
-hist!(am, bins=50, normalization=:pdf, color=:grey)
-hist!(pst[:Am] |> vec, bins=50, normalization=:pdf, color=(:blue, 0.5))
+begin
+        colors = Makie.wong_colors()
 
-ax = Axis(f[1,2], title="diffusion")
-pm = reduce(vcat, [vec(Array(sh[:Pm])) for sh in shuffled])
-hist!(pm, bins=50, normalization=:pdf, color=:grey, label="shuffled")
-hist!(pst[:Pm] |> vec, bins=50, normalization=:pdf, color=(:blue, 0.5), label="A+T+")
-# hist!(pst3[:Pm] |> vec, bins=50, normalization=:pdf, color=(:green, 0.5), label="A-")
-axislegend()
-f
+        f = Figure(resolution=(1000, 500), fontsize=35)
+        ax = Axis(f[1,1], title="Production", titlesize=30, xticklabelsize=30,
+        xlabel="1 / yr", xlabelsize=30, ylabel="Density", ylabelsize=30)
+        hideydecorations!(ax, label=false)
+        hidespines!(ax, :t, :r, :l)
+
+        am = reduce(vcat, [vec(Array(sh[:Am])) for sh in pos_shuffled])
+        hist!(am, bins=50, normalization=:pdf, color=:grey)
+        hist!(pst[:Am] |> vec, bins=50, normalization=:pdf, color=(colors[3], 0.75))
+
+        ax = Axis(f[1,2], title="Transport", titlesize=30, xticklabelsize=30,
+        xlabel="1 / yr", xlabelsize=30, ylabel="Density", ylabelsize=30)
+        hideydecorations!(ax)
+        hidespines!(ax, :t, :r, :l)
+        pm = reduce(vcat, [vec(Array(sh[:Pm])) for sh in pos_shuffled])
+        hist!(pm, bins=25, normalization=:pdf, color=:grey, label="Shuffled")
+        hist!(pst[:Pm] |> vec, bins=50, normalization=:pdf, color=(colors[3], 0.75), label=L"A\beta^+ \tau P^+")
+        axislegend()
+        f
+end     
+save(projectdir("visualisation/inference/posteriors/output/adni-pos-shuffled.pdf"), f)
+
+neg_shuffled = [deserialize(projectdir("adni/chains/local-fkpp/shuffled/neg/pst-tauneg-1000-shuffled-$i.jls")) for i in 1:2]
+begin
+        colors = Makie.wong_colors()
+
+        f = Figure(resolution=(1000, 500), fontsize=35)
+        ax = Axis(f[1,1], title="Production", titlesize=30, xticklabelsize=30,
+        xlabel="1 / yr", xlabelsize=30, ylabel="Density", ylabelsize=30)
+        hideydecorations!(ax, label=false)
+        hidespines!(ax, :t, :r, :l)
+
+        am = reduce(vcat, [vec(Array(sh[:Am])) for sh in neg_shuffled])
+        hist!(am, bins=50, normalization=:pdf, color=:grey)
+        hist!(pst2[:Am] |> vec, bins=50, normalization=:pdf, color=(colors[2], 0.75))
+
+        ax = Axis(f[1,2], title="Transport", titlesize=30, xticklabelsize=30,
+        xlabel="1 / yr", xlabelsize=30, ylabel="Density", ylabelsize=30)
+        hideydecorations!(ax)
+        hidespines!(ax, :t, :r, :l)
+        pm = reduce(vcat, [vec(Array(sh[:Pm])) for sh in neg_shuffled])
+        hist!(pm, bins=25, normalization=:pdf, color=:grey, label="Shuffled")
+        hist!(pst2[:Pm] |> vec, bins=50, normalization=:pdf, color=(colors[2], 0.75), label=L"A\beta^+ \tau P^-")
+        axislegend()
+        f
+end     
+        save(projectdir("visualisation/inference/posteriors/output/adni-neg-shuffled.pdf"), f)
