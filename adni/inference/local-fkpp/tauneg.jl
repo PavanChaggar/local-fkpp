@@ -23,7 +23,8 @@ include(projectdir("functions.jl"))
 # Connectome and ROIs
 #-------------------------------------------------------------------------------
 connectome_path = Connectomes.connectome_path()
-all_c = filter(Connectome(connectome_path; norm=true, weight_function = (n, l) -> n ./ l), 1e-2);
+all_c = filter(Connectome(connectome_path; norm=true, weight_function = (n, l) -> n ), 1e-2);
+
 
 subcortex = filter(x -> x.Lobe == "subcortex", all_c.parc)
 cortex = filter(x -> x.Lobe != "subcortex", all_c.parc)
@@ -174,8 +175,8 @@ pst = sample(m,
              n_samples, 
              n_chains,
              progress=false)
-serialize(projectdir("adni/chains/local-fkpp/pst-tauneg-$(n_chains)x$(n_samples).jls"), pst)
+serialize(projectdir("adni/chains/local-fkpp/length-free/pst-tauneg-$(n_chains)x$(n_samples).jls"), pst)
 
 # calc log likelihood 
 log_likelihood = pointwise_loglikelihoods(m, MCMCChains.get_sections(pst, :parameters));
-serialize(projectdir("adni/chains/local-fkpp/ll-tauneg-$(n_chains)x$(n_samples).jls"), log_likelihood)
+serialize(projectdir("adni/chains/local-fkpp/length-free/ll-tauneg-$(n_chains)x$(n_samples).jls"), log_likelihood)
