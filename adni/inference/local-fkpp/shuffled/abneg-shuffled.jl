@@ -141,8 +141,8 @@ end
     ensemble_sol = solve(ensemble_prob, 
                          Tsit5(), 
                          EnsembleSerial(),
-                         abstol = 1e-9, 
-                         reltol = 1e-9, 
+                         abstol = 1e-6, 
+                         reltol = 1e-6, 
                          trajectories=n, 
                          sensealg=InterpolatingAdjoint(autojacvec=ReverseDiffVJP(true)))
 
@@ -160,7 +160,7 @@ end
 Turing.setadbackend(:forwarddiff)
 Random.seed!(1234); 
 
-for i in 1:1
+for i in 1:10
     println("Starting chain $i")
 
     shuffles = shuffle_cols.(subdata)
@@ -182,7 +182,7 @@ for i in 1:1
 
     n_samples = 1_000
     pst = sample(m,
-                Turing.NUTS(0.8),
+                Turing.NUTS(5_00, 0.8),
                 n_samples, 
                 progress=true)
     serialize(projectdir("adni/chains/local-fkpp/shuffled/ab/pst-abneg-$(n_samples)-shuffled-$(i).jls"), pst)
