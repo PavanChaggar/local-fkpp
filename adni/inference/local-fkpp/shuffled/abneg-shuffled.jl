@@ -139,8 +139,7 @@ end
                                     output_func=output_func)
 
     ensemble_sol = solve(ensemble_prob, 
-                         Tsit5(), 
-                         EnsembleSerial(),
+                         Tsit5(),
                          abstol = 1e-6, 
                          reltol = 1e-6, 
                          trajectories=n, 
