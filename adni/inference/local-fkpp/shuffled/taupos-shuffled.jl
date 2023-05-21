@@ -22,7 +22,7 @@ include(projectdir("functions.jl"))
 # Connectome and ROIs
 #-------------------------------------------------------------------------------
 connectome_path = Connectomes.connectome_path()
-all_c = filter(Connectome(connectome_path; norm=true, weight_function = (n, l) -> n ./ l), 1e-2);
+all_c = filter(Connectome(connectome_path; norm=true, weight_function = (n, l) -> n), 1e-2);
 
 subcortex = filter(x -> x.Lobe == "subcortex", all_c.parc);
 cortex = filter(x -> x.Lobe != "subcortex", all_c.parc);
@@ -173,5 +173,5 @@ for i in 1:10
                 Turing.NUTS(0.8),
                 n_samples, 
                 progress=true)
-    serialize(projectdir("adni/chains/local-fkpp/shuffled/pos/pst-taupos-$(n_samples)-shuffled-$(i).jls"), pst)
+    serialize(projectdir("adni/chains/local-fkpp/shuffled/pos/length-free/pst-taupos-$(n_samples)-shuffled-$(i).jls"), pst)
 end
