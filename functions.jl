@@ -112,3 +112,8 @@ function regional_mean(data, rois, sub)
     subsuvr = calc_suvr(data, sub)
     mean(subsuvr[rois,end])
 end
+
+function regional_mean(data, rois, sub, scan)
+    subsuvr = calc_suvr(data, sub)
+    mean(subsuvr[rois,scan])
+end

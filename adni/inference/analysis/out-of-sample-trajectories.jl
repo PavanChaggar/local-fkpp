@@ -86,7 +86,7 @@ end
 initial_conditions = [sd[:,1] for sd in subdata]
 times =  [get_times(data, i) for i in tau_pos]
 
-pst = deserialize(projectdir("adni/chains/local-fkpp/pst-taupos-4x2000-vc.jls"));
+pst = deserialize(projectdir("adni/chains/local-fkpp/length-free/pst-taupos-4x2000-vc.jls"));
 
 meanpst = mean(pst)
 params = [[meanpst[:Pm, :mean], meanpst[:Am, :mean]] for i in 1:27]

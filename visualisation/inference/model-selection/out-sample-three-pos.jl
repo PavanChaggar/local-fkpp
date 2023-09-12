@@ -17,7 +17,7 @@ include(projectdir("functions.jl"))
 # Connectome and ROIs
 #-------------------------------------------------------------------------------
 connectome_path = Connectomes.connectome_path()
-all_c = filter(Connectome(connectome_path; norm=true, weight_function = (n, l) -> n ./ l), 1e-2);
+all_c = filter(Connectome(connectome_path; norm=true, weight_function = (n, l) -> n), 1e-2);
 
 subcortex = filter(x -> x.Lobe == "subcortex", all_c.parc);
 cortex = filter(x -> x.Lobe != "subcortex", all_c.parc);
@@ -113,9 +113,9 @@ end
 #-------------------------------------------------------------------------------
 # Posteriors
 #-------------------------------------------------------------------------------
-local_pst = deserialize(projectdir("adni/chains/local-fkpp/pst-taupos-1x2000-three.jls"));
-global_pst = deserialize(projectdir("adni/chains/global-fkpp/pst-taupos-1x2000-three.jls"));
-diffusion_pst = deserialize(projectdir("adni/chains/diffusion/pst-taupos-1x2000-three.jls"));
+local_pst = deserialize(projectdir("adni/chains/local-fkpp/length-free/pst-taupos-1x2000-three.jls"));
+global_pst = deserialize(projectdir("adni/chains/global-fkpp/length-free/pst-taupos-1x2000-three.jls"));
+diffusion_pst = deserialize(projectdir("adni/chains/diffusion/length-free/pst-taupos-1x2000-three.jls"));
 logistic_pst = deserialize(projectdir("adni/chains/logistic/pst-taupos-1x2000-three.jls"));
 
 [sum(p[:numerical_error]) for p in [local_pst, global_pst, diffusion_pst, logistic_pst]]
@@ -185,12 +185,6 @@ function get_quantiles(mean_sols)
     [vec(mapslices(x -> quantile(x, q), mean_sols, dims = 2)) for q in [0.975, 0.025, 0.5]]
 end
 
-five_pred_mean = solve(ODEProblem(NetworkLocalFKPP, insample_inits[3], (0.0,20.0), local_params[3]), Tsit5(), saveat=collect(0.0:0.1:20.0))
-five_preds = [solve(
-                ODEProblem(NetworkLocalFKPP, insample_inits[3], (0.0,20.0), [p, a]), 
-                Tsit5(), saveat=collect(0.0:0.1:20.0)) .+ (randn(72,201) .* σ) for (p, a, σ) in 
-                zip(local_ps[3], local_as[3], local_ss)];
-
 begin
     cols = ColorSchemes.seaborn_colorblind[1:10]
     scan = 4
@@ -222,7 +216,7 @@ begin
         hideydecorations!(ax, grid=false, ticks=false, minorgrid=false, minorticks=false) 
         end
         for j in 1:10
-            scatter!(Array(four_subdata[j][:, scan]), Array(preds[j])[:, scan],
+            scatter!(Array(four_subdata[j][:, end]), Array(preds[j])[:, end],
                      markersize=15, color=(cols[j], 0.75));
             xlims!(ax, 0.9,2.7)
             ylims!(ax, 0.9,2.7)
@@ -240,8 +234,8 @@ begin
             hideydecorations!(ax, grid=false, ticks=false) 
         end
         for j in 1:10
-            _data = getdiff(four_subdata[j], scan)
-            _preds = getdiff(preds[j], scan)
+            _data = getdiff(four_subdata[j])
+            _preds = getdiff(preds[j])
             scatter!(_data, _preds, markersize=15, color=(cols[j], 0.75));
             xlims!(ax, -0.3,1.05)
             ylims!(ax, -0.3,1.05)
@@ -253,6 +247,118 @@ begin
     f
 end
 save(projectdir("visualisation/inference/model-selection/output/out-sample-fit.pdf"), f)
+
+mean_first_scan = vec(mean(reduce(hcat, [sd[:, 1] for sd in four_subdata]), dims=2))
+mean_final_scan = vec(mean(reduce(hcat, [sd[:, end] for sd in four_subdata]), dims=2))
+mean_final_pred = vec(mean(reduce(hcat, [sd[:, end] for sd in local_preds]), dims=2))
+
+begin
+    cols = ColorSchemes.seaborn_colorblind[1:10]
+    scan = 4
+    titlesize = 40
+    xlabelsize = 30
+    ylabelsize = 30
+    xticklabelsize = 20 
+    yticklabelsize = 20
+    f = Figure(resolution = (1000, 500), fontsize=30)
+    g1 = f[1,1] = GridLayout()
+    start = 1.0
+    stop = 2.0
+    ax = Axis(g1[1,1],
+                xlabel="Observed", 
+                ylabel="Predicted", 
+                xlabelsize=xlabelsize, ylabelsize=ylabelsize, 
+                xticks = 1.0:0.5:2.5, yticks = 1.0:0.5:2.5,
+                xticklabelsize=xticklabelsize, yticklabelsize=xticklabelsize,
+                xminorgridvisible=true,yminorgridvisible=true,
+                xminorticksvisible=true, yminorticksvisible=true,
+                xminorticks=collect(start:0.25:stop),yminorticks=collect(start:0.25:stop))
+    for j in 1:10
+        scatter!(Array(four_subdata[j][:, end]), Array(local_preds[j])[:, end],
+                    markersize=15, color=(cols[j], 0.75));
+        xlims!(ax, 0.9,2.7)
+        ylims!(ax, 0.9,2.7)
+    end
+    lines!(0.9:0.1:2.7, 0.9:0.1:2.7, color=:grey)
+    ax = Axis(g1[1,2], 
+                xlabel="Δ Observed",
+                ylabel="Δ Predicted", 
+                xlabelsize=xlabelsize, ylabelsize=ylabelsize, 
+                xticklabelsize=xticklabelsize, yticklabelsize=xticklabelsize,
+                yticks = -0.25:0.25:2.5, xticks = -0.25:0.25:2.5,
+                xminorgridvisible=true,yminorgridvisible=true,
+                xminorticksvisible=true, yminorticksvisible=true,)
+    for j in 1:10
+        _data = getdiff(four_subdata[j])
+        _preds = getdiff(local_preds[j])
+        scatter!(_data, _preds, markersize=15, color=(cols[j], 0.75));
+        xlims!(ax, -0.3,1.1)
+        ylims!(ax, -0.3,1.1)
+    end
+    lines!(-0.3:0.01:1.05, -0.3:0.01:1.05, color=:grey)
+
+    Label(g1[0,:], "Individual prediction", font=:bold,
+    tellwidth=false, rotation=0, padding = (0, 0, 0, 0), fontsize=40)
+    f
+end
+save(projectdir("visualisation/inference/model-selection/output/out-sample-fit-individual.pdf"), f)
+
+
+begin
+    cols = ColorSchemes.seaborn_colorblind[1:10]
+    scan = 4
+    titlesize = 40
+    xlabelsize = 30
+    ylabelsize = 30
+    xticklabelsize = 20 
+    yticklabelsize = 20
+    f = Figure(resolution = (1000, 500), fontsize=30)
+    g1 = f[1,1] = GridLayout()
+    start = 1.0
+    stop = 2.0
+    ax = Axis(g1[1,1],
+            xlabel="Observed", 
+            ylabel="Predicted", 
+            xlabelsize=xlabelsize, ylabelsize=ylabelsize, 
+            xticks = 1.0:0.25:2., yticks = 1.0:0.25:2.,
+            xticklabelsize=xticklabelsize, yticklabelsize=xticklabelsize,
+            xminorgridvisible=true,yminorgridvisible=true,
+            xminorticksvisible=true, yminorticksvisible=true,
+            xminorticks=collect(start:0.125:stop),yminorticks=collect(start:0.125:stop))
+    scatter!(mean_final_scan, mean_final_pred,
+            markersize=15, color=(cols[1], 0.75));
+    xlims!(ax, 0.95,2.)
+    ylims!(ax, 0.95,2.)
+    lines!(0.9:0.1:2.7, 0.9:0.1:2.7, color=:grey)
+
+    ax = Axis(g1[1,2], 
+                xlabel="Δ Observed",
+                ylabel="Δ Predicted", 
+                xlabelsize=xlabelsize, ylabelsize=ylabelsize, 
+                xticklabelsize=xticklabelsize, yticklabelsize=xticklabelsize,
+                yticks = -0.0:0.1:0.3, xticks =-0.0:0.1:0.3,
+                xminorgridvisible=true,yminorgridvisible=true,
+                xminorticksvisible=true, yminorticksvisible=true,)
+
+    scatter!(mean_final_scan .- mean_first_scan, mean_final_pred .- mean_first_scan, 
+            markersize=15, color=(cols[1], 0.75));
+    xlims!(ax, -0.025,0.3)
+    ylims!(ax, -0.025,0.3)
+    lines!(-0.3:0.01:1.05, -0.3:0.01:1.05, color=:grey)
+
+    Label(g1[0,:], "Regional prediction", font=:bold,
+    tellwidth=false, rotation=0, padding = (0, 0, 0, 0), fontsize=40)
+    f
+end
+save(projectdir("visualisation/inference/model-selection/output/out-sample-fit-regional-average.pdf"), f)
+
+
+five_pred_mean = solve(ODEProblem(NetworkLocalFKPP, insample_inits[3], (0.0,20.0), local_params[3]), Tsit5(), saveat=collect(0.0:0.1:20.0))
+five_preds = [solve(
+                ODEProblem(NetworkLocalFKPP, insample_inits[3], (0.0,20.0), [p, a]), 
+                Tsit5(), saveat=collect(0.0:0.1:20.0)) .+ (randn(72,201) .* σ) for (p, a, σ) in 
+                zip(local_ps[3], local_as[3], local_ss)];
+
 
 right = [25, 27, 29]
 left = [61, 63, 65]
@@ -409,8 +515,6 @@ begin
     f
 end
 save(projectdir("visualisation/inference/model-selection/output/out-sample-trajectories-hemi.pdf"), f)
-//
-
 # out_sample_fourth_scans = [sd[:,4] for sd in four_subdata]
 # mean_fourth_scan = mean(reduce(hcat, out_sample_fourth_scans), dims=2) |> vec
 # mean_insample_inits = mean(reduce(hcat, [sd[:,1] for sd in four_subdata]), dims=2)
@@ -441,3 +545,169 @@ save(projectdir("visualisation/inference/model-selection/output/out-sample-traje
 #     end
 #     f
 # end
+
+
+right = [25, 27, 29]
+left = [61, 63, 65]
+cols = ColorSchemes.seaborn_bright
+
+begin
+f = Figure(resolution = (1500, 2000), fontsize=20)
+for (j, s) in enumerate([1, 2, 4, 5, 6, 7, 8, 9, 10])
+    g = f[j, :] = GridLayout()
+    five_pred_mean = solve(ODEProblem(NetworkLocalFKPP, insample_inits[s], (0.0,20.0), local_params[s]), Tsit5(), saveat=collect(0.0:0.1:20.0))
+    five_preds = [solve(
+                    ODEProblem(NetworkLocalFKPP, insample_inits[s], (0.0,20.0), [p, a]), 
+                    Tsit5(), saveat=collect(0.0:0.1:20.0)) .+ (randn(72,201) .* σ) for (p, a, σ) in 
+                    zip(local_ps[s], local_as[s], local_ss)];
+
+    for (i, (left, right, title)) in enumerate(zip(left, right, ["Fusiform", "Entorhinal", "Inf. Temporal"]))
+        
+        if j == 1
+            ax = Axis(g[1,i], title = title, titlesize=40, ylabel="SUVR", ylabelsize=30,
+            yticks = 1.0:0.5:3.5, yticksize=10, yticklabelsize=30,
+            yminorticks = 1.0:0.25:3.25, yminorticksize=5,
+            yminorgridvisible=true, yminorticksvisible=true,
+            yminorgridcolor=RGBAf(0, 0, 0, 0.15), ygridcolor=RGBAf(0, 0, 0, 0.15),
+            xlabel="Time / years", xlabelsize=30,
+            xticks = 0.0:5.0:20.0, xticksize=5, xticklabelsize=30,
+            xminorticks = 0.0:2.5:20.0, xminorticksize=5,
+            xminorgridvisible=true, xminorticksvisible=true, 
+            xminorgridcolor=RGBAf(0, 0, 0, 0.15), xgridcolor=RGBAf(0, 0, 0, 0.15))
+            ylims!(ax, 1.0, 3.4)
+        else
+        ax = Axis(g[1,i], ylabel="SUVR", ylabelsize=30,
+                yticks = 1.0:0.5:3.5, yticksize=10, yticklabelsize=30,
+                yminorticks = 1.0:0.25:3.25, yminorticksize=5,
+                yminorgridvisible=true, yminorticksvisible=true,
+                yminorgridcolor=RGBAf(0, 0, 0, 0.15), ygridcolor=RGBAf(0, 0, 0, 0.15),
+                xlabel="Time / years", xlabelsize=30,
+                xticks = 0.0:5.0:20.0, xticksize=5, xticklabelsize=30,
+                xminorticks = 0.0:2.5:20.0, xminorticksize=5,
+                xminorgridvisible=true, xminorticksvisible=true, 
+                xminorgridcolor=RGBAf(0, 0, 0, 0.15), xgridcolor=RGBAf(0, 0, 0, 0.15))
+        ylims!(ax, 1.0, 3.4)
+        end
+
+        if i == 1
+            if j < 9 
+                hidexdecorations!(ax, grid=false, ticks=false,
+                minorticks=false, minorgrid=false)
+            end
+        else
+            hideydecorations!(ax, grid=false, ticks=false, 
+                            minorticks=false, minorgrid=false)
+            if j < 9 
+                hidexdecorations!(ax, grid=false, ticks=false,
+                minorticks=false, minorgrid=false)
+            end
+        end
+
+        #right
+        q1, q2, q3 = get_quantiles(reduce(hcat, [five_preds[i][right, :] for i in 1:2000]))
+        band!(0.0:0.1:20.0, q1, q2, color=(cols[4], 0.25))
+        lines!(five_pred_mean.t, five_pred_mean[right, :], color=cols[4])
+        scatter!(times[s][1:3], four_subdata[s][right,1:3], color=cols[4], markersize=20)
+        scatter!(times[s][4:end], four_subdata[s][right,4:end], color=cols[4], markersize=20, marker=:rect)
+
+        #left 
+        q1, q2, q3 = get_quantiles(reduce(hcat, [five_preds[i][left, :] for i in 1:2000]))
+        band!(0.0:0.1:20.0, q1, q2, color=(cols[1], 0.25))
+        lines!(five_pred_mean.t, five_pred_mean[left, :], color=cols[1])
+        scatter!(times[s][1:3], four_subdata[s][left,1:3], color=cols[1], markersize=20)
+        scatter!(times[s][4:end], four_subdata[s][left,4:end], color=cols[1], markersize=20, marker=:rect)
+    end
+    if j == 1
+        ax = Axis(g[1, 4],  title="Mean", titlesize=40, ylabel="SUVR", ylabelsize=30,
+        yticks = 1.0:0.5:3.5, yticksize=10, yticklabelsize=30,
+        yminorticks = 1.0:0.25:3.25, yminorticksize=5,
+        yminorgridvisible=true, yminorticksvisible=true,
+        yminorgridcolor=RGBAf(0, 0, 0, 0.15), ygridcolor=RGBAf(0, 0, 0, 0.15),
+        xlabel="Time / years", xlabelsize=30,
+        xticks = 0.0:5.0:20.0, xticksize=5, xticklabelsize=30,
+        xminorticks = 0.0:2.5:20.0, xminorticksize=5,
+        xminorgridvisible=true, xminorticksvisible=true, 
+        xminorgridcolor=RGBAf(0, 0, 0, 0.15), xgridcolor=RGBAf(0, 0, 0, 0.15))
+    else
+    ax = Axis(g[1, 4],  ylabel="SUVR", ylabelsize=30,
+                yticks = 1.0:0.5:3.5, yticksize=10, yticklabelsize=30,
+                yminorticks = 1.0:0.25:3.25, yminorticksize=5,
+                yminorgridvisible=true, yminorticksvisible=true,
+                yminorgridcolor=RGBAf(0, 0, 0, 0.15), ygridcolor=RGBAf(0, 0, 0, 0.15),
+                xlabel="Time / years", xlabelsize=30,
+                xticks = 0.0:5.0:20.0, xticksize=5, xticklabelsize=30,
+                xminorticks = 0.0:2.5:20.0, xminorticksize=5,
+                xminorgridvisible=true, xminorticksvisible=true, 
+                xminorgridcolor=RGBAf(0, 0, 0, 0.15), xgridcolor=RGBAf(0, 0, 0, 0.15))
+    end
+    hideydecorations!(ax, grid=false, ticks=false, 
+                        minorticks=false, minorgrid=false)
+    if s == 10
+    hidexdecorations!(ax, grid=false, ticks=false, ticklabels=false, label=false,
+                            minorticks=false, minorgrid=false)
+    else
+        hidexdecorations!(ax, grid=false, ticks=false,
+                            minorticks=false, minorgrid=false)
+    end
+    ylims!(ax, 1.0, 3.4)
+    q1, q2, q3 = get_quantiles(transpose(reduce(vcat, [mean(five_preds[i][1:36,:], dims=1) for i in 1:2000])))
+    band!(0.0:0.1:20.0, q1, q2, color=(cols[4], 0.25))
+    lines!(five_pred_mean.t, vec(mean(five_pred_mean[1:36, :], dims=1)), color=cols[4])
+    scatter!(times[s][1:3], vec(mean(four_subdata[s][1:36,1:3], dims=1)), color=cols[4], markersize=20)
+    scatter!(times[s][4:end], vec(mean(four_subdata[s][1:36,4:end], dims=1)), color=cols[4], markersize=20, marker=:rect)
+
+    q1, q2, q3 = get_quantiles(transpose(reduce(vcat, [mean(five_preds[i][37:72,:], dims=1) for i in 1:2000])))
+    band!(0.0:0.1:20.0, q1, q2, color=(cols[1], 0.25))
+    lines!(five_pred_mean.t, vec(mean(five_pred_mean[37:72,:], dims=1)), color=cols[1])
+    scatter!(times[s][1:3], vec(mean(four_subdata[s][37:72,1:3], dims=1)), color=cols[1], markersize=20)
+    scatter!(times[s][4:end], vec(mean(four_subdata[s][37:72,4:end], dims=1)), color=cols[1], markersize=20, marker=:rect)
+    colgap!(g, 10)
+    rowgap!(g, 5)
+    # Label(f[2,1:4], "Time / years", tellwidth=false, rotation=0, fontsize=30, padding=(0, 0, 0, -20))
+
+    # elem_1 = MarkerElement(color = (cols[1], 0.7), marker='●', markersize=30)
+    # elem_2 = MarkerElement(color = (cols[1], 0.7), marker=:rect, markersize=30)
+    # elem_3 = MarkerElement(color = (cols[4], 0.7), marker='●', markersize=30)
+    # elem_4 = MarkerElement(color = (cols[4], 0.7), marker=:rect, markersize=30)
+    # elem_5 = LineElement(color = (cols[1], 0.6), linewidth=5)
+    # elem_6 = PolyElement(color = (cols[1], 0.5))
+    # elem_7 = LineElement(color = (cols[4], 0.6), linewidth=5)
+    # elem_8 = PolyElement(color = (cols[4], 0.5))
+
+    # legend = Legend(f[3,:],
+    #         [elem_1, elem_2, 
+    #         elem_5, elem_6 ,
+    #         elem_3, elem_4, 
+    #         elem_7, elem_8],
+    #         ["Left In-sample", "Left Out-sample", 
+    #         "Left Mean Pred.", "Left 95th Quantile", 
+    #         "Right In-sample", "Right Out-sample", 
+    #         "Right Mean Pred.", "Right 95th Quantile"],
+    #         patchsize = (30, 20), rowgap = 10, colgap=20, 
+    #         labelsize=40, framevisible=false, orientation=:horizontal,
+    #         nbanks=2)
+    elem_1 = MarkerElement(color = (cols[1], 0.7), marker='●', markersize=30)
+    elem_2 = MarkerElement(color = (cols[1], 0.7), marker=:rect, markersize=30)
+    elem_3 = MarkerElement(color = (cols[4], 0.7), marker='●', markersize=30)
+    elem_4 = MarkerElement(color = (cols[4], 0.7), marker=:rect, markersize=30)
+    elem_5 = LineElement(color = (cols[1], 0.6), linewidth=5)
+    elem_6 = PolyElement(color = (cols[1], 0.5))
+    elem_7 = LineElement(color = (cols[4], 0.6), linewidth=5)
+    elem_8 = PolyElement(color = (cols[4], 0.5))
+
+    legend = Legend(f[10,:],
+           [elem_1, elem_2, 
+            elem_5, elem_6 ,
+           elem_3, elem_4, 
+           elem_7, elem_8],
+           ["Left In-sample", "Left Out-sample", 
+            "Left Mean Pred.", "Left 95th Quantile", 
+           "Right In-sample", "Right Out-sample", 
+           "Right Mean Pred.", "Right 95th Quantile"],
+           patchsize = (30, 20), rowgap = 10, colgap=20, 
+           labelsize=25, framevisible=false, orientation=:horizontal,
+           nbanks=2) 
+end
+f
+end
+save(projectdir("visualisation/inference/model-selection/output/out-sample-trajectories-supp.pdf"), f)

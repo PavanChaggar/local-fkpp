@@ -5,7 +5,7 @@ using Distributions
 include(projectdir("functions.jl"))
 
 connectome_path = Connectomes.connectome_path()
-all_c = filter(Connectome(connectome_path; norm=true, weight_function = (n, l) -> n ./ l), 1e-2);
+all_c = filter(Connectome(connectome_path; norm=true, weight_function = (n, l) -> n), 1e-2);
 
 subcortex = filter(x -> x.Lobe == "subcortex", all_c.parc)
 cortex = filter(x -> x.Lobe != "subcortex", all_c.parc)
@@ -36,11 +36,11 @@ seed = filter(x -> x.Label ∈ seed_regions, cortex)
 seed_value = mean([cc[seed.rID] p0[seed.rID]], dims=2)
 p0[seed.rID] .= seed_value 
 
-r = 0.01
-a = 0.1
-prob = ODEProblem(NetworkExFKPP, p0, (0.0,200.0), [r,a, u0, cc])
+r = 0.15
+a = 1.1
+prob = ODEProblem(NetworkExFKPP, p0, (0.0,8.0), [r,a, u0, cc])
 
-ts = range(0.0, 200.0, 5)
+ts = range(0.0, 8.0, 5)
 n = length(ts)
 sol = solve(prob, Rodas4(), reltol=1e-12, saveat=ts);
 allsol = solve(prob, Rodas4(), reltol=1e-12, saveat=0.1)
@@ -99,7 +99,7 @@ begin
             ylabel="SUVR", ylabelsize = 36
     )
     GLMakie.ylims!(ax, minimum(u0) - 0.1, 4.0)
-    GLMakie.xlims!(ax, 0.0, 200.05)
+    GLMakie.xlims!(ax, 0.0, 8.05)
     # hideydecorations!(ax, label=false, ticks=false, ticklabels=false)
     hidespines!(ax, :t, :r)
     for i in 1:36

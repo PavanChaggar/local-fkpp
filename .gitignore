@@ -35,3 +35,4 @@ adni/chains
 *.svg
 *.jls
 *.tif
+*.csv

@@ -119,9 +119,9 @@ end
 #-------------------------------------------------------------------------------
 # Posteriors
 #-------------------------------------------------------------------------------
-local_pst = deserialize(projectdir("adni/chains/local-fkpp/pst-tauneg-1x2000-three.jls"));
-global_pst = deserialize(projectdir("adni/chains/global-fkpp/pst-tauneg-1x2000-three.jls"));
-diffusion_pst = deserialize(projectdir("adni/chains/diffusion/pst-tauneg-1x2000-three.jls"));
+local_pst = deserialize(projectdir("adni/chains/local-fkpp/ballistic/pst-tauneg-1x2000-three.jls"));
+global_pst = deserialize(projectdir("adni/chains/global-fkpp/ballistic/pst-tauneg-1x2000-three.jls"));
+diffusion_pst = deserialize(projectdir("adni/chains/diffusion/ballistic/pst-tauneg-1x2000-three.jls"));
 logistic_pst = deserialize(projectdir("adni/chains/logistic/pst-tauneg-1x2000-three.jls"));
 
 [sum(p[:numerical_error]) for p in [local_pst, global_pst, diffusion_pst, logistic_pst]]
@@ -282,4 +282,11 @@ begin
         lines!(-0.1:0.01:0.5, -0.1:0.01:0.5, color=:grey)
     end
     f
+end
+
+for j in 1:10
+    _data = getdiff(four_subdata[j])
+    _preds = getdiff(local_preds[j])
+    f = scatter(_data, _preds, markersize=15, color=(cols[j], 0.75));
+    display(f)
 end

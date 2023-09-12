@@ -10,7 +10,7 @@ include(projectdir("functions.jl"))
 # Connectome and ROIs
 #-------------------------------------------------------------------------------
 connectome_path = Connectomes.connectome_path()
-all_c = filter(Connectome(connectome_path; norm=true, weight_function = (n, l) -> n ./ l.^2), 1e-2);
+all_c = filter(Connectome(connectome_path; norm=true, weight_function = (n, l) -> n), 1e-2);
 
 subcortex = filter(x -> x.Lobe == "subcortex", all_c.parc)
 cortex = filter(x -> x.Lobe != "subcortex", all_c.parc)
@@ -78,7 +78,7 @@ subdata = _subdata[nonzerosubs]
 #-------------------------------------------------------------------------------
 # Subject params
 #-------------------------------------------------------------------------------
-pst = deserialize(projectdir("adni/chains/local-fkpp/pst-tauneg-4x2000.jls"));
+pst = deserialize(projectdir("adni/chains/local-fkpp/length-free/pst-tauneg-4x2000.jls"));
 meanpst = mean(pst);
 sub = 2
 ρ = meanpst["ρ[$sub]", :mean]
@@ -88,7 +88,7 @@ prob = ODEProblem(NetworkLocalFKPP, subdata[sub][:,1], (0.0,20.0), [ρ,α])
 ts = range(0.0, 20.0, 5)
 n = length(ts)
 sol = solve(prob, Rodas4(), reltol=1e-12, saveat=ts);
-allsol = solve(prob, Rodas4(), reltol=1e-12, saveat=0.1)
+allsol = solve(prob, Rodas4(), reltol=1e-12, saveat=0.1);
 
 Plots.plot(sol, vars=(1:36), labels=false)
 
@@ -173,7 +173,7 @@ subdata = [normalise(sd, u0, cc) for sd in subsuvr]
 #-------------------------------------------------------------------------------
 # Subject params
 #-------------------------------------------------------------------------------
-pst = deserialize(projectdir("adni/chains/local-fkpp/pst-taupos-4x2000.jls"));
+pst = deserialize(projectdir("adni/chains/local-fkpp/length-free/pst-taupos-4x2000.jls"));
 meanpst = mean(pst);
 sub = 10
 ρ = meanpst["ρ[$sub]", :mean]

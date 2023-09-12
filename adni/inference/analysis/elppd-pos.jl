@@ -13,7 +13,7 @@ include(projectdir("functions.jl"))
 # Connectome and ROIs
 #-------------------------------------------------------------------------------
 connectome_path = Connectomes.connectome_path()
-all_c = filter(Connectome(connectome_path; norm=true, weight_function = (n, l) -> n ./ l), 1e-2);
+all_c = filter(Connectome(connectome_path; norm=true, weight_function = (n, l) -> n), 1e-2);
 
 subcortex = filter(x -> x.Lobe == "subcortex", all_c.parc);
 cortex = filter(x -> x.Lobe != "subcortex", all_c.parc);
@@ -108,7 +108,7 @@ end
 #-------------------------------------------------------------------------------
 # Connectome + ODEE
 #-------------------------------------------------------------------------------
-local_pst = deserialize(projectdir("adni/chains/local-fkpp/pst-taupos-1x2000-three.jls"));
+local_pst = deserialize(projectdir("adni/chains/local-fkpp/length-free/pst-taupos-1x2000-three.jls"));
 local_ps = [Array(local_pst[Symbol("ρ[$i]")]) for i in outsample_idx];
 local_as = [Array(local_pst[Symbol("α[$i]")]) for i in outsample_idx];
 
@@ -121,7 +121,7 @@ function elppd_local(pst, ps, as, initial_conditions, subdata, out_times)
         for (i, (p, a, s)) in enumerate(zip(_p, _a, σ))
             _prob = ODEProblem(NetworkLocalFKPP, inits, (0.,7.), [p , a])
             _sol = solve(_prob, Tsit5(), saveat=t[4:end])
-            push!(lls, exp(loglikelihood(MvNormal(vec(_sol), s^2 * I), vec(y))))
+            push!(lls, pdf(MvNormal(vec(_sol), s^2 * I), vec(y)))
         end
         push!(slls, sum(lls) / 2000)
     end
@@ -133,7 +133,7 @@ local_elppd = elppd_local(local_pst, local_ps, local_as, insample_inits, outsamp
 #-------------------------------------------------------------------------------
 # Global FKPP
 #-------------------------------------------------------------------------------
-global_pst = deserialize(projectdir("adni/chains/global-fkpp/pst-taupos-1x2000-three.jls"));
+global_pst = deserialize(projectdir("adni/chains/global-fkpp/length-free/pst-taupos-1x2000-three.jls"));
 global_ps = [Array(global_pst[Symbol("ρ[$i]")]) for i in outsample_idx];
 global_as = [Array(global_pst[Symbol("α[$i]")]) for i in outsample_idx];
 
@@ -146,7 +146,7 @@ function elppd_global(pst, ps, as, max_suvr, initial_conditions, subdata, out_ti
         for (i, (p, a, s)) in enumerate(zip(_p, _a, σ))
             _prob = ODEProblem(NetworkGlobalFKPP, inits, (0.,7.), [p , a, max_suvr])
             _sol = solve(_prob, Tsit5(), saveat=t[4:end])
-            push!(lls, exp(loglikelihood(MvNormal(vec(_sol), s^2 * I), vec(y))))
+            push!(lls, pdf(MvNormal(vec(_sol), s^2 * I), vec(y)))
         end
         push!(slls, sum(lls) / 2000)
     end
@@ -158,7 +158,7 @@ global_elppd = elppd_global(global_pst, global_ps, global_as, max_suvr, insample
 #-------------------------------------------------------------------------------
 # Diffusion
 #-------------------------------------------------------------------------------
-diffusion_pst = deserialize(projectdir("adni/chains/diffusion/pst-taupos-1x2000-three.jls"));
+diffusion_pst = deserialize(projectdir("adni/chains/diffusion/length-free/pst-taupos-1x2000-three.jls"));
 diffusion_ps = [Array(diffusion_pst[Symbol("ρ[$i]")]) for i in outsample_idx];
 
 function elppd_diffusion(pst, ps, initial_conditions, subdata, out_times)
@@ -170,7 +170,7 @@ function elppd_diffusion(pst, ps, initial_conditions, subdata, out_times)
         for (i, (p, s)) in enumerate(zip(_p, σ))
             _prob = ODEProblem(NetworkDiffusion, inits, (0.,7.), [p])
             _sol = solve(_prob, Tsit5(), saveat=t[4:end])
-            push!(lls, exp(loglikelihood(MvNormal(vec(_sol), s^2 * I), vec(y))))
+            push!(lls, pdf(MvNormal(vec(_sol), s^2 * I), vec(y)))
         end
         push!(slls, sum(lls) / 2000)
     end
@@ -193,7 +193,7 @@ function elppd_logistic(pst, as, initial_conditions, subdata, out_times)
         for (i, (a, s)) in enumerate(zip(_a, σ))
             _prob = ODEProblem(NetworkLogistic, inits, (0.,7.), [a])
             _sol = solve(_prob, Tsit5(), saveat=t[4:end])
-            push!(lls, exp(loglikelihood(MvNormal(vec(_sol), s^2 * I), vec(y))))
+            push!(lls, pdf(MvNormal(vec(_sol), s^2 * I), vec(y)))
         end
         push!(slls, sum(lls) / 2000)
     end
@@ -209,9 +209,9 @@ elppd_df = DataFrame("Local" => local_elppd,
                      "Diffusion" => diffusion_elppd,
                      "Logistic" => logistic_elppd)
 
-local_ll = deserialize(projectdir("adni/chains/local-fkpp/ll-taupos-4x2000.jls"));
-global_ll = deserialize(projectdir("adni/chains/global-fkpp/ll-taupos-4x2000.jls"));
-diffusion_ll = deserialize(projectdir("adni/chains/diffusion/ll-taupos-4x2000.jls"));
+local_ll = deserialize(projectdir("adni/chains/local-fkpp/length-free/ll-taupos-4x2000.jls"));
+global_ll = deserialize(projectdir("adni/chains/global-fkpp/length-free/ll-taupos-4x2000.jls"));
+diffusion_ll = deserialize(projectdir("adni/chains/diffusion/length-free/ll-taupos-4x2000.jls"));
 logistic_ll = deserialize(projectdir("adni/chains/logistic/ll-taupos-4x2000.jls"));
 
 max_lls= [maximum(dict["data"]) for dict in [local_ll, global_ll, diffusion_ll, logistic_ll]]

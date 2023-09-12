@@ -3,29 +3,25 @@ using DataFrames
 using DrWatson: projectdir
 using CairoMakie 
 using Connectomes
+using ADNIDatasets
 using Distributions
-using DataDrivenDiffEq
 CairoMakie.activate!()
-include(projectdir("adni/adni.jl"))
+include(projectdir("functions.jl"))
 
 c = Connectome(Connectomes.connectome_path());
 
-sub_data_path = projectdir("data/adni-data/AV1451_Diagnosis-STATUS-STIME-braak-regions.csv")
+sub_data_path = projectdir("adni/data/new_data/UCBERKELEYAV1451_8mm_02_17_23_AB_Status.csv")
 alldf = CSV.read(sub_data_path, DataFrame)
-posdf = filter(x -> x.STATUS ∈ ["NEG", "POS"], alldf)
-test = filter(x -> x.STATUS == "POS", alldf)
 
 dktdict = Connectomes.node2FS()
 dktnames = [dktdict[i] for i in c.parc.ID[1:end-1]]
 
-data = ADNIDataSet(alldf, dktnames; min_scans=1)
+data = ADNIDataset(alldf, dktnames; min_scans=1)
 
 _alldata = [calc_suvr(data, i) for i in 1:length(data)]
 alldata = reduce(hcat, _alldata)
 
-optimal_svd = optimal_shrinkage(alldata)
-
-gmm_moments = CSV.read(projectdir("data/adni-data/component_moments.csv"), DataFrame)
+gmm_moments = CSV.read(projectdir("adni/data/component_moments.csv"), DataFrame)
 dktmoments = filter(x -> x.region ∈ dktnames, gmm_moments)
 
 ubase, upath = get_dkt_moments(gmm_moments, dktnames)
@@ -40,26 +36,29 @@ function plot_density!(μ, Σ; color=:blue, label="")
     band!(x, fill(0, length(x)), fg(x, μ, sqrt(Σ)); color = (color, 0.1), label=label)
 end
 
-node = 78
+node = 29
 data = alldata[node, :]
 moments = filter(x -> x.region == dktnames[node], gmm_moments)
 
+cols = Makie.wong_colors()
 begin
-    f1 = Figure(resolution=(1000, 600), fontsize=20, font = "CMU Serif");
-    ax = Axis(f1[1, 1], ylabel=L"Density", xlabel=L"SUVR", title="Population GMM for Left Putamen")
+    f1 = Figure(resolution=(1000, 600), fontsize=40, font = "CMU Serif");
+    ax = Axis(f1[1, 1], xlabel="SUVR")
     xlims!(minimum(data) - 0.05, maximum(data) + 0.05)
-    hist!(vec(data), color=(:grey, 0.7), bins=50, normalization=:pdf, label="Data")
-   
+    hist!(vec(data), color=(:grey, 0.7), bins=100, normalization=:pdf, label="Data")
+    hideydecorations!(ax)
+    hidespines!(ax, :t, :r, :l)
+
     μ = moments.C0_mean[1]
     Σ = moments.C0_cov[1]
-    plot_density!(μ, Σ; color=:darkblue, label="Healthy")
-    vlines!(ax, quantile(Normal(μ, sqrt(Σ)), 0.5), linewidth=3, label=L"p_0", color=:darkblue)
+    plot_density!(μ, Σ; color=cols[1], label="Healthy")
+    vlines!(ax, quantile(Normal(μ, sqrt(Σ)), 0.5), linewidth=3, label=L"p_0", color=cols[1])
 
     μ = moments.C1_mean[1]
     Σ = moments.C1_cov[1]
-    plot_density!(μ, Σ; color=:darkred, label="Pathological")
-    vlines!(ax, quantile(Normal(μ, sqrt(Σ)), 0.95), linewidth=3, label=L"p_\infty", color=:darkred)
+    plot_density!(μ, Σ; color=cols[6], label="Pathological")
+    vlines!(ax, quantile(Normal(μ, sqrt(Σ)), 0.95), linewidth=3, label=L"p_\infty", color=cols[6])
     axislegend(; merge = true)
     f1
 end
-save(projectdir("adni/visualisation/models/gmm-lPutamen.pdf"), f1)
+save(projectdir("visualisation/models/output/gmm-rIT.pdf"), f1)
