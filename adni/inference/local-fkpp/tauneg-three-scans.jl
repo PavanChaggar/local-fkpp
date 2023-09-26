@@ -144,10 +144,10 @@ end
                                     output_func=output_func)
 
     ensemble_sol = solve(ensemble_prob, 
-                         Tsit5(), 
-                         EnsembleSerial(),
-                         abstol = 1e-9, 
-                         reltol = 1e-9, 
+                         Tsit5(),
+                         EnsembleThreads(),
+                         abstol = 1e-6, 
+                         reltol = 1e-6, 
                          trajectories=n, 
                          sensealg=InterpolatingAdjoint(autojacvec=ReverseDiffVJP(true)))
     if !allequal(get_retcodes(ensemble_sol)) 
