@@ -172,8 +172,8 @@ pst = sample(m,
              Turing.NUTS(0.8),
              n_samples, 
              progress=true)
-serialize(projectdir("adni/chains/local-fkpp/pst-tauneg-$(n_chains)x$(n_samples)-three.jls"), pst)
+serialize(projectdir("adni/chains/local-fkpp/length-free/pst-tauneg-$(n_chains)x$(n_samples)-three.jls"), pst)
 
 # calc log likelihood 
 log_likelihood = pointwise_loglikelihoods(m, MCMCChains.get_sections(pst, :parameters));
-serialize(projectdir("adni/chains/local-fkpp/ll-tauneg-$(n_chains)x$(n_samples)-three.jls"), log_likelihood)
+serialize(projectdir("adni/chains/local-fkpp/length-free/ll-tauneg-$(n_chains)x$(n_samples)-three.jls"), log_likelihood)
