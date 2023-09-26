@@ -72,6 +72,82 @@ begin
 end
 save(projectdir("visualisation/inference/posteriors/output/adni-posteriors.pdf"), f)
 
+begin
+        colors = alphacolor.(Makie.wong_colors(), 0.75)
+
+        f = Figure(resolution=(2000,1000));
+        g1 = f[1, 2] = GridLayout()
+        g2= f[1, 1] = GridLayout()
+        g7 = f[1, 3] = GridLayout()
+
+        ax11 = Axis(g1[1, 1], title="Growth", titlesize=40, xticks=-3:1:2);
+        ax12 = Axis(g1[2, 1], xticks=-3:1.0:2);
+        ax13 = Axis(g1[3, 1], xticks=-3:1.0:2, xlabel="1 / yr", xlabelsize=30);
+        linkaxes!(ax13, ax11)
+        linkaxes!(ax13, ax12)
+
+        hideydecorations!(ax11, label=false)
+        hidexdecorations!(ax11, label=false, ticks=false, grid=false)
+        hidespines!(ax11, :t, :r, :l)
+        for i in 1:31
+                hist!(ax11, vec(pst[Symbol("α[$i]")]), bins=50, color=(colors[3], 0.6), normalization=:pdf, label=L"A\beta^+ \tau^+")
+        end
+
+
+        hideydecorations!(ax12, label=false)
+        hidexdecorations!(ax12, label=false, ticks=false, grid=false)
+        hidespines!(ax12, :t, :r, :l)
+        for i in 1:27
+                hist!(ax12, vec(pst2[Symbol("α[$i]")]), bins=50, color=(colors[2], 0.6), normalization=:pdf, label=L"A\beta^+ \tau^-")
+        end
+
+
+        hideydecorations!(ax13, label=false)
+        hidexdecorations!(ax13, label=false, ticks=false, ticklabels=false, grid=false)
+        hidespines!(ax13, :t, :r, :l)
+        xlims!(-1.5, 1.)
+        for i in 1:55
+                hist!(ax13, vec(pst3[Symbol("α[$i]")]), bins=50, color=(colors[1], 0.6), normalization=:pdf, label=L"A\beta^-")
+        end
+
+        ax21 = Axis(g2[1, 1], title="Diffusion", titlesize=40, ylabel="Density", ylabelsize=30, xticks=-0:0.05:0.2);
+        ax22 = Axis(g2[2, 1], ylabel="Density", ylabelsize=30, xticks=-0:0.05:0.2);
+        ax23 = Axis(g2[3, 1], ylabel="Density", ylabelsize=30, xlabel="mm² / yr", xlabelsize=30, xticks=-0:0.05:0.2);
+        linkaxes!(ax23, ax22)
+        linkaxes!(ax23, ax21)
+
+        hideydecorations!(ax21, label=false)
+        hidexdecorations!(ax21, label=false, ticks=false, grid=false)
+        hidespines!(ax21, :t, :r, :l)
+        for i in 1:31
+                hist!(ax21, vec(pst[Symbol("ρ[$i]")]), bins=50, color=(colors[3], 0.6), normalization=:pdf, label=L"A\beta^+ \tau^+")
+        end
+
+        hideydecorations!(ax22, label=false)
+        hidexdecorations!(ax22, label=false, ticks=false, grid=false)
+        hidespines!(ax22, :t, :r, :l)
+        for i in 1:27
+                hist!(ax22, vec(pst2[Symbol("ρ[$i]")]), bins=50, color=(colors[2], 0.6), normalization=:pdf, label=L"A\beta^+ \tau^-")
+        end
+
+        hideydecorations!(ax23, label=false)
+        hidexdecorations!(ax23, label=false, ticks=false, ticklabels=false, grid=false)
+        hidespines!(ax23, :t, :r, :l)
+        xlims!(-0.001, 0.15)
+        for i in 1:55
+                hist!(ax23, vec(pst3[Symbol("ρ[$i]")]), bins=50, color=(colors[1], 0.6), normalization=:pdf, label=L"A\beta^-")
+        end
+
+        elem_1 = PolyElement(color = (colors[3], 0.6))
+        elem_2 = PolyElement(color = (colors[2], 0.6))
+        elem_3 = PolyElement(color = (colors[1], 0.6))
+        legend = Legend(g7[1,1],
+                [elem_1, elem_2, elem_3],
+                [L"A\beta^+ \tau P^+", L"A\beta^+ \tau P^-", L"A\beta^-"],
+                patchsize = (35, 35), rowgap = 10, framevisible=false, labelsize=30)
+        colgap!(f.layout, 1, 50)
+        f
+end
 #-------------------------------------------------------------------------------
 # Hierarchical Distributions -- BF2
 #-------------------------------------------------------------------------------
@@ -136,6 +212,83 @@ begin
         f
 end 
 save(projectdir("visualisation/inference/posteriors/output/bf-posteriors.pdf"), f)
+
+begin
+        colors = alphacolor.(Makie.wong_colors(), 0.75)
+
+        f = Figure(resolution=(2000,1000));
+        g1 = f[1, 2] = GridLayout()
+        g2= f[1, 1] = GridLayout()
+        g7 = f[1, 3] = GridLayout()
+
+        ax11 = Axis(g1[1, 1], title="Growth", titlesize=40, xticks=-3:1:2);
+        ax12 = Axis(g1[2, 1], xticks=-3:1.0:2);
+        ax13 = Axis(g1[3, 1], xticks=-3:1.0:2, xlabel="1 / yr", xlabelsize=30);
+        linkaxes!(ax13, ax11)
+        linkaxes!(ax13, ax12)
+
+        hideydecorations!(ax11, label=false)
+        hidexdecorations!(ax11, label=false, ticks=false, grid=false)
+        hidespines!(ax11, :t, :r, :l)
+        for i in 1:54
+                hist!(ax11, vec(pst[Symbol("α[$i]")]), bins=50, color=(colors[3], 0.6), normalization=:pdf, label=L"A\beta^+ \tau^+")
+        end
+
+
+        hideydecorations!(ax12, label=false)
+        hidexdecorations!(ax12, label=false, ticks=false, grid=false)
+        hidespines!(ax12, :t, :r, :l)
+        for i in 1:18
+                hist!(ax12, vec(pst2[Symbol("α[$i]")]), bins=50, color=(colors[2], 0.6), normalization=:pdf, label=L"A\beta^+ \tau^-")
+        end
+
+
+        hideydecorations!(ax13, label=false)
+        hidexdecorations!(ax13, label=false, ticks=false, ticklabels=false, grid=false)
+        hidespines!(ax13, :t, :r, :l)
+        xlims!(-1.5, 1.)
+        for i in 1:53
+                hist!(ax13, vec(pst3[Symbol("α[$i]")]), bins=50, color=(colors[1], 0.6), normalization=:pdf, label=L"A\beta^-")
+        end
+
+        ax21 = Axis(g2[1, 1], title="Diffusion", titlesize=40, ylabel="Density", ylabelsize=30, xticks=-0:0.05:0.2);
+        ax22 = Axis(g2[2, 1], ylabel="Density", ylabelsize=30, xticks=-0:0.05:0.2);
+        ax23 = Axis(g2[3, 1], ylabel="Density", ylabelsize=30, xlabel="mm² / yr", xlabelsize=30, xticks=-0:0.05:0.2);
+        linkaxes!(ax23, ax22)
+        linkaxes!(ax23, ax21)
+
+        hideydecorations!(ax21, label=false)
+        hidexdecorations!(ax21, label=false, ticks=false, grid=false)
+        hidespines!(ax21, :t, :r, :l)
+        for i in 1:54
+                hist!(ax21, vec(pst[Symbol("ρ[$i]")]), bins=50, color=(colors[3], 0.6), normalization=:pdf, label=L"A\beta^+ \tau^+")
+        end
+
+        hideydecorations!(ax22, label=false)
+        hidexdecorations!(ax22, label=false, ticks=false, grid=false)
+        hidespines!(ax22, :t, :r, :l)
+        for i in 1:18
+                hist!(ax22, vec(pst2[Symbol("ρ[$i]")]), bins=50, color=(colors[2], 0.6), normalization=:pdf, label=L"A\beta^+ \tau^-")
+        end
+
+        hideydecorations!(ax23, label=false)
+        hidexdecorations!(ax23, label=false, ticks=false, ticklabels=false, grid=false)
+        hidespines!(ax23, :t, :r, :l)
+        xlims!(-0.001, 0.15)
+        for i in 1:53
+                hist!(ax23, vec(pst3[Symbol("ρ[$i]")]), bins=50, color=(colors[1], 0.6), normalization=:pdf, label=L"A\beta^-")
+        end
+
+        elem_1 = PolyElement(color = (colors[3], 0.6))
+        elem_2 = PolyElement(color = (colors[2], 0.6))
+        elem_3 = PolyElement(color = (colors[1], 0.6))
+        legend = Legend(g7[1,1],
+                [elem_1, elem_2, elem_3],
+                [L"A\beta^+ \tau P^+", L"A\beta^+ \tau P^-", L"A\beta^-"],
+                patchsize = (35, 35), rowgap = 10, framevisible=false, labelsize=30)
+        colgap!(f.layout, 1, 50)
+        f
+end
 
 # shuffled data
 pos_shuffled = [deserialize(projectdir("adni/chains/local-fkpp/shuffled/pos/length-free/pst-taupos-1000-shuffled-$i.jls")) for i in 1:10];

@@ -16,17 +16,17 @@ include(projectdir("functions.jl"))
 # Connectome and ROIs
 #-------------------------------------------------------------------------------
 connectome_path = Connectomes.connectome_path()
-all_c = filter(Connectome(connectome_path; norm=true, weight_function = (n, l) -> n ./ l), 1e-2);
+all_c = filter(Connectome(connectome_path; norm=true, weight_function = (n, l) -> n), 1e-2);
 
-subcortex = filter(x -> x.Lobe == "subcortex", all_c.parc);
-cortex = filter(x -> x.Lobe != "subcortex", all_c.parc);
+subcortex = filter(x -> get_lobe(x) == "subcortex", all_c.parc);
+cortex = filter(x -> get_lobe(x) != "subcortex", all_c.parc);
 
 c = slice(all_c, cortex) |> filter
 
 mtl_regions = ["entorhinal", "Left-Amygdala", "Right-Amygdala"]
-mtl = findall(x -> x ∈ mtl_regions, cortex.Label)
+mtl = findall(x -> x ∈ mtl_regions, get_label.(cortex))
 neo_regions = ["inferiortemporal", "middletemporal"]
-neo = findall(x -> x ∈ neo_regions, cortex.Label)
+neo = findall(x -> x ∈ neo_regions, get_label.(cortex))
 #-------------------------------------------------------------------------------
 # Data 
 #-------------------------------------------------------------------------------
@@ -36,7 +36,7 @@ alldf = CSV.read(sub_data_path, DataFrame)
 posdf = filter(x -> x.AB_Status == 1, alldf)
 
 dktdict = Connectomes.node2FS()
-dktnames = [dktdict[i] for i in cortex.ID]
+dktnames = [dktdict[i] for i in get_node_id.(cortex)]
 
 insample_data = ADNIDataset(posdf, dktnames; min_scans=3)
 insample_n_data = length(insample_data)
@@ -59,7 +59,7 @@ cc = quantile.(upath, .99)
 #-------------------------------------------------------------------------------
 # Pos data 
 #-------------------------------------------------------------------------------
-subsuvr = [calc_suvr(data, i) for i in insample_tau_neg]
+subsuvr = [calc_suvr(insample_data, i) for i in insample_tau_neg]
 _subdata = [normalise(sd, u0, cc) for sd in subsuvr]
 
 blsd = [sd .- u0 for sd in _subdata]
@@ -72,7 +72,7 @@ insample_n_neg = length(insample_neg_data)
 max_suvr = maximum(reduce(vcat, reduce(hcat, insample_neg_data)))
 
 insample_neg_initial_conditions = [sd[:,1] for sd in insample_neg_data]
-_times =  [get_times(data, i) for i in tau_neg]
+_times =  [get_times(insample_data, i) for i in insample_tau_neg]
 insample_neg_times = _times[nonzerosubs]
 insample_max_t = maximum(reduce(vcat, insample_neg_times))
 #-------------------------------------------------------------------------------
@@ -125,9 +125,9 @@ end
 #-------------------------------------------------------------------------------
 # Posteriors
 #-------------------------------------------------------------------------------
-local_pst2 = mean(deserialize(projectdir("adni/chains/local-fkpp/pst-tauneg-4x2000.jls")));
-global_pst = mean(deserialize(projectdir("adni/chains/global-fkpp/pst-tauneg-4x2000.jls")));
-diffusion_pst = mean(deserialize(projectdir("adni/chains/diffusion/pst-tauneg-4x2000.jls")));
+local_pst = mean(deserialize(projectdir("adni/chains/local-fkpp/length-free/pst-tauneg-4x2000.jls")));
+global_pst = mean(deserialize(projectdir("adni/chains/global-fkpp/length-free/pst-tauneg-4x2000.jls")));
+diffusion_pst = mean(deserialize(projectdir("adni/chains/diffusion/length-free/pst-tauneg-4x2000.jls")));
 logistic_pst = mean(deserialize(projectdir("adni/chains/logistic/pst-tauneg-4x2000.jls")));
 
 #-------------------------------------------------------------------------------
@@ -460,6 +460,40 @@ begin
     f
 end
 save(projectdir("visualisation/inference/model-selection/output/model-fits-roi-average-final-scan.pdf"), f)
+
+
+#-------------------------------------------------------------------------------
+# Error visualisation
+#-------------------------------------------------------------------------------
+using ColorSchemes, GLMakie; GLMakie.activate!()
+cmap = ColorSchemes.vik;
+meandata = mean(get_sol_t_end(insample_neg_data), dims=2) |> vec
+local_meansol = mean(get_sol_t_end(local_sols), dims=2) |> vec
+logistic_meansol = mean(get_sol_t_end(logistic_sols), dims=2) |> vec
+local_meanerror = meandata .- local_meansol
+logistic_meanerror = meandata .- logistic_meansol
+local_scaled_meanerror = ((local_meanerror ./ maximum(abs.(logistic_meanerror))) .+ 1) ./ 2
+logistic_scaled_meanerror = ((logistic_meanerror ./ maximum(abs.(logistic_meanerror))) .+ 1) ./ 2
+right_cortex = filter(x -> get_hemisphere(x) == "right", cortex)
+
+begin
+    f = Figure(resolution=(1600, 500))
+    ax = Axis3(f[1,1], aspect = :data, azimuth = 0.0pi, elevation=0.0pi)
+    hidedecorations!(ax)
+    hidespines!(ax)
+    plot_roi!(get_node_id.(right_cortex), logistic_scaled_meanerror, cmap)
+
+    ax = Axis3(f[1,2], aspect = :data, azimuth = 1.0pi, elevation=0.0pi)
+    hidedecorations!(ax)
+    hidespines!(ax)
+    plot_roi!(get_node_id.(right_cortex), logistic_scaled_meanerror, cmap)
+    Colorbar(f[1, 0], 
+    limits = (-maximum(logistic_meanerror), maximum(logistic_meanerror)), colormap = cmap, vertical=true, 
+    label="Mean error", flipaxis=false, labelsize=35)
+    f
+end
+save(projectdir("visualisation/inference/model-selection/output/regional_mean_error_logistic_tau_neg.jpeg"), f)
+
 #-------------------------------------------------------------------------------
 # Out of Sample Models
 #-------------------------------------------------------------------------------

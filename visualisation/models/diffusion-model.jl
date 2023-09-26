@@ -6,30 +6,28 @@ include(projectdir("functions.jl"))
 
 connectome_path = Connectomes.connectome_path()
 all_c = filter(Connectome(connectome_path; norm=true, weight_function = (n, l) -> n), 1e-2);
+rIDs =  get_node_id.(right_cortical_nodes)
 
-subcortex = filter(x -> x.Lobe == "subcortex", all_c.parc)
-cortex = filter(x -> x.Lobe != "subcortex", all_c.parc)
+subcortex = filter(x -> get_lobe(x) == "subcortex", all_c.parc)
+cortex = filter(x -> get_lobe(x) != "subcortex", all_c.parc)
 
 c = slice(all_c, cortex) |> filter
 
-cortex.rID = collect(1:72)
+right_cortical_nodes = filter(x -> get_hemisphere(x) == "right", c.parc)
 
-right_cortical_nodes = filter(x -> x.Hemisphere == "right", c.parc)
+L = laplacian_matrix(c);
 
-L = laplacian_matrix(c)
-
-function NetworkFKPP(du, u, p, t)
-    du .= -p[1] * L * u .+ p[2] .* u .* (1 .- u)
+function NetworkDiffusion(du, u, p, t)
+    du .= -p[1] * L * u
 end
 
 p0 = zeros(72)
 seed_regions =  ["entorhinal", "Left-Amygdala", "Right-Amygdala", "Left-Hippocampus", "Right-Hippocampus"]
-seed = filter(x -> x.Label ∈ seed_regions, cortex)
-p0[seed.rID] .= 0.5
+seed = findall(x -> get_label(x) ∈ seed_regions, cortex)
+p0[seed] .= 0.5
 
-r = 0.05
-a = 1.5
-prob = ODEProblem(NetworkFKPP, p0, (0.0,10.0), [r,a])
+r = 1.0
+prob = ODEProblem(NetworkDiffusion, p0, (0.0,10.0), r)
 
 ts = range(0.0, 10.0, 5)
 n = length(ts)
@@ -44,7 +42,7 @@ using GLMakie, ColorSchemes
 
 cmap = reverse(ColorSchemes.RdYlBu);
 cols = [get(cmap, sol[i]) for i in 1:n]
-nodes = right_cortical_nodes.ID
+nodes = get_node_id.(right_cortical_nodes)
 
 begin
     f = Figure(resolution=(1500, 800))
@@ -58,9 +56,10 @@ begin
                    protrusions=(1.0,1.0,1.0,1.0))
         hidedecorations!(ax)
         hidespines!(ax)
-        for (i, j) in enumerate(nodes)
-            plot_roi!(j, cols[k][i])
-        end
+        plot_roi!(rIDs, sol[k], cmap)
+        # for (i, j) in enumerate(nodes)
+        #     plot_roi!(j, cols[k][i])
+        # end
         ax = Axis3(g1[2,k+1], 
                    aspect = :data, 
                    azimuth = 0.0pi, 
@@ -68,9 +67,10 @@ begin
                    protrusions=(1.0,1.0,50.0,1.0))
         hidedecorations!(ax)
         hidespines!(ax)
-        for (i, j) in enumerate(nodes)
-            plot_roi!(j, cols[k][i])
-        end
+        plot_roi!(rIDs, sol[k], cmap)
+        # for (i, j) in enumerate(nodes)
+        #     plot_roi!(j, cols[k][i])
+        # end
     end
     # rowsize!(f.layout, 1, Auto(0.8))
     # rowsize!(f.layout, 2, Auto(0.8))
@@ -104,4 +104,4 @@ begin
     # end
     f
 end
-save(projectdir("visualisation/models/output/global-fkpp.jpeg"), f)
+save(projectdir("visualisation/models/output/diffusion.jpeg"), f)
