@@ -2,11 +2,12 @@ using Connectomes
 using DifferentialEquations
 using DrWatson
 using Distributions
+using DataFrames, CSV
+using LinearAlgebra
 include(projectdir("functions.jl"))
 
 connectome_path = Connectomes.connectome_path()
 all_c = filter(Connectome(connectome_path; norm=true, weight_function = (n, l) -> n), 1e-2);
-rIDs =  get_node_id.(right_cortical_nodes)
 
 subcortex = filter(x -> get_lobe(x) == "subcortex", all_c.parc)
 cortex = filter(x -> get_lobe(x) != "subcortex", all_c.parc)
@@ -14,11 +15,16 @@ cortex = filter(x -> get_lobe(x) != "subcortex", all_c.parc)
 c = slice(all_c, cortex) |> filter
 
 right_cortical_nodes = filter(x -> get_hemisphere(x) == "right", c.parc)
-
+rIDs =  get_node_id.(right_cortical_nodes)
 L = laplacian_matrix(c);
 
+volumes = "/Users/pavanchaggar/Projects/Connectomes/standard_connectome/parcellation/parcellation-files/sub-01_label-L2018_desc-scale1_stats.tsv"
+vol_df = CSV.read(volumes, DataFrame; delim=',')
+vols = sort(vol_df)[get_node_id.(cortex), " volume-mm3 "]
+Lv = inv(diagm(vols ./ maximum(vols))) * L
+
 function NetworkDiffusion(du, u, p, t)
-    du .= -p[1] * L * u
+    du .= -p[1] * Lv * u
 end
 
 p0 = zeros(72)
@@ -42,7 +48,7 @@ using GLMakie, ColorSchemes
 
 cmap = reverse(ColorSchemes.RdYlBu);
 cols = [get(cmap, sol[i]) for i in 1:n]
-nodes = get_node_id.(right_cortical_nodes)
+nodes = get_node_id.(right_cortical_nodes);
 
 begin
     f = Figure(resolution=(1500, 800))

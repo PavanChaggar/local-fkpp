@@ -25,16 +25,15 @@ include(projectdir("functions.jl"))
 connectome_path = Connectomes.connectome_path()
 all_c = filter(Connectome(connectome_path; norm=true, weight_function = (n, l) -> n), 1e-2);
 
-
-subcortex = filter(x -> x.Lobe == "subcortex", all_c.parc)
-cortex = filter(x -> x.Lobe != "subcortex", all_c.parc)
+subcortex = filter(x -> get_lobe(x) == "subcortex", all_c.parc);
+cortex = filter(x -> get_lobe(x) != "subcortex", all_c.parc);
 
 c = slice(all_c, cortex) |> filter
 
 mtl_regions = ["entorhinal", "Left-Amygdala", "Right-Amygdala"]
-mtl = findall(x -> x ∈ mtl_regions, cortex.Label)
+mtl = findall(x -> x ∈ mtl_regions, get_label.(cortex))
 neo_regions = ["inferiortemporal", "middletemporal"]
-neo = findall(x -> x ∈ neo_regions, cortex.Label)
+neo = findall(x -> x ∈ neo_regions, get_label.(cortex))
 #-------------------------------------------------------------------------------
 # Data 
 #-------------------------------------------------------------------------------
@@ -45,7 +44,7 @@ alldf = CSV.read(sub_data_path, DataFrame)
 posdf = filter(x -> x.AB_Status == 1, alldf)
 
 dktdict = Connectomes.node2FS()
-dktnames = [dktdict[i] for i in cortex.ID]
+dktnames = [dktdict[i] for i in get_node_id.(cortex)]
 
 data = ADNIDataset(posdf, dktnames; min_scans=3)
 n_data = length(data)
@@ -72,13 +71,13 @@ cc = quantile.(upath, .99)
 #-------------------------------------------------------------------------------
 L = laplacian_matrix(c)
 
-vols = [get_vol(data, i) for i in tau_neg]
-init_vols = [v[:,1] for v in vols]
-max_norm_vols = reduce(hcat, [v ./ maximum(v) for v in init_vols])
-mean_norm_vols = vec(mean(max_norm_vols, dims=2))
-Lv = sparse(inv(diagm(mean_norm_vols)) * L)
+# vols = [get_vol(data, i) for i in tau_neg]
+# init_vols = [v[:,1] for v in vols]
+# max_norm_vols = reduce(hcat, [v ./ maximum(v) for v in init_vols])
+# mean_norm_vols = vec(mean(max_norm_vols, dims=2))
+# Lv = sparse(inv(diagm(mean_norm_vols)) * L)
 
-function NetworkLocalFKPP(du, u, p, t; Lv = Lv, u0 = u0, cc = cc)
+function NetworkLocalFKPP(du, u, p, t; L = L, u0 = u0, cc = cc)
     du .= -p[1] * Lv * (u .- u0) .+ p[2] .* (u .- u0) .* ((cc .- u0) .- (u .- u0))
 end
 
@@ -131,14 +130,15 @@ end
 @model function localfkpp(data, prob, initial_conditions, times, n)
     σ ~ LogNormal(0.0, 1.0)
     
-    Pm ~ LogNormal(0.0, 1.0)
+    Pm ~ LogNormal(0.0, 1.0) # LogNormal(0.0,1.0)
     Ps ~ LogNormal(0.0, 1.0)
 
-    Am ~ Normal(0.0, 1.0)
+    Am ~ truncated(Normal(0.0, 1.0), lower=0.) # Normal(0.0,1.0)
     As ~ LogNormal(0.0, 1.0)
 
-    ρ ~ filldist(truncated(Normal(Pm, Ps), lower=0), n)
-    α ~ filldist(Normal(Am, As), n)
+    ρ ~ filldist(truncated(Normal(Pm, Ps), lower=0.), n)
+    α ~ filldist(truncated(Normal(Am, As), lower=0.), n)
+
 
     ensemble_prob = EnsembleProblem(prob, 
                                     prob_func=make_prob_func(initial_conditions, ρ, α, times), 
@@ -167,16 +167,13 @@ Random.seed!(1234);
 m = localfkpp(vecsubdata, prob, initial_conditions, times, n_neg)
 m();
 
-n_chains = 4
+n_chains = 1
 n_samples = 2_000
 pst = sample(m, 
              Turing.NUTS(0.8),
-             MCMCThreads(), 
-             n_samples, 
-             n_chains,
-             progress=false)
-serialize(projectdir("adni/chains/local-fkpp/length-free/pst-tauneg-$(n_chains)x$(n_samples).jls"), pst)
+             n_samples)
+serialize(projectdir("adni/chains/local-fkpp/length-free/pst-tauneg-$(n_chains)x$(n_samples)-novol-tn.jls"), pst)
 
 # calc log likelihood 
-log_likelihood = pointwise_loglikelihoods(m, MCMCChains.get_sections(pst, :parameters));
-serialize(projectdir("adni/chains/local-fkpp/length-free/ll-tauneg-$(n_chains)x$(n_samples).jls"), log_likelihood)
+# log_likelihood = pointwise_loglikelihoods(m, MCMCChains.get_sections(pst, :parameters));
+# serialize(projectdir("adni/chains/local-fkpp/length-free/ll-tauneg-$(n_chains)x$(n_samples).jls"), log_likelihood)

@@ -115,7 +115,7 @@ end
 #-------------------------------------------------------------------------------
 # Local FKPP
 #-------------------------------------------------------------------------------
-local_pst = deserialize(projectdir("adni/chains/local-fkpp/pst-tauneg-1x2000-three.jls"));
+local_pst = deserialize(projectdir("adni/chains/local-fkpp/ballistic/pst-tauneg-1x2000-three.jls"));
 local_ps = [Array(local_pst[Symbol("ρ[$i]")]) for i in outsample_idx];
 local_as = [Array(local_pst[Symbol("α[$i]")]) for i in outsample_idx];
 
@@ -140,7 +140,7 @@ local_elppd = elppd_local(local_pst, local_ps, local_as, insample_inits, outsamp
 #-------------------------------------------------------------------------------
 # Global FKPP
 #-------------------------------------------------------------------------------
-global_pst = deserialize(projectdir("adni/chains/global-fkpp/pst-tauneg-1x2000-three.jls"));
+global_pst = deserialize(projectdir("adni/chains/global-fkpp/ballistic/pst-tauneg-1x2000-three.jls"));
 global_ps = [Array(global_pst[Symbol("ρ[$i]")]) for i in outsample_idx];
 global_as = [Array(global_pst[Symbol("α[$i]")]) for i in outsample_idx];
 
@@ -165,7 +165,7 @@ global_elppd = elppd_global(global_pst, global_ps, global_as, max_suvr, insample
 #-------------------------------------------------------------------------------
 # Diffusion
 #-------------------------------------------------------------------------------
-diffusion_pst = deserialize(projectdir("adni/chains/diffusion/pst-tauneg-1x2000-three.jls"));
+diffusion_pst = deserialize(projectdir("adni/chains/diffusion/ballistic/pst-tauneg-1x2000-three.jls"));
 diffusion_ps = [Array(diffusion_pst[Symbol("ρ[$i]")]) for i in outsample_idx];
 
 function elppd_diffusion(pst, ps, initial_conditions, subdata, out_times)
@@ -208,80 +208,6 @@ function elppd_logistic(pst, as, initial_conditions, subdata, out_times)
 end
 
 logistic_elppd = elppd_logistic(logistic_pst, logistic_as, insample_inits, outsample_subdata, times)
-#-------------------------------------------------------------------------------
-# ELPPD approximation
-#-------------------------------------------------------------------------------
-function elppd_local_fkpp(pst, initial_conditions, subdata, second_times)
-    ps, as, σ = vec(pst[:Pm]), vec(pst[:Am]), vec(pst[:σ])
-
-    slls = Vector{Float64}()
-    for (inits, y) in zip(initial_conditions, subdata)
-        lls = Vector{Float64}()
-        for (p, a, s) in zip(ps, as, σ)
-            _prob = ODEProblem(NetworkLocalFKPP, inits, (0.,5.), [p , a])
-            _sol = solve(_prob, Tsit5(), saveat=[second_times[1]])
-            push!(lls, exp(loglikelihood(MvNormal(vec(_sol), s^2 * I), y[:,2])))
-        end
-        push!(slls, sum(lls) / 8000)
-    end
-    sum(log.(slls))
-end
-
-local_elppd = elppd_local_fkpp(local_pst, initial_conditions, subdata, second_times)
-
-function elppd_logistic(pst, initial_conditions, subdata, second_times)
-    as, σ = vec(pst[:Am]), vec(pst[:σ])
-
-    slls = Vector{Float64}()
-    for (inits, y) in zip(initial_conditions, subdata)
-        lls = Vector{Float64}()
-        for (a, s) in zip(as, σ)
-            _prob = ODEProblem(NetworkLogistic, inits, (0.,5.), a)
-            _sol = solve(_prob, Tsit5(), saveat=[second_times[1]])
-            push!(lls, exp(loglikelihood(MvNormal(vec(_sol), s^2 * I), y[:,2])))
-        end
-        push!(slls, sum(lls) / 8000)
-    end
-    sum(log.(slls))
-end
-
-logistic_elppd = elppd_logistic(local_pst, initial_conditions, subdata, second_times)
-
-function elppd_global_fkpp(pst, initial_conditions, subdata, second_times, max_s)
-    ps, as, σ = vec(pst[:Pm]), vec(pst[:Am]), vec(pst[:σ])
-
-    slls = Vector{Float64}()
-    for (inits, y) in zip(initial_conditions, subdata)
-        lls = Vector{Float64}()
-        for (p, a, s) in zip(ps, as, σ)
-            _prob = ODEProblem(NetworkGlobalFKPP, inits, (0.,5.), [p , a, max_s])
-            _sol = solve(_prob, Tsit5(), saveat=[second_times[1]])
-            push!(lls, exp(loglikelihood(MvNormal(vec(_sol), s^2 * I), y[:,2])))
-        end
-        push!(slls, sum(lls) / 8000)
-    end
-    sum(log.(slls))
-end
-
-global_elppd = elppd_global_fkpp(local_pst, initial_conditions, subdata, second_times, max_suvr)
-
-function elppd_diffusion(pst, initial_conditions, subdata, second_times)
-    ps, σ = vec(pst[:Pm]), vec(pst[:σ])
-
-    slls = Vector{Float64}()
-    for (inits, y) in zip(initial_conditions, subdata)
-        lls = Vector{Float64}()
-        for (p, s) in zip(ps, σ)
-            _prob = ODEProblem(NetworkDiffusion, inits, (0.,5.), p)
-            _sol = solve(_prob, Tsit5(), saveat=[second_times[1]])
-            push!(lls, exp(loglikelihood(MvNormal(vec(_sol), s^2 * I), y[:,2])))
-        end
-        push!(slls, sum(lls) / 8000)
-    end
-    sum(log.(slls))
-end
-
-diffusion_elppd = elppd_diffusion(local_pst, initial_conditions, subdata, second_times)
 
 max_elppd = maximum([local_elppd, global_elppd, logistic_elppd, diffusion_elppd])
 
