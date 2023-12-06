@@ -154,16 +154,16 @@ Random.seed!(1234)
 m = localfkpp(vecsubdata, prob, initial_conditions, times, n_pos);
 m();
 
-using BenchmarkTools
-using TuringBenchmarking
-using ReverseDiff, Zygote
-suite = TuringBenchmarking.make_turing_suite(
-    m,
-    adbackends = [
-        TuringBenchmarking.ZygoteAD()
-    ]
-);
-@info "Turing.jl" run(suite)
+# using BenchmarkTools
+# using TuringBenchmarking
+# using ReverseDiff, Zygote
+# suite = TuringBenchmarking.make_turing_suite(
+#     m,
+#     adbackends = [
+#         TuringBenchmarking.ZygoteAD()
+#     ]
+# );
+# @info "Turing.jl" run(suite)
 
 n_chains = 1
 n_samples = 2_000
