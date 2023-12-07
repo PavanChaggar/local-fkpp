@@ -68,13 +68,13 @@ cc = quantile.(upath, .99)
 #-------------------------------------------------------------------------------
 L = laplacian_matrix(c)
 
-vols = [get_vol(data, i) for i in tau_pos]
-init_vols = [v[:,1] for v in vols]
-max_norm_vols = reduce(hcat, [v ./ maximum(v) for v in init_vols])
-mean_norm_vols = vec(mean(max_norm_vols, dims=2))
-Lv = sparse(inv(diagm(mean_norm_vols)) * L)
+# vols = [get_vol(data, i) for i in tau_pos]
+# init_vols = [v[:,1] for v in vols]
+# max_norm_vols = reduce(hcat, [v ./ maximum(v) for v in init_vols])
+# mean_norm_vols = vec(mean(max_norm_vols, dims=2))
+# Lv = sparse(inv(diagm(mean_norm_vols)) * L)
 
-function NetworkLocalFKPP(du, u, p, t; L = Lv, u0 = u0, cc = cc)
+function NetworkLocalFKPP(du, u, p, t; L = L, u0 = u0, cc = cc)
     du .= -p[1] * L * (u .- u0) .+ p[2] .* (u .- u0) .* ((cc .- u0) .- (u .- u0))
 end
 
@@ -166,11 +166,11 @@ m();
 # @info "Turing.jl" run(suite)
 
 n_chains = 1
-n_samples = 1_000
+n_samples = 2_000
 pst = sample(m, 
              Turing.NUTS(0.8),
              n_samples)
-serialize(projectdir("adni/chains/local-fkpp/length-free/pst-taupos-$(n_chains)x$(n_samples)-normal.jls"), pst)
+serialize(projectdir("adni/chains/local-fkpp/length-free/pst-taupos-$(n_chains)x$(n_samples)-novol-normal.jls"), pst)
 
 # calc log likelihood 
 # log_likelihood = pointwise_loglikelihoods(m, MCMCChains.get_sections(pst, :parameters));
