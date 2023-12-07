@@ -170,7 +170,7 @@ n_samples = 1_000
 pst = sample(m, 
              Turing.NUTS(0.8),
              n_samples)
-serialize(projectdir("adni/chains/local-fkpp/length-free/pst-taupos-$(n_chains)x$(n_samples)-novol-normal.jls"), pst)
+serialize(projectdir("adni/chains/local-fkpp/length-free/pst-taupos-$(n_chains)x$(n_samples)-normal.jls"), pst)
 
 # calc log likelihood 
 # log_likelihood = pointwise_loglikelihoods(m, MCMCChains.get_sections(pst, :parameters));
