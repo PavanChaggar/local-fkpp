@@ -122,7 +122,7 @@ end
     Pm ~ LogNormal(0.0, 1.0) # LogNormal(0.0,1.0)
     Ps ~ LogNormal(0.0, 1.0)
 
-    Am ~ Uniform(0., 3.) # Normal(0.0,1.0)
+    Am ~ Normal() # Normal(0.0,1.0)
     As ~ LogNormal(0.0, 1.0)
 
     ρ ~ filldist(truncated(Normal(Pm, Ps), lower=0.), n)
@@ -170,7 +170,7 @@ n_samples = 2_000
 pst = sample(m, 
              Turing.NUTS(0.8),
              n_samples)
-serialize(projectdir("adni/chains/local-fkpp/length-free/pst-taupos-$(n_chains)x$(n_samples)-novol-uniform.jls"), pst)
+serialize(projectdir("adni/chains/local-fkpp/length-free/pst-taupos-$(n_chains)x$(n_samples)-novol-normal.jls"), pst)
 
 # calc log likelihood 
 # log_likelihood = pointwise_loglikelihoods(m, MCMCChains.get_sections(pst, :parameters));
