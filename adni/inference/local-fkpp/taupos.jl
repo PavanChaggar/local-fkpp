@@ -108,7 +108,7 @@ ensemble_prob = EnsembleProblem(prob, prob_func=make_prob_func(initial_condition
 ensemble_sol = solve(ensemble_prob, Tsit5(), trajectories=n_pos)
 
 function get_retcodes(es)
-    [sol.retcode for sol in es]
+    [SciMLBase.successful_retcode(sol) for sol in es]
 end
 
 function vec_sol(es)

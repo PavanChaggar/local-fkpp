@@ -102,9 +102,8 @@ ensemble_prob = EnsembleProblem(prob, prob_func=make_prob_func(initial_condition
 ensemble_sol = solve(ensemble_prob, Tsit5(), trajectories=n_subjects)
 
 function get_retcodes(es)
-    [sol.retcode for sol in es]
+    [SciMLBase.successful_retcode(sol) for sol in es]
 end
-
 function vec_sol(es)
     reduce(vcat, [vec(sol) for sol in es])
 end
@@ -129,7 +128,6 @@ end
 
     ensemble_sol = solve(ensemble_prob, 
                          Tsit5(),
-                         EnsembleSerial(),
                          abstol = 1e-9, 
                          reltol = 1e-9, 
                          trajectories=n, 
@@ -154,8 +152,7 @@ n_chains = 4
 n_samples = 2_000
 pst = sample(m, 
              Turing.NUTS(0.8),
-             MCMCThreads(), 
+             MCMCSerial(), 
              n_samples, 
-             n_chains,
-             progress=false)
+             n_chains)
 serialize(projectdir("adni/chains/local-fkpp/length-free/pst-abneg-$(n_chains)x$(n_samples).jls"), pst)

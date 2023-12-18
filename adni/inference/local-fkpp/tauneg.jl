@@ -68,9 +68,15 @@ cc = quantile.(upath, .99)
 #-------------------------------------------------------------------------------
 # Connectome + ODEE
 #-------------------------------------------------------------------------------
+subsuvr = [calc_suvr(data, i) for i in tau_neg]
+_subdata = [normalise(sd, u0, cc) for sd in subsuvr]
+
+blsd = [sd .- u0 for sd in _subdata]
+nonzerosubs = findall(x -> sum(x) < 2, [sum(sd, dims=1) .== 0 for sd in blsd])
+
 L = laplacian_matrix(c)
 
-vols = [get_vol(data, i) for i in tau_neg]
+vols = [get_vol(data, i) for i in nonzerosubs]
 init_vols = [v[:,1] for v in vols]
 max_norm_vols = reduce(hcat, [v ./ maximum(v) for v in init_vols])
 mean_norm_vols = vec(mean(max_norm_vols, dims=2))
@@ -89,12 +95,6 @@ end
 function output_func(sol,i)
     (sol,false)
 end
-
-subsuvr = [calc_suvr(data, i) for i in tau_neg]
-_subdata = [normalise(sd, u0, cc) for sd in subsuvr]
-
-blsd = [sd .- u0 for sd in _subdata]
-nonzerosubs = findall(x -> sum(x) < 2, [sum(sd, dims=1) .== 0 for sd in blsd])
 
 subdata = _subdata[nonzerosubs]
 vecsubdata = reduce(vcat, reduce(hcat, subdata))
@@ -116,7 +116,7 @@ ensemble_prob = EnsembleProblem(prob, prob_func=make_prob_func(initial_condition
 ensemble_sol = solve(ensemble_prob, Tsit5(), trajectories=n_neg)
 
 function get_retcodes(es)
-    [sol.retcode for sol in es]
+    [SciMLBase.successful_retcode(sol) for sol in es]
 end
 
 function vec_sol(es)
