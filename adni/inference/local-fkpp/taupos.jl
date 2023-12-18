@@ -157,7 +157,6 @@ m();
 
 using BenchmarkTools
 using TuringBenchmarking
-using ReverseDiff, Zygote
 suite = TuringBenchmarking.make_turing_suite(
     m,
     adbackends = [
