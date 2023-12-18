@@ -2,7 +2,7 @@
 
 julia_version = "1.9.4"
 manifest_format = "2.0"
-project_hash = "631b563d2537de04e5c9ca62f7a781ad8925e19c"
+project_hash = "f7c9e0e3dbd40d0da2a8c9740ef71e814cde2714"
 
 [[deps.ADNIDatasets]]
 deps = ["CSV", "DataFrames", "Dates", "Setfield"]
@@ -2905,6 +2905,18 @@ version = "0.29.3"
     [deps.Turing.weakdeps]
     DynamicHMC = "bbc10e6e-7c05-544b-b16e-64fede858acb"
     Optim = "429524aa-4258-5aef-a3af-852621145aeb"
+
+[[deps.TuringBenchmarking]]
+deps = ["BenchmarkTools", "DynamicPPL", "LinearAlgebra", "LogDensityProblems", "LogDensityProblemsAD", "PrettyTables", "Requires", "ReverseDiff", "Turing", "Zygote"]
+git-tree-sha1 = "25072e7d83482477a7609d0373a1cf8ae347a213"
+uuid = "0db1332d-5c25-4deb-809f-459bc696f94f"
+version = "0.3.4"
+
+    [deps.TuringBenchmarking.extensions]
+    TuringBenchmarkingBridgeStanExt = "BridgeStan"
+
+    [deps.TuringBenchmarking.weakdeps]
+    BridgeStan = "c88b6f0a-829e-4b0b-94b7-f06ab5908f5a"
 
 [[deps.URIs]]
 git-tree-sha1 = "67db6cc7b3821e19ebe75791a9dd19c9b1188f2b"

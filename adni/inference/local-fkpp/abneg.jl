@@ -10,7 +10,6 @@ using DifferentialEquations
 using SciMLSensitivity
 using Zygote
 using Turing
-using AdvancedHMC
 using Distributions
 using Serialization
 using DelimitedFiles, LinearAlgebra
@@ -31,9 +30,9 @@ cortex = filter(x -> x.Lobe != "subcortex", all_c.parc)
 c = slice(all_c, cortex) |> filter
 
 mtl_regions = ["entorhinal", "Left-Amygdala", "Right-Amygdala"]
-mtl = findall(x -> x ∈ mtl_regions, cortex.Label)
+mtl = findall(x -> x ∈ mtl_regions, get_label.(cortex))
 neo_regions = ["inferiortemporal", "middletemporal"]
-neo = findall(x -> x ∈ neo_regions, cortex.Label)
+neo = findall(x -> x ∈ neo_regions, get_label.(cortex))
 #-------------------------------------------------------------------------------
 # Data 
 #-------------------------------------------------------------------------------
@@ -43,7 +42,7 @@ alldf = CSV.read(sub_data_path, DataFrame)
 negdf = filter(x -> x.AB_Status == 0, alldf)
 
 dktdict = Connectomes.node2FS()
-dktnames = [dktdict[i] for i in cortex.ID]
+dktnames = [dktdict[i] for i in get_node_id.(cortex)]
 
 data = ADNIDataset(negdf, dktnames; min_scans=3)
 n_subjects = length(data)
@@ -56,9 +55,18 @@ cc = quantile.(upath, .99)
 #-------------------------------------------------------------------------------
 # Connectome + ODEE
 #-------------------------------------------------------------------------------
+subsuvr = [calc_suvr(data, i) for i in 1:n_subjects]
+_subdata = [normalise(sd, u0, cc) for sd in subsuvr]
+
+blsd = [sd .- u0 for sd in _subdata]
+nonzerosubs = findall(x -> sum(x) < 2, [sum(sd, dims=1) .== 0 for sd in blsd])
+
+subdata = _subdata[nonzerosubs]
+vecsubdata = reduce(vcat, reduce(hcat, subdata))
+
 L = laplacian_matrix(c)
 
-vols = [get_vol(data, i) for i in 1:n_subjects]
+vols = [get_vol(data, i) for i in nonzerosubs]
 init_vols = [v[:,1] for v in vols]
 max_norm_vols = reduce(hcat, [v ./ maximum(v) for v in init_vols])
 mean_norm_vols = vec(mean(max_norm_vols, dims=2))
@@ -77,15 +85,6 @@ end
 function output_func(sol,i)
     (sol,false)
 end
-
-subsuvr = [calc_suvr(data, i) for i in 1:n_subjects]
-_subdata = [normalise(sd, u0, cc) for sd in subsuvr]
-
-blsd = [sd .- u0 for sd in _subdata]
-nonzerosubs = findall(x -> sum(x) < 2, [sum(sd, dims=1) .== 0 for sd in blsd])
-
-subdata = _subdata[nonzerosubs]
-vecsubdata = reduce(vcat, reduce(hcat, subdata))
 
 initial_conditions = [sd[:,1] for sd in subdata]
 _times =  [get_times(data, i) for i in 1:n_subjects]
