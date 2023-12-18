@@ -10,7 +10,6 @@ using DifferentialEquations
 using SciMLSensitivity
 using Zygote
 using Turing
-using AdvancedHMC
 using Distributions
 using Serialization
 using DelimitedFiles, LinearAlgebra
@@ -22,32 +21,31 @@ include(projectdir("functions.jl"))
 # Connectome and ROIs
 #-------------------------------------------------------------------------------
 connectome_path = Connectomes.connectome_path()
-all_c = filter(Connectome(connectome_path; norm=true, weight_function = (n, l) -> n), 1e-2);
+all_c = filter(Connectome(connectome_path; norm=true, weight_function = (n, l) -> n ), 1e-2);
 
-subcortex = filter(x -> x.Lobe == "subcortex", all_c.parc);
-cortex = filter(x -> x.Lobe != "subcortex", all_c.parc);
+subcortex = filter(x -> get_lobe(x) == "subcortex", all_c.parc);
+cortex = filter(x -> get_lobe(x) != "subcortex", all_c.parc);
 
 c = slice(all_c, cortex) |> filter
 
 mtl_regions = ["entorhinal", "Left-Amygdala", "Right-Amygdala"]
-mtl = findall(x -> x ∈ mtl_regions, cortex.Label)
+mtl = findall(x -> x ∈ mtl_regions, get_label.(cortex))
 neo_regions = ["inferiortemporal", "middletemporal"]
-neo = findall(x -> x ∈ neo_regions, cortex.Label)
+neo = findall(x -> x ∈ neo_regions, get_label.(cortex))
 #-------------------------------------------------------------------------------
 # Data 
 #-----------------------------------------------------------------------------
-sub_data_path = projectdir("adni/data/new_data/UCBERKELEYAV1451_8mm_02_17_23_AB_Status.csv")
+sub_data_path = projectdir("adni/data/new_new_data/UCBERKELEYAV1451_8mm_02_17_23_AB_Status.csv")
 alldf = CSV.read(sub_data_path, DataFrame)
 
 #posdf = filter(x -> x.STATUS == "POS", alldf)
 posdf = filter(x -> x.AB_Status == 1, alldf)
 
 dktdict = Connectomes.node2FS()
-dktnames = [dktdict[i] for i in cortex.ID]
+dktnames = [dktdict[i] for i in get_node_id.(cortex)]
 
 data = ADNIDataset(posdf, dktnames; min_scans=3)
 n_data = length(data)
-
 # Ask Jake where we got these cutoffs from? 
 mtl_cutoff = 1.375
 neo_cutoff = 1.395
@@ -76,8 +74,8 @@ max_norm_vols = reduce(hcat, [v ./ maximum(v) for v in init_vols])
 mean_norm_vols = vec(mean(max_norm_vols, dims=2))
 Lv = sparse(inv(diagm(mean_norm_vols)) * L)
 
-function NetworkDiffusion(du, u, p, t; Lv = Lv)
-    du .= -p[1] * Lv * u
+function NetworkDiffusion(du, u, p, t; Lv = Lv, u0=u0)
+    du .= -p[1] * L * (u .- u0)
 end
 
 function make_prob_func(initial_conditions, p, times)
@@ -135,8 +133,7 @@ end
                                     output_func=output_func)
 
     ensemble_sol = solve(ensemble_prob, 
-                         Tsit5(), 
-                         EnsembleSerial(),
+                         Tsit5(),
                          abstol = 1e-9, 
                          reltol = 1e-9, 
                          trajectories=n, 
@@ -163,12 +160,12 @@ n_chains = 4
 n_samples = 2000
 pst = sample(m, 
              Turing.NUTS(0.8), #, metricT=AdvancedHMC.DenseEuclideanMetric), 
-             MCMCThreads(), 
+             MCMCSerial(), 
              n_samples, 
              n_chains,
              progress=false)
-serialize(projectdir("adni/chains/diffusion/length-free/pst-taupos-$(n_chains)x$(n_samples).jls"), pst)
+serialize(projectdir("adni/chains/diffusion/length-free/pst-taupos-$(n_chains)x$(n_samples)-new.jls"), pst)
 
 # calc log likelihood 
 log_likelihood = pointwise_loglikelihoods(m, MCMCChains.get_sections(pst, :parameters));
-serialize(projectdir("adni/chains/diffusion/length-free/ll-taupos-$(n_chains)x$(n_samples).jls"), log_likelihood)
+serialize(projectdir("adni/chains/diffusion/length-free/ll-taupos-$(n_chains)x$(n_samples)-new.jls"), log_likelihood)
