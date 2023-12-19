@@ -155,18 +155,18 @@ Random.seed!(1234)
 m = localfkpp(vecsubdata, prob, initial_conditions, times, n_pos);
 m();
 
-using BenchmarkTools
-using TuringBenchmarking
-suite = TuringBenchmarking.make_turing_suite(
-    m,
-    adbackends = [
-        TuringBenchmarking.ZygoteAD()
-    ]
-);
-@info "Turing.jl" run(suite)
+# using BenchmarkTools
+# using TuringBenchmarking
+# suite = TuringBenchmarking.make_turing_suite(
+#     m,
+#     adbackends = [
+#         TuringBenchmarking.ZygoteAD()
+#     ]
+# );
+# @info "Turing.jl" run(suite)
 
 println("starting inference")
-n_chains = 4
+n_chains = 1
 n_samples = 2000
 pst = sample(m, 
              Turing.NUTS(0.8), #, metricT=AdvancedHMC.DenseEuclideanMetric), 
