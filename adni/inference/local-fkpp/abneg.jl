@@ -142,7 +142,7 @@ end
     data ~ MvNormal(vecsol, σ^2 * I)
 end
 
-Turing.setadbackend(:zygote)
+# Turing.setadbackend(:zygote)
 Random.seed!(1234); 
 
 m = localfkpp(vecsubdata, prob, initial_conditions, times, n_subjects)
@@ -155,4 +155,4 @@ pst = sample(m,
              MCMCSerial(), 
              n_samples, 
              n_chains)
-serialize(projectdir("adni/chains/local-fkpp/length-free/pst-abneg-$(n_chains)x$(n_samples).jls"), pst)
+serialize(projectdir("adni/new-chains/local-fkpp/length-free/pst-abneg-$(n_chains)x$(n_samples).jls"), pst)
