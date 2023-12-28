@@ -114,9 +114,9 @@ pst = sample(m,
              n_samples, 
              n_chains,
              progress=true)
-serialize(projectdir("adni/chains/logistic/pst-taupos-$(n_chains)x$(n_samples).jls"), pst)
+serialize(projectdir("adni/new-chains/logistic/pst-taupos-$(n_chains)x$(n_samples).jls"), pst)
 
 # calc log likelihood 
 pst = deserialize(projectdir("adni/chains/logistic/pst-taupos-$(n_chains)x$(n_samples).jls"));
 log_likelihood = pointwise_loglikelihoods(m, MCMCChains.get_sections(pst, :parameters));
-serialize(projectdir("adni/chains/logistic/ll-taupos-$(n_chains)x$(n_samples).jls"), log_likelihood)
+serialize(projectdir("adni/new-chains/logistic/ll-taupos-$(n_chains)x$(n_samples).jls"), log_likelihood)
