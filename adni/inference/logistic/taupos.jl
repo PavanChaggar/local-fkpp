@@ -110,7 +110,7 @@ n_chains = 4
 n_samples = 2000
 pst = sample(m, 
              Turing.NUTS(0.8),
-             MCMCThreads(), 
+             MCMCSerial(), 
              n_samples, 
              n_chains,
              progress=true)
