@@ -18,51 +18,10 @@ using LinearAlgebra
 using SparseArrays
 include(projectdir("functions.jl"))
 #-------------------------------------------------------------------------------
-# Connectome and ROIs
+# Load connectome, regional parameters and sort data
 #-------------------------------------------------------------------------------
-connectome_path = Connectomes.connectome_path()
-all_c = filter(Connectome(connectome_path; norm=true, weight_function = (n, l) -> n ), 1e-2);
+include(projectdir("adni/inference/inference-preamble.jl"))
 
-subcortex = filter(x -> get_lobe(x) == "subcortex", all_c.parc);
-cortex = filter(x -> get_lobe(x) != "subcortex", all_c.parc);
-
-c = slice(all_c, cortex) |> filter
-
-mtl_regions = ["entorhinal", "Left-Amygdala", "Right-Amygdala"]
-mtl = findall(x -> x ∈ mtl_regions, get_label.(cortex))
-neo_regions = ["inferiortemporal", "middletemporal"]
-neo = findall(x -> x ∈ neo_regions, get_label.(cortex))
-#-------------------------------------------------------------------------------
-# Data 
-#-----------------------------------------------------------------------------
-sub_data_path = projectdir("adni/data/new_new_data/UCBERKELEYAV1451_8mm_02_17_23_AB_Status.csv")
-alldf = CSV.read(sub_data_path, DataFrame)
-
-#posdf = filter(x -> x.STATUS == "POS", alldf)
-posdf = filter(x -> x.AB_Status == 1, alldf)
-
-dktdict = Connectomes.node2FS()
-dktnames = [dktdict[i] for i in get_node_id.(cortex)]
-
-data = ADNIDataset(posdf, dktnames; min_scans=3)
-n_data = length(data)
-# Ask Jake where we got these cutoffs from? 
-mtl_cutoff = 1.375
-neo_cutoff = 1.395
-
-mtl_pos = filter(x -> regional_mean(data, mtl, x) >= mtl_cutoff, 1:n_data)
-neo_pos = filter(x -> regional_mean(data, neo, x) >= neo_cutoff, 1:n_data)
-
-tau_pos = findall(x -> x ∈ unique([mtl_pos; neo_pos]), 1:n_data)
-tau_neg = findall(x -> x ∉ tau_pos, 1:n_data)
-
-n_pos = length(tau_pos)
-n_neg = length(tau_neg)
-
-gmm_moments = CSV.read(projectdir("adni/data/component_moments.csv"), DataFrame)
-ubase, upath = get_dkt_moments(gmm_moments, dktnames)
-u0 = mean.(ubase)
-cc = quantile.(upath, .99)
 #-------------------------------------------------------------------------------
 # Connectome + ODEE
 #-------------------------------------------------------------------------------
@@ -164,8 +123,8 @@ pst = sample(m,
              n_samples, 
              n_chains,
              progress=false)
-serialize(projectdir("adni/chains/diffusion/length-free/pst-taupos-$(n_chains)x$(n_samples)-new.jls"), pst)
+serialize(projectdir("adni/new-chains/diffusion/length-free/pst-taupos-$(n_chains)x$(n_samples)-new.jls"), pst)
 
 # calc log likelihood 
 log_likelihood = pointwise_loglikelihoods(m, MCMCChains.get_sections(pst, :parameters));
-serialize(projectdir("adni/chains/diffusion/length-free/ll-taupos-$(n_chains)x$(n_samples)-new.jls"), log_likelihood)
+serialize(projectdir("adni/new-chains/diffusion/length-free/ll-taupos-$(n_chains)x$(n_samples)-new.jls"), log_likelihood)
