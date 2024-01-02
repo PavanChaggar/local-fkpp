@@ -19,51 +19,10 @@ using LinearAlgebra
 using SparseArrays
 include(projectdir("functions.jl"))
 #-------------------------------------------------------------------------------
-# Connectome and ROIs
+# Load connectome, regional parameters and sort data
 #-------------------------------------------------------------------------------
-connectome_path = Connectomes.connectome_path()
-all_c = filter(Connectome(connectome_path; norm=true, weight_function = (n, l) -> n), 1e-2);
+include(projectdir("adni/inference/inference-preamble.jl"))
 
-subcortex = filter(x -> x.Lobe == "subcortex", all_c.parc);
-cortex = filter(x -> x.Lobe != "subcortex", all_c.parc);
-
-c = slice(all_c, cortex) |> filter
-
-mtl_regions = ["entorhinal", "Left-Amygdala", "Right-Amygdala"]
-mtl = findall(x -> x ∈ mtl_regions, cortex.Label)
-neo_regions = ["inferiortemporal", "middletemporal"]
-neo = findall(x -> x ∈ neo_regions, cortex.Label)
-#-------------------------------------------------------------------------------
-# Data 
-#-----------------------------------------------------------------------------
-sub_data_path = projectdir("adni/data/new_data/UCBERKELEYAV1451_8mm_02_17_23_AB_Status.csv")
-alldf = CSV.read(sub_data_path, DataFrame)
-
-#posdf = filter(x -> x.STATUS == "POS", alldf)
-posdf = filter(x -> x.AB_Status == 1, alldf)
-
-dktdict = Connectomes.node2FS()
-dktnames = [dktdict[i] for i in cortex.ID]
-
-data = ADNIDataset(posdf, dktnames; min_scans=3)
-n_data = length(data)
-# Ask Jake where we got these cutoffs from? 
-mtl_cutoff = 1.375
-neo_cutoff = 1.395
-
-mtl_pos = filter(x -> regional_mean(data, mtl, x) >= mtl_cutoff, 1:n_data)
-neo_pos = filter(x -> regional_mean(data, neo, x) >= neo_cutoff, 1:n_data)
-
-tau_pos = findall(x -> x ∈ unique([mtl_pos; neo_pos]), 1:n_data)
-tau_neg = findall(x -> x ∉ tau_pos, 1:n_data)
-
-n_pos = length(tau_pos)
-n_neg = length(tau_neg)
-
-gmm_moments = CSV.read(projectdir("adni/data/component_moments.csv"), DataFrame)
-ubase, upath = get_dkt_moments(gmm_moments, dktnames)
-u0 = mean.(ubase)
-cc = quantile.(upath, .99)
 #-------------------------------------------------------------------------------
 # Connectome + ODEE
 #-------------------------------------------------------------------------------
@@ -169,7 +128,7 @@ pst = sample(m,
              Turing.NUTS(0.8),
              n_samples, 
              progress=true)
-serialize(projectdir("adni/chains/global-fkpp/length-free/pst-taupos-$(n_chains)x$(n_samples)-three.jls"), pst)
+serialize(projectdir("adni/new-chains/global-fkpp/length-free/pst-taupos-$(n_chains)x$(n_samples)-three.jls"), pst)
 
 # # calc log likelihood 
 # pst = deserialize(projectdir("adni/chains/global-fkpp/pst-taupos-4x2000.jls"));
