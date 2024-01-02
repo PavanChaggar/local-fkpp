@@ -49,15 +49,15 @@ function simulate(prob, ρ, α, times)
     solve(_prob, Tsit5(), saveat=times, abstol=1e-6, reltol=1e-6)
 end
 
-function make_prob_func(initial_conditions, p, a, times)
-    function prob_func(prob,i,repeat)
-        remake(prob, u0=initial_conditions[i], p=[p[i], a[i]], saveat=times[i])
-    end
-end
+# function make_prob_func(initial_conditions, p, a, times)
+#     function prob_func(prob,i,repeat)
+#         remake(prob, u0=initial_conditions[i], p=[p[i], a[i]], saveat=times[i])
+#     end
+# end
 
-function output_func(sol,i)
-    (sol,false)
-end
+# function output_func(sol,i)
+#     (sol,false)
+# end
 
 subsuvr = [calc_suvr(data, i) for i in tau_neg]
 _subdata = [normalise(sd, u0, cc) for sd in subsuvr]
