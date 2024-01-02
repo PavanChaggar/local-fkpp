@@ -10,9 +10,9 @@ using MCMCChains
 #-------------------------------------------------------------------------------
 # Hierarchical Distributions -- ADNI
 #-------------------------------------------------------------------------------
-pst = deserialize(projectdir("adni/chains/local-fkpp/length-free/pst-taupos-4x2000.jls"));
-pst2 = deserialize(projectdir("adni/chains/local-fkpp/length-free/pst-tauneg-4x2000.jls"));
-pst3 = deserialize(projectdir("adni/chains/local-fkpp/length-free/pst-abneg-4x2000.jls"));
+pst = deserialize(projectdir("adni/new-chains/local-fkpp/length-free/pst-taupos-4x2000.jls"));
+pst2 = deserialize(projectdir("adni/new-chains/local-fkpp/length-free/pst-tauneg-4x2000.jls"));
+pst3 = deserialize(projectdir("adni/new-chains/local-fkpp/length-free/pst-abneg-4x2000.jls"));
 
 [p[:numerical_error] |> sum for p in [pst, pst2, pst3]]
 
@@ -34,10 +34,10 @@ begin
     ax = Axis(g2[1,1], 
             xticklabelsize=30, xlabelsize=30, xlabel="1 / yr", 
             yticklabelsize=40,
-            titlesize=40, title="Transport", xticks=0.0:0.025:0.1,
+            titlesize=40, title="Transport", xticks=0.0:0.025:0.075,
             xminorticks=0.0:0.0125:1, xminorticksvisible=true, 
             xticksize=20, xminorticksize=15, xgridcolor=RGBAf(0, 0, 0, 0.25))
-            xlims!(ax, -0.005, 0.11)
+            xlims!(ax, -0.005, 0.08)
     hideydecorations!(ax)
     hidexdecorations!(ax, grid=false, minorticks=false, label=false, ticks=false, ticklabels=false)
     hidespines!(ax, :t, :r, :l)
@@ -53,10 +53,10 @@ begin
     ax = Axis(g1[1,1], 
             xticklabelsize=30, xlabelsize=30, xlabel="1 / yr", 
             yticklabelsize=40, ylabelsize=30, ylabel="Density",
-            titlesize=40, title="Production", xticks=-0.2:0.1:0.2, 
-            xminorticks=-0.2:0.05:0.2, xminorticksvisible=true, 
+            titlesize=40, title="Production", xticks=-0.18:0.06:0.18, 
+            xminorticks=-0.18:0.03:0.18, xminorticksvisible=true, 
             xticksize=20, xminorticksize=15, xgridcolor=RGBAf(0, 0, 0, 0.25))
-            xlims!(ax, -0.225, 0.225)
+            xlims!(ax, -0.2, 0.2)
         hideydecorations!(ax, label=false, ticklabels=false)
         hidexdecorations!(ax, grid=false, minorticks=false, label=false, ticks=false, ticklabels=false)
     hidespines!(ax, :t, :r, :l)
@@ -70,7 +70,7 @@ begin
     colgap!(f.layout, 1, 50)
     f
 end
-save(projectdir("visualisation/inference/posteriors/output/adni-posteriors.pdf"), f)
+save(projectdir("visualisation/inference/posteriors/new-output/adni-posteriors.pdf"), f)
 
 begin
         colors = alphacolor.(Makie.wong_colors(), 0.75)
@@ -89,7 +89,7 @@ begin
         hideydecorations!(ax11, label=false)
         hidexdecorations!(ax11, label=false, ticks=false, grid=false)
         hidespines!(ax11, :t, :r, :l)
-        for i in 1:31
+        for i in 1:57
                 hist!(ax11, vec(pst[Symbol("α[$i]")]), bins=50, color=(colors[3], 0.6), normalization=:pdf, label=L"A\beta^+ \tau^+")
         end
 
@@ -97,7 +97,7 @@ begin
         hideydecorations!(ax12, label=false)
         hidexdecorations!(ax12, label=false, ticks=false, grid=false)
         hidespines!(ax12, :t, :r, :l)
-        for i in 1:27
+        for i in 1:39
                 hist!(ax12, vec(pst2[Symbol("α[$i]")]), bins=50, color=(colors[2], 0.6), normalization=:pdf, label=L"A\beta^+ \tau^-")
         end
 
@@ -106,7 +106,7 @@ begin
         hidexdecorations!(ax13, label=false, ticks=false, ticklabels=false, grid=false)
         hidespines!(ax13, :t, :r, :l)
         xlims!(-1.5, 1.)
-        for i in 1:55
+        for i in 1:58
                 hist!(ax13, vec(pst3[Symbol("α[$i]")]), bins=50, color=(colors[1], 0.6), normalization=:pdf, label=L"A\beta^-")
         end
 
@@ -119,14 +119,14 @@ begin
         hideydecorations!(ax21, label=false)
         hidexdecorations!(ax21, label=false, ticks=false, grid=false)
         hidespines!(ax21, :t, :r, :l)
-        for i in 1:31
+        for i in 1:57
                 hist!(ax21, vec(pst[Symbol("ρ[$i]")]), bins=50, color=(colors[3], 0.6), normalization=:pdf, label=L"A\beta^+ \tau^+")
         end
 
         hideydecorations!(ax22, label=false)
         hidexdecorations!(ax22, label=false, ticks=false, grid=false)
         hidespines!(ax22, :t, :r, :l)
-        for i in 1:27
+        for i in 1:39
                 hist!(ax22, vec(pst2[Symbol("ρ[$i]")]), bins=50, color=(colors[2], 0.6), normalization=:pdf, label=L"A\beta^+ \tau^-")
         end
 
@@ -134,7 +134,7 @@ begin
         hidexdecorations!(ax23, label=false, ticks=false, ticklabels=false, grid=false)
         hidespines!(ax23, :t, :r, :l)
         xlims!(-0.001, 0.15)
-        for i in 1:55
+        for i in 1:58
                 hist!(ax23, vec(pst3[Symbol("ρ[$i]")]), bins=50, color=(colors[1], 0.6), normalization=:pdf, label=L"A\beta^-")
         end
 

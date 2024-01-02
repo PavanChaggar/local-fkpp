@@ -10,51 +10,9 @@ using Random
 using LinearAlgebra, SparseArrays
 include(projectdir("functions.jl"))
 #-------------------------------------------------------------------------------
-# Connectome and ROIs
+# Load connectome, regional parameters and sort data
 #-------------------------------------------------------------------------------
-connectome_path = Connectomes.connectome_path()
-all_c = filter(Connectome(connectome_path; norm=true, weight_function = (n, l) -> n), 1e-2);
-
-subcortex = filter(x -> x.Lobe == "subcortex", all_c.parc);
-cortex = filter(x -> x.Lobe != "subcortex", all_c.parc);
-
-c = slice(all_c, cortex) |> filter
-
-mtl_regions = ["entorhinal", "Left-Amygdala", "Right-Amygdala"]
-mtl = findall(x -> x ∈ mtl_regions, cortex.Label)
-neo_regions = ["inferiortemporal", "middletemporal"]
-neo = findall(x -> x ∈ neo_regions, cortex.Label)
-#-------------------------------------------------------------------------------
-# Data 
-#-----------------------------------------------------------------------------
-sub_data_path = projectdir("adni/data/new_data/UCBERKELEYAV1451_8mm_02_17_23_AB_Status.csv")
-alldf = CSV.read(sub_data_path, DataFrame)
-
-posdf = filter(x -> x.AB_Status == 1, alldf)
-
-dktdict = Connectomes.node2FS()
-dktnames = [dktdict[i] for i in cortex.ID]
-
-data = ADNIDataset(posdf, dktnames; min_scans=3)
-n_data = length(data)
-# Ask Jake where we got these cutoffs from? 
-mtl_cutoff = 1.375
-neo_cutoff = 1.395
-
-mtl_pos = filter(x -> regional_mean(data, mtl, x) >= mtl_cutoff, 1:n_data)
-neo_pos = filter(x -> regional_mean(data, neo, x) >= neo_cutoff, 1:n_data)
-
-tau_pos = findall(x -> x ∈ unique([mtl_pos; neo_pos]), 1:n_data)
-tau_neg = findall(x -> x ∉ tau_pos, 1:n_data)
-
-n_pos = length(tau_pos)
-n_neg = length(tau_neg)
-
-gmm_moments = CSV.read(projectdir("adni/data/component_moments.csv"), DataFrame)
-#gmm_moments2 = CSV.read(projectdir("data/adni-data/component_moments-bothcomps.csv"), DataFrame)
-ubase, upath = get_dkt_moments(gmm_moments, dktnames)
-u0 = mean.(ubase)
-cc = quantile.(upath, .99)
+include(projectdir("adni/inference/inference-preamble.jl"))
 #-------------------------------------------------------------------------------
 # Pos data 
 #-------------------------------------------------------------------------------
@@ -108,7 +66,7 @@ end
 #-------------------------------------------------------------------------------
 # Connectome + ODEE
 #-------------------------------------------------------------------------------
-local_pst = deserialize(projectdir("adni/chains/local-fkpp/length-free/pst-taupos-1x2000-three.jls"));
+local_pst = deserialize(projectdir("adni/new-chains/local-fkpp/length-free/pst-taupos-1x2000-three.jls"));
 local_ps = [Array(local_pst[Symbol("ρ[$i]")]) for i in outsample_idx];
 local_as = [Array(local_pst[Symbol("α[$i]")]) for i in outsample_idx];
 
@@ -181,7 +139,7 @@ diffusion_elppd = elppd_diffusion(diffusion_pst, diffusion_ps, insample_inits, o
 #-------------------------------------------------------------------------------
 # Logistic
 #-------------------------------------------------------------------------------
-logistic_pst = deserialize(projectdir("adni/chains/logistic/pst-taupos-1x2000-three.jls"));
+logistic_pst = deserialize(projectdir("adni/new-chains/logistic/pst-taupos-1x2000-three.jls"));
 logistic_as = [Array(logistic_pst[Symbol("α[$i]")]) for i in outsample_idx];
 
 function elppd_logistic(pst, as, initial_conditions, subdata, out_times)
@@ -209,10 +167,10 @@ elppd_df = DataFrame("Local" => local_elppd,
                      "Diffusion" => diffusion_elppd,
                      "Logistic" => logistic_elppd)
 
-local_ll = deserialize(projectdir("adni/chains/local-fkpp/length-free/ll-taupos-4x2000.jls"));
+local_ll = deserialize(projectdir("adni/new-chains/local-fkpp/length-free/ll-taupos-4x2000.jls"));
 global_ll = deserialize(projectdir("adni/chains/global-fkpp/length-free/ll-taupos-4x2000.jls"));
 diffusion_ll = deserialize(projectdir("adni/chains/diffusion/length-free/ll-taupos-4x2000.jls"));
-logistic_ll = deserialize(projectdir("adni/chains/logistic/ll-taupos-4x2000.jls"));
+logistic_ll = deserialize(projectdir("adni/new-chains/logistic/ll-taupos-4x2000.jls"));
 
 max_lls= [maximum(dict["data"]) for dict in [local_ll, global_ll, diffusion_ll, logistic_ll]]
 
