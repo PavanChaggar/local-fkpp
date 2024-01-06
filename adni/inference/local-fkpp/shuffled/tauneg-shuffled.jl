@@ -157,8 +157,8 @@ solve(prob, Tsit5())
 m = localfkpp(shuffled_vecsubdata, prob, shuffled_initial_conditions, times, n_neg);
 m();
 
-_map = optimize(m, MAP())
-serialize(projectdir("adni/new-chains/local-fkpp/shuffled/neg/length-free/map_test.jls"), _map)
+# _map = optimize(m, MAP())
+# serialize(projectdir("adni/new-chains/local-fkpp/shuffled/neg/length-free/map_test.jls"), _map)
 
 pst = sample(m,
                 Turing.NUTS(0.8),
