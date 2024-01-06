@@ -133,40 +133,39 @@ end
     data ~ MvNormal(vecsol, σ^2 * I)
 end
 
-# Turing.setadbackend(:forwarddiff)
 Random.seed!(1234);
 
-shuffle_idx = shuffle(collect(1:72))
+for i in 1:10
+    println("Starting chain $i")
+    shuffle_idx = shuffle(collect(1:72))
 
-shuffled_data = [sd[shuffle_idx,:] for sd in subdata]
+    shuffled_data = [sd[shuffle_idx,:] for sd in subdata]
 
-shuffled_vecsubdata = reduce(vcat, reduce(hcat, shuffled_data))
+    shuffled_vecsubdata = reduce(vcat, reduce(hcat, shuffled_data))
 
-shuffled_initial_conditions = [sd[:,1] for sd in shuffled_data]
+    shuffled_initial_conditions = [sd[:,1] for sd in shuffled_data]
 
-_u0 = u0[shuffle_idx]
-_cc = cc[shuffle_idx]
+    _u0 = u0[shuffle_idx]
+    _cc = cc[shuffle_idx]
 
-function NetworkLocalFKPP(du, u, p, t; L = L, u0 = _u0, cc = _cc)
-    du .= -p[1] * L * (u .- u0) .+ p[2] .* (u .- u0) .* ((cc .- u0) .- (u .- u0))
+    function NetworkLocalFKPP(du, u, p, t; L = L, u0 = _u0, cc = _cc)
+        du .= -p[1] * L * (u .- u0) .+ p[2] .* (u .- u0) .* ((cc .- u0) .- (u .- u0))
+    end
+
+    prob = ODEProblem(NetworkLocalFKPP, shuffled_initial_conditions[1], (0, maxt), [1.0,1.0]);
+    solve(prob, Tsit5())
+
+    m = localfkpp(shuffled_vecsubdata, prob, shuffled_initial_conditions, times, n_neg);
+    m();
+
+    n_samples = 1_000
+    pst = sample(m,
+                    NUTS(0.8),
+                    n_samples, 
+                    progress=true)
+
+    serialize(projectdir("adni/new-chains/local-fkpp/shuffled/neg/length-free/pst-tauneg-$(n_samples)-shuffled-$(i).jls"), pst)
 end
-
-prob = ODEProblem(NetworkLocalFKPP, shuffled_initial_conditions[1], (0, maxt), [1.0,1.0]);
-solve(prob, Tsit5())
-
-m = localfkpp(shuffled_vecsubdata, prob, shuffled_initial_conditions, times, n_neg);
-m();
-
-# _map = optimize(m, MAP())
-# serialize(projectdir("adni/new-chains/local-fkpp/shuffled/neg/length-free/map_test.jls"), _map)
-
-pst = sample(m,
-                Turing.NUTS(0.8),
-                1_000, 
-                progress=true)
-
-serialize(projectdir("adni/new-chains/local-fkpp/shuffled/neg/length-free/pst-tauneg-1000-shuffled.jls"), pst)
-
 # for i in 1:10
 #     println("Starting chain $i")
 
