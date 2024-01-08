@@ -27,6 +27,12 @@ include(projectdir("adni/inference/inference-preamble.jl"))
 #-------------------------------------------------------------------------------
 # Connectome + ODEE
 #-------------------------------------------------------------------------------
+subsuvr = [calc_suvr(data, i) for i in tau_neg]
+_subdata = [normalise(sd, u0, cc) for sd in subsuvr]
+
+blsd = [sd .- u0 for sd in _subdata]
+nonzerosubs = findall(x -> sum(x) < 2, [sum(sd, dims=1) .== 0 for sd in blsd])
+
 L = laplacian_matrix(c)
 
 vols = [get_vol(data, i) for i in tau_neg]
@@ -44,12 +50,6 @@ end
 function output_func(sol,i)
     (sol,false)
 end
-
-subsuvr = [calc_suvr(data, i) for i in tau_neg]
-_subdata = [normalise(sd, u0, cc) for sd in subsuvr]
-
-blsd = [sd .- u0 for sd in _subdata]
-nonzerosubs = findall(x -> sum(x) < 2, [sum(sd, dims=1) .== 0 for sd in blsd])
 
 subdata = _subdata[nonzerosubs]
 
@@ -148,7 +148,7 @@ for i in 1:10
     _u0 = u0[shuffle_idx]
     _cc = cc[shuffle_idx]
 
-    function NetworkLocalFKPP(du, u, p, t; L = L, u0 = _u0, cc = _cc)
+    function NetworkLocalFKPP(du, u, p, t; L = Lv, u0 = _u0, cc = _cc)
         du .= -p[1] * L * (u .- u0) .+ p[2] .* (u .- u0) .* ((cc .- u0) .- (u .- u0))
     end
 
