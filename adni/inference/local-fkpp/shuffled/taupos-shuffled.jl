@@ -51,6 +51,7 @@ subdata = [normalise(sd, u0, cc) for sd in _subdata]
 # end
 
 times = [get_times(data, i) for i in tau_pos]
+maxt = maximum(reduce(vcat, times))
 
 function get_retcodes(es)
     [sol.retcode for sol in es]
