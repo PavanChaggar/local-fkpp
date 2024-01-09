@@ -133,9 +133,8 @@ end
     data ~ MvNormal(vecsol, σ^2 * I)
 end
 
-Random.seed!(1234);
-
-for i in 1:10
+for i in 4:10
+    Random.seed!(i);
     println("Starting chain $i")
     shuffle_idx = shuffle(collect(1:72))
 

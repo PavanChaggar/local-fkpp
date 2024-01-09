@@ -87,7 +87,7 @@ end
         trajectories=n,
         sensealg=InterpolatingAdjoint(autojacvec=ReverseDiffVJP(true)))
 
-    if !allequal(get_retcodes(ensemble_sol))
+    if !allequal(get_retcodes(ensemble_sol)) 
         Turing.@addlogprob! -Inf
         println("failed")
         return nothing
@@ -98,9 +98,8 @@ end
     data ~ MvNormal(vecsol, σ^2 * I)
 end
 
-Random.seed!(1234)
-
-for i in 1:10
+for i in 2:10
+    Random.seed!(i)
     println("Starting chain $i")
     shuffle_idx = shuffle(collect(1:72))
 
