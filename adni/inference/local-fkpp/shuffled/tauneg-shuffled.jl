@@ -134,7 +134,7 @@ end
 end
 
 for i in 4:10
-    Random.seed!(i);
+    Random.seed!(1234 + i);
     println("Starting chain $i")
     shuffle_idx = shuffle(collect(1:72))
 
