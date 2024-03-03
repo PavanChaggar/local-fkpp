@@ -7,19 +7,17 @@ include(projectdir("functions.jl"))
 connectome_path = Connectomes.connectome_path()
 all_c = filter(Connectome(connectome_path; norm=true, weight_function = (n, l) -> n), 1e-2);
 
-subcortex = filter(x -> x.Lobe == "subcortex", all_c.parc)
-cortex = filter(x -> x.Lobe != "subcortex", all_c.parc)
+subcortex = filter(x -> get_lobe(x) == "subcortex", all_c.parc)
+cortex = filter(x -> get_lobe(x) != "subcortex", all_c.parc)
 
 c = slice(all_c, cortex) |> filter
 
-cortex.rID = collect(1:72)
-
-right_cortical_nodes = filter(x -> x.Hemisphere == "right", c.parc)
-
-L = laplacian_matrix(c)
+right_cortical_nodes = filter(x -> get_hemisphere(x) == "right", c.parc)
+rIDs =  get_node_id.(right_cortical_nodes)
+L = laplacian_matrix(c);
 
 dktdict = Connectomes.node2FS()
-dktnames = [dktdict[i] for i in cortex.ID]
+dktnames = [dktdict[i] for i in get_node_id.(cortex)]
 
 gmm_moments = CSV.read(projectdir("adni/data/component_moments.csv"), DataFrame)
 ubase, upath = get_dkt_moments(gmm_moments, dktnames)
@@ -31,14 +29,14 @@ function NetworkExFKPP(du, u, p, t; L = L, u0 = u0, cc = cc)
 end
 
 p0 = mean.(ubase);
-seed_regions = ["entorhinal", "Left-Amygdala", "Right-Amygdala", "Left-Hippocampus", "Right-Hippocampus"]
-seed = filter(x -> x.Label ∈ seed_regions, cortex)
-seed_value = mean([cc[seed.rID] p0[seed.rID]], dims=2)
-p0[seed.rID] .= seed_value 
+seed_regions = ["entorhinal"] # "Left-Amygdala", "Right-Amygdala", "Left-Hippocampus", "Right-Hippocampus"]
+seed = findall(x -> get_label(x) ∈ seed_regions, cortex)
+seed_value = mean([cc[seed] p0[seed]], dims=2)
+p0[seed] .= seed_value 
 
 r = 0.15
 a = 1.1
-prob = ODEProblem(NetworkExFKPP, p0, (0.0,8.0), [r,a, u0, cc])
+prob = ODEProblem(NetworkExFKPP, p0, (0.0,8.0), [r,a])
 
 ts = range(0.0, 8.0, 5)
 n = length(ts)
@@ -55,8 +53,8 @@ using ColorSchemes
 
 begin
     cmap = reverse(ColorSchemes.RdYlBu); #ColorSchemes.viridis 
-    cols = [get(cmap, solcol[i]) for i in 1:n]
-    nodes = right_cortical_nodes.ID;
+    # cols = [get(cmap, solcol[i]) for i in 1:n]
+    nodes = get_node_id.(right_cortical_nodes);
 
     f = Figure(resolution=(1500, 800))
     g1 = f[1, 1] = GridLayout()
@@ -69,9 +67,8 @@ begin
                    protrusions=(1.0,1.0,1.0,1.0))
         hidedecorations!(ax)
         hidespines!(ax)
-        for (i, j) in enumerate(nodes)
-            plot_roi!(j, cols[k][i])
-        end
+        plot_roi!(rIDs, solcol[k], cmap)
+
         ax = Axis3(g1[2,k+1], 
                    aspect = :data, 
                    azimuth = 0.0pi, 
@@ -79,9 +76,7 @@ begin
                    protrusions=(1.0,1.0,1.0,1.0))
         hidedecorations!(ax)
         hidespines!(ax)
-        for (i, j) in enumerate(nodes)
-            plot_roi!(j, cols[k][i])
-        end
+        plot_roi!(rIDs, solcol[k], cmap)
     end
     # rowsize!(f.layout, 1, Auto(0.8))
     # rowsize!(f.layout, 2, Auto(0.8))

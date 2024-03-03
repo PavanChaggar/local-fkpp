@@ -119,11 +119,10 @@ end
 #-------------------------------------------------------------------------------
 # Posteriors
 #-------------------------------------------------------------------------------
-local_pst = mean(deserialize(projectdir("adni/chains/local-fkpp/length-free/pst-taupos-4x2000.jls")));
-global_pst = mean(deserialize(projectdir("adni/chains/global-fkpp/length-free/pst-taupos-4x2000.jls")));
-diffusion_pst = mean(deserialize(projectdir("adni/chains/diffusion/length-free/pst-taupos-4x2000.jls")));
-logistic_pst = mean(deserialize(projectdir("adni/chains/logistic/pst-taupos-4x2000.jls")));
-
+local_pst = mean(deserialize(projectdir("adni/new-chains/local-fkpp/length-free/pst-taupos-4x2000.jls")));
+global_pst = mean(deserialize(projectdir("adni/new-chains/global-fkpp/length-free/pst-taupos-4x2000.jls")));
+diffusion_pst = mean(deserialize(projectdir("adni/new-chains/diffusion/length-free/pst-taupos-4x2000.jls")));
+logistic_pst = mean(deserialize(projectdir("adni/new-chains/logistic/pst-taupos-4x2000.jls")));
 #-------------------------------------------------------------------------------
 # Local model
 #-------------------------------------------------------------------------------
@@ -187,90 +186,90 @@ function getdiff(d)
 end
 
 titles = ["Local FKPP", "Global FKPP", "Diffusion", "Logistic"]
-# begin 
-#     cols = ColorSchemes.seaborn_colorblind[1:3]
-#     titlesize = 40
-#     xlabelsize = 25 
-#     ylabelsize = 25
-#     xticklabelsize = 20 
-#     yticklabelsize = 20
-#     f = Figure(resolution=(2000, 1100), fontsize=40);
-#     g = [f[i, j] = GridLayout() for i in 1:2, j in 1:4]
-#     gl = f[3,:] = GridLayout()
-#     for (i, sol) in enumerate([local_sols, global_sols, diffusion_sols, logistic_sols])
-#         start = 1.0
-#         stop = 4.0
-#         border = 0.25
-#         ax = Axis(g[1, i][1, 1],  
-#                 xlabel="SUVR", 
-#                 ylabel="Prediction", 
-#                 title=titles[i],
-#                 titlesize=titlesize, xlabelsize=xlabelsize, ylabelsize=ylabelsize, 
-#                 xticklabelsize=xticklabelsize, yticklabelsize=xticklabelsize,
-#                 xminorgridvisible=true,yminorgridvisible=true,
-#                 xminorticksvisible=true, yminorticksvisible=true,
-#                 xminorticks=collect(start:0.5:stop),yminorticks=collect(start:0.5:stop),
-#                 xticks=start:1.0:stop, yticks=start:1.0:stop, 
-#                 xtickformat = "{:.1f}", ytickformat = "{:.1f}")
-#         if i > 1
-#             hideydecorations!(ax, minorgrid=false, minorticks=false, ticks=false, grid=false)
-#         end
-#         xlims!(ax, start - border, stop + border)
-#         ylims!(ax, start - border, stop + border)
-#         lines!(start:0.1:stop + 0.1, start:0.1:stop + 0.1, color=(:grey, 0.75), linewidth=2, linestyle=:dash)
-#         # for j in 1:insample_n_pos
-#         for (scan, col) in zip(collect(2:4), alphacolor.(cols, [1.0,0.5,0.25]))
-#             for j in 1:insample_n_pos
-#                 if size(insample_pos_data[j], 2) >= scan
-#                     scatter!(insample_pos_data[j][:,scan], sol[j][:,scan], color=col, markersize=15, marker='o', label="Scan $(scan)")
-#                 end
-#             end
-#         end
-#         # end
-#         start = -1.0
-#         stop = 1.0
-#         ax = Axis(g[2, i][1,1], 
-#                 xlabel="Δ SUVR",
-#                 ylabel="Δ Prediction",
-#                 titlesize=titlesize, xlabelsize=xlabelsize, ylabelsize=ylabelsize, 
-#                 xticklabelsize=xticklabelsize, yticklabelsize=xticklabelsize, 
-#                 xminorgridvisible=true,yminorgridvisible=true,
-#                 xminorticksvisible=true, yminorticksvisible=true,
-#                 xminorticks=collect(start:0.25:stop),yminorticks=collect(start:0.25:stop),
-#                 xticks=start:0.5:stop, yticks=start:0.5:stop, 
-#                 xtickformat = "{:.1f}", ytickformat = "{:.1f}")
-#         if i > 1
-#             hideydecorations!(ax, minorgrid=false, minorticks=false, ticks=false, grid=false)
-#         end
+begin 
+    cols = ColorSchemes.seaborn_colorblind[1:3]
+    titlesize = 40
+    xlabelsize = 25 
+    ylabelsize = 25
+    xticklabelsize = 20 
+    yticklabelsize = 20
+    f = Figure(resolution=(2000, 1100), fontsize=40);
+    g = [f[i, j] = GridLayout() for i in 1:2, j in 1:4]
+    gl = f[3,:] = GridLayout()
+    for (i, sol) in enumerate([local_sols, global_sols, diffusion_sols, logistic_sols])
+        start = 1.0
+        stop = 4.0
+        border = 0.25
+        ax = Axis(g[1, i][1, 1],  
+                xlabel="SUVR", 
+                ylabel="Prediction", 
+                title=titles[i],
+                titlesize=titlesize, xlabelsize=xlabelsize, ylabelsize=ylabelsize, 
+                xticklabelsize=xticklabelsize, yticklabelsize=xticklabelsize,
+                xminorgridvisible=true,yminorgridvisible=true,
+                xminorticksvisible=true, yminorticksvisible=true,
+                xminorticks=collect(start:0.5:stop),yminorticks=collect(start:0.5:stop),
+                xticks=start:1.0:stop, yticks=start:1.0:stop, 
+                xtickformat = "{:.1f}", ytickformat = "{:.1f}")
+        if i > 1
+            hideydecorations!(ax, minorgrid=false, minorticks=false, ticks=false, grid=false)
+        end
+        xlims!(ax, start - border, stop + border)
+        ylims!(ax, start - border, stop + border)
+        lines!(start:0.1:stop + 0.1, start:0.1:stop + 0.1, color=(:grey, 0.75), linewidth=2, linestyle=:dash)
+        # for j in 1:insample_n_pos
+        for (scan, col) in zip(collect(2:4), alphacolor.(cols, [1.0,0.5,0.25]))
+            for j in 1:insample_n_pos
+                if size(insample_pos_data[j], 2) >= scan
+                    scatter!(insample_pos_data[j][:,scan], sol[j][:,scan], color=col, markersize=15, marker='o', label="Scan $(scan)")
+                end
+            end
+        end
+        # end
+        start = -1.0
+        stop = 1.0
+        ax = Axis(g[2, i][1,1], 
+                xlabel="Δ SUVR",
+                ylabel="Δ Prediction",
+                titlesize=titlesize, xlabelsize=xlabelsize, ylabelsize=ylabelsize, 
+                xticklabelsize=xticklabelsize, yticklabelsize=xticklabelsize, 
+                xminorgridvisible=true,yminorgridvisible=true,
+                xminorticksvisible=true, yminorticksvisible=true,
+                xminorticks=collect(start:0.25:stop),yminorticks=collect(start:0.25:stop),
+                xticks=start:0.5:stop, yticks=start:0.5:stop, 
+                xtickformat = "{:.1f}", ytickformat = "{:.1f}")
+        if i > 1
+            hideydecorations!(ax, minorgrid=false, minorticks=false, ticks=false, grid=false)
+        end
 
-#         xlims!(ax, start, stop)
-#         ylims!(ax, start, stop)
-#         lines!(start:0.1:stop, start:0.1:stop, color=(:grey, 0.75), linewidth=2, linestyle=:dash)
-#         for (scan, col) in zip(collect(2:4), alphacolor.(cols, [1.0,0.5,0.25]))
-#             if scan < 4
-#                 diffs = getdiff.(insample_pos_data, scan)
-#                 soldiff = getdiff.(sol, scan)
-#             else
-#                 idx = findall(x -> size(x,2) == scan, insample_pos_data)
-#                 diffs = getdiff.(insample_pos_data[idx], scan)
-#                 soldiff = getdiff.(sol[idx], scan)
-#             end
+        xlims!(ax, start, stop)
+        ylims!(ax, start, stop)
+        lines!(start:0.1:stop, start:0.1:stop, color=(:grey, 0.75), linewidth=2, linestyle=:dash)
+        for (scan, col) in zip(collect(2:4), alphacolor.(cols, [1.0,0.5,0.25]))
+            if scan < 4
+                diffs = getdiff.(insample_pos_data, scan)
+                soldiff = getdiff.(sol, scan)
+            else
+                idx = findall(x -> size(x,2) == scan, insample_pos_data)
+                diffs = getdiff.(insample_pos_data[idx], scan)
+                soldiff = getdiff.(sol[idx], scan)
+            end
 
-#             for j in eachindex(diffs)
-#                 scatter!(diffs[j], soldiff[j], color=col, markersize=15, marker='o', label="Scan $(scan)")
-#             end
-#         end
+            for j in eachindex(diffs)
+                scatter!(diffs[j], soldiff[j], color=col, markersize=15, marker='o', label="Scan $(scan)")
+            end
+        end
 
-#         Legend(gl[1, 1],
-#                 [MarkerElement(color = col, marker= '●', markersize=20) for col in cols],
-#                 ["Scan 2", "Scan 3", "Scan 4"],
-#                 patchsize = (35, 35), rowgap = 10, orientation = :horizontal, framevisible=false)
+        Legend(gl[1, 1],
+                [MarkerElement(color = col, marker= '●', markersize=20) for col in cols],
+                ["Scan 2", "Scan 3", "Scan 4"],
+                patchsize = (35, 35), rowgap = 10, orientation = :horizontal, framevisible=false)
 
 
-#     end
-#     f
-# end
-# save(projectdir("visualisation/inference/model-selection/output/model-fits.pdf"), f)
+    end
+    f
+end
+save(projectdir("visualisation/inference/model-selection/output/model-fits.pdf"), f)
 
 #-------------------------------------------------------------------------------
 # Regional average
@@ -454,7 +453,7 @@ save(projectdir("visualisation/inference/model-selection/output/model-fits-roi-a
 # Error visualisation
 #-------------------------------------------------------------------------------
 using ColorSchemes, GLMakie; GLMakie.activate!()
-cmap = ColorSchemes.vik;
+cmap = ColorSchemes.RdBu;
 meandata = mean(get_sol_t_end(insample_pos_data), dims=2) |> vec
 local_meansol = mean(get_sol_t_end(local_sols), dims=2) |> vec
 logistic_meansol = mean(get_sol_t_end(logistic_sols), dims=2) |> vec
@@ -469,18 +468,18 @@ begin
     ax = Axis3(f[1,1], aspect = :data, azimuth = 0.0pi, elevation=0.0pi)
     hidedecorations!(ax)
     hidespines!(ax)
-    plot_roi!(get_node_id.(right_cortex), local_scaled_meanerror, cmap)
+    plot_roi!(get_node_id.(right_cortex), logistic_scaled_meanerror, cmap)
 
     ax = Axis3(f[1,2], aspect = :data, azimuth = 1.0pi, elevation=0.0pi)
     hidedecorations!(ax)
     hidespines!(ax)
-    plot_roi!(get_node_id.(right_cortex), local_scaled_meanerror, cmap)
+    plot_roi!(get_node_id.(right_cortex), logistic_scaled_meanerror, cmap)
     Colorbar(f[1, 0], 
     limits = (-maximum(abs.(logistic_meanerror)), maximum(abs.(logistic_meanerror))), colormap = cmap, vertical=true, 
     label="Mean error", flipaxis=false, labelsize=35)
     f
 end
-save(projectdir("visualisation/inference/model-selection/output/regional_mean_error_local_tau_pos.jpeg"), f)
+save(projectdir("visualisation/inference/model-selection/output/regional_mean_error_logistic_tau_pos.jpeg"), f)
 
 #-------------------------------------------------------------------------------
 # Out of Sample Models

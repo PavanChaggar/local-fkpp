@@ -15,54 +15,7 @@ include(projectdir("braak-regions.jl"))
 #-------------------------------------------------------------------------------
 # Connectome and ROIs
 #-------------------------------------------------------------------------------
-connectome_path = Connectomes.connectome_path()
-all_c = filter(Connectome(connectome_path; norm=true), 1e-2);
-
-subcortex = filter(x -> x.Lobe == "subcortex", all_c.parc);
-cortex = filter(x -> x.Lobe != "subcortex", all_c.parc);
-
-c = slice(all_c, cortex) |> filter
-
-mtl_regions = ["entorhinal", "Left-Amygdala", "Right-Amygdala"]
-mtl = findall(x -> x ∈ mtl_regions, cortex.Label)
-neo_regions = ["inferiortemporal", "middletemporal"]
-neo = findall(x -> x ∈ neo_regions, cortex.Label)
-#-------------------------------------------------------------------------------
-# Data 
-#-----------------------------------------------------------------------------
-sub_data_path = projectdir("adni/data/AV1451_Diagnosis-STATUS-STIME-braak-regions.csv");
-alldf = CSV.read(sub_data_path, DataFrame)
-
-posdf = filter(x -> x.STATUS == "POS", alldf)
-
-dktdict = Connectomes.node2FS()
-dktnames = [dktdict[i] for i in cortex.ID]
-
-data = ADNIDataset(posdf, dktnames; min_scans=2, max_scans=2)
-
-# Ask Jake where we got these cutoffs from? 
-mtl_cutoff = 1.375
-neo_cutoff = 1.395
-
-function regional_mean(data, rois, sub)
-    subsuvr = calc_suvr(data, sub)
-    mean(subsuvr[rois,1])
-end
-
-mtl_pos = filter(x -> regional_mean(data, mtl, x) >= mtl_cutoff, 1:50)
-neo_pos = filter(x -> regional_mean(data, neo, x) >= neo_cutoff, 1:50)
-
-tau_pos = findall(x -> x ∈ unique([mtl_pos; neo_pos]), 1:50)
-tau_neg = findall(x -> x ∉ tau_pos, 1:50)
-
-n_pos = length(tau_pos)
-n_neg = length(tau_neg)
-
-gmm_moments = CSV.read(projectdir("adni/data/component_moments.csv"), DataFrame)
-#gmm_moments2 = CSV.read(projectdir("data/adni-data/component_moments-bothcomps.csv"), DataFrame)
-ubase, upath = get_dkt_moments(gmm_moments, dktnames)
-u0 = mean.(ubase)
-cc = quantile.(upath, .99)
+include(projectdir("adni/inference/inference-preamble.jl"))
 #-------------------------------------------------------------------------------
 # Connectome + ODEE
 #-------------------------------------------------------------------------------
@@ -86,10 +39,10 @@ end
 initial_conditions = [sd[:,1] for sd in subdata]
 times =  [get_times(data, i) for i in tau_pos]
 
-pst = deserialize(projectdir("adni/chains/local-fkpp/length-free/pst-taupos-4x2000-vc.jls"));
-
-meanpst = mean(pst)
-params = [[meanpst[:Pm, :mean], meanpst[:Am, :mean]] for i in 1:27]
+pst = deserialize(projectdir("adni/new-chains/local-fkpp/length-free/pst-taupos-4x2000.jls"));
+pst
+meanpst = mean(pst);
+params = [[meanpst[:Pm, :mean], meanpst[:Am, :mean]] for i in 1:57]
 meansols = [solve(ODEProblem(NetworkLocalFKPP, init, (0.0,7.0), p), Tsit5(), saveat=0.05) for (init, t, p) in zip(initial_conditions, times, params)];
 
 sols = Vector{Vector{Array{Float64}}}();

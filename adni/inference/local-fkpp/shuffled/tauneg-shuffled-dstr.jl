@@ -16,7 +16,6 @@ using DelimitedFiles, LinearAlgebra
 using Random
 using LinearAlgebra
 using SparseArrays
-using Optim
 using Distributed
 
 addprocs(2; exeflags="--project=$(Base.active_project())")
@@ -39,7 +38,6 @@ addprocs(2; exeflags="--project=$(Base.active_project())")
     using Random
     using LinearAlgebra
     using SparseArrays
-    using Optim
     using Distributed
 end
 

@@ -291,9 +291,9 @@ begin
 end
 
 # shuffled data
-pos_shuffled = [deserialize(projectdir("adni/chains/local-fkpp/shuffled/pos/length-free/pst-taupos-1000-shuffled-$i.jls")) for i in 1:10];
-pos_shuffled_idx = [1, 2, 4, 5, 6, 7, 8, 9, 10]
-
+_pos_shuffled = [deserialize(projectdir("adni/new-chains/local-fkpp/shuffled/pos/length-free/pst-taupos-1000-shuffled-$i.jls")) for i in 1:10];
+sh_idx = findall( x -> sum(x[:numerical_error]) == 0, _pos_shuffled)
+pos_shuffled = _pos_shuffled[sh_idx];
 begin
         colors = Makie.wong_colors()
 
@@ -306,7 +306,7 @@ begin
         hideydecorations!(ax, label=false)
         hidespines!(ax, :t, :r, :l)
 
-        am = reduce(vcat, [vec(Array(sh[:Am])) for sh in pos_shuffled[pos_shuffled_idx]])
+        am = reduce(vcat, [vec(Array(sh[:Am])) for sh in pos_shuffled])
         hist!(am, bins=20, normalization=:pdf, color=(:black, 0.8))
         hist!(pst[:Am] |> vec, bins=50, normalization=:pdf, color=(colors[3], 0.75))
 
@@ -324,11 +324,10 @@ begin
 end     
 save(projectdir("visualisation/inference/posteriors/output/adni-pos-shuffled.pdf"), f)
 
-for i in 1:10
-        display(hist(vec(pos_shuffled[i][:Am]), normalization=:pdf))
-end
 
-neg_shuffled = [deserialize(projectdir("adni/chains/local-fkpp/shuffled/neg/length-free/pst-tauneg-1000-shuffled-$i.jls")) for i in 1:9]
+_neg_shuffled = [deserialize(projectdir("adni/new-chains/local-fkpp/shuffled/neg/length-free/pst-tauneg-1000-shuffled-$i.jls")) for i in 1:10];
+sh_idx = findall( x -> sum(x[:numerical_error]) == 0, _neg_shuffled)
+neg_shuffled = _neg_shuffled[sh_idx];
 begin
         colors = Makie.wong_colors()
 

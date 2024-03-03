@@ -8,17 +8,19 @@ using Distributions
 CairoMakie.activate!()
 include(projectdir("functions.jl"))
 
-c = Connectome(Connectomes.connectome_path());
+parc = Parcellation(Connectomes.connectome_path())
+cortex = filter(x -> get_lobe(x) != "subcortex", parc);
 
-sub_data_path = projectdir("adni/data/new_data/UCBERKELEYAV1451_8mm_02_17_23_AB_Status.csv")
+# sub_data_path = projectdir("adni/data/new_data/UCBERKELEYAV1451_8mm_02_17_23_AB_Status.csv")
+sub_data_path = projectdir("adni/data/new_new_data/UCBERKELEY_TAU_6MM_18Dec2023_AB_STATUS.csv")
 alldf = CSV.read(sub_data_path, DataFrame)
 
 dktdict = Connectomes.node2FS()
-dktnames = [dktdict[i] for i in c.parc.ID[1:end-1]]
+dktnames = [dktdict[i] for i in get_node_id.(cortex)]
 
 data = ADNIDataset(alldf, dktnames; min_scans=1)
 
-_alldata = [calc_suvr(data, i) for i in 1:length(data)]
+_alldata = calc_suvr.(data)
 alldata = reduce(hcat, _alldata)
 
 gmm_moments = CSV.read(projectdir("adni/data/component_moments.csv"), DataFrame)
@@ -40,7 +42,7 @@ node = 29
 data = alldata[node, :]
 moments = filter(x -> x.region == dktnames[node], gmm_moments)
 
-cols = Makie.wong_colors()
+cols = Makie.wong_colors();
 begin
     f1 = Figure(resolution=(1000, 600), fontsize=40, font = "CMU Serif");
     ax = Axis(f1[1, 1], xlabel="SUVR")

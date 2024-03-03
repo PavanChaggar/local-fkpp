@@ -6,22 +6,20 @@ using Dates
 include(projectdir("functions.jl"))
 
 connectome_path = Connectomes.connectome_path()
-all_c = filter(Connectome(connectome_path; norm=true), 1e-2);
-cortex = filter(x -> x.Lobe != "subcortex", all_c.parc);
-
-c = slice(all_c, cortex) |> filter
+parc = Parcellation(connectome_path)
+cortex = filter(x -> x.Lobe != "subcortex", parc);
 
 dktdict = Connectomes.node2FS()
-dktnames = [dktdict[i] for i in cortex.ID]
+dktnames = [dktdict[i] for i in get_node_id.(cortex)]
 
-sub_data_path = projectdir("adni/data/new_data/UCBERKELEYAV1451_8mm_02_17_23_AB_Status.csv")
+sub_data_path = projectdir("adni/data/new_new_data/UCBERKELEY_TAU_6MM_18Dec2023_AB_STATUS.csv")
 alldf = CSV.read(sub_data_path, DataFrame)
 posdf = filter(x -> x.AB_Status == 1, alldf)
 
 data = ADNIDataset(posdf, dktnames; min_scans=3)
 
-demo = CSV.read(projectdir("adni/data/new_data/demographics.csv"), DataFrame)
-diagnostics = CSV.read(projectdir("adni/data/new_data/ADNIMERGE_30May2023.csv"), DataFrame);
+demo = CSV.read(projectdir("adni/data/new_new_data/demographics.csv"), DataFrame)
+diagnostics = CSV.read(projectdir("adni/data/new_new_data/ADNIMERGE_15Jan2024.csv"), DataFrame);
 
 #-------------------------------------------------------------------------------
 # AB pos 
@@ -33,9 +31,9 @@ idx = [findfirst(isequal(id), _dmdf.RID) for id in IDs]
 dmdf = _dmdf[idx,:]
 
 mtl_regions = ["entorhinal", "Left-Amygdala", "Right-Amygdala"]
-mtl = findall(x -> x ∈ mtl_regions, cortex.Label)
+mtl = findall(x -> x ∈ mtl_regions, get_label.(cortex))
 neo_regions = ["inferiortemporal", "middletemporal"]
-neo = findall(x -> x ∈ neo_regions, cortex.Label)
+neo = findall(x -> x ∈ neo_regions, get_label.(cortex))
 
 function regional_mean(data, rois, sub)
     subsuvr = calc_suvr(data, sub)
@@ -45,11 +43,11 @@ end
 mtl_cutoff = 1.375
 neo_cutoff = 1.395
 
-mtl_pos = filter(x -> regional_mean(data, mtl, x) >= mtl_cutoff, 1:60)
-neo_pos = filter(x -> regional_mean(data, neo, x) >= neo_cutoff, 1:60)
+mtl_pos = filter(x -> regional_mean(data, mtl, x) >= mtl_cutoff, 1:97)
+neo_pos = filter(x -> regional_mean(data, neo, x) >= neo_cutoff, 1:97)
 
-tau_pos = findall(x -> x ∈ unique([mtl_pos; neo_pos]), 1:60)
-tau_neg = findall(x -> x ∉ tau_pos, 1:60)
+tau_pos = findall(x -> x ∈ unique([mtl_pos; neo_pos]), 1:97)
+tau_neg = findall(x -> x ∉ tau_pos, 1:97)
 
 tauposdf = dmdf[tau_pos, :]
 taunegdf = dmdf[tau_neg, :]
@@ -66,7 +64,7 @@ posdfinit_taupos = posdfinit[tau_pos,:]
 diag_idx = [findfirst(isequal(id), diagnostics.RID) for id in posdfinit_taupos.RID]
 pos_diag_df = diagnostics[diag_idx, :]
 pdx_taupos = [count(==(pdx), pos_diag_df.DX_bl) for pdx in ["CN",  "SMC", "EMCI", "LMCI", "AD"]]
-percent_pdx_taupos = pdx_taupos ./ 31
+percent_pdx_taupos = pdx_taupos ./57
 
 Group = "tau +"
 age = mean(year.([data.SubjectData[i].scan_dates[1] for i in tau_pos]) .- (tauposdf.PTDOBYY))
@@ -82,7 +80,7 @@ posdfinit_tauneg = posdfinit[tau_neg,:]
 neg_diag_idx = [findfirst(isequal(id), diagnostics.RID) for id in posdfinit_tauneg.RID]
 neg_diag_df = diagnostics[neg_diag_idx, :]
 pdx_tauneg = [count(==(pdx), neg_diag_df.DX_bl) for pdx in ["CN",  "SMC", "EMCI", "LMCI", "AD"]]
-percent_pdx_tauneg = pdx_tauneg ./ 29
+percent_pdx_tauneg = pdx_tauneg ./ 40
 
 Group = "tau -"
 age = mean(year.([data.SubjectData[i].scan_dates[1] for i in tau_neg]) .- (taunegdf.PTDOBYY))
@@ -104,7 +102,7 @@ idxneg = [findfirst(isequal(id), _dmdfneg.RID) for id in negIDs]
 dmdfneg = _dmdfneg[idxneg,:]
 
 Group = "Ab -"
-age = mean(year.([negdata.SubjectData[i].scan_dates[1] for i in 1:59]) .- (dmdfneg.PTDOBYY))
+age = mean(year.([negdata.SubjectData[i].scan_dates[1] for i in 1:65]) .- (dmdfneg.PTDOBYY))
 Gender = count(==(2), dmdfneg.PTGENDER) ./ length(dmdfneg.PTGENDER)
 Education = mean(dmdfneg.PTEDUCAT)
 
@@ -115,7 +113,7 @@ abnegdfinit = negdf3[idx, :]
 ab_diag_idx = [findfirst(isequal(id), diagnostics.RID) for id in abnegdfinit.RID]
 ab_diag_df = diagnostics[ab_diag_idx, :]
 pdx_ab = [count(==(pdx), ab_diag_df.DX_bl) for pdx in ["CN",  "SMC", "EMCI", "LMCI", "AD"]]
-percent_pdx_ab = pdx_ab ./ 59
+percent_pdx_ab = pdx_ab ./ 65
 
 push!(df, (Group, age, Gender, Education, sum(percent_pdx_ab[1:2]), sum(percent_pdx_ab[3:4]), percent_pdx_ab[5]))
 

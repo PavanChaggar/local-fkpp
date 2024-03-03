@@ -6,7 +6,6 @@ using DifferentialEquations
 using SciMLSensitivity
 using Zygote
 using Turing
-using AdvancedHMC
 using Distributions
 using Serialization
 using DelimitedFiles, LinearAlgebra
@@ -16,49 +15,7 @@ include(projectdir("functions.jl"))
 #-------------------------------------------------------------------------------
 # Connectome and ROIs
 #-------------------------------------------------------------------------------
-connectome_path = Connectomes.connectome_path()
-all_c = filter(Connectome(connectome_path; norm=true, weight_function = (n, l) -> n), 1e-2);
-
-subcortex = filter(x -> x.Lobe == "subcortex", all_c.parc);
-cortex = filter(x -> x.Lobe != "subcortex", all_c.parc);
-
-c = slice(all_c, cortex) |> filter
-
-mtl_regions = ["entorhinal", "Left-Amygdala", "Right-Amygdala"]
-mtl = findall(x -> x ∈ mtl_regions, cortex.Label)
-neo_regions = ["inferiortemporal", "middletemporal"]
-neo = findall(x -> x ∈ neo_regions, cortex.Label)
-#-------------------------------------------------------------------------------
-# Data 
-#-----------------------------------------------------------------------------
-sub_data_path = projectdir("adni/data/new_data/UCBERKELEYAV1451_8mm_02_17_23_AB_Status.csv")
-alldf = CSV.read(sub_data_path, DataFrame)
-
-posdf = filter(x -> x.AB_Status == 1, alldf)
-
-dktdict = Connectomes.node2FS()
-dktnames = [dktdict[i] for i in cortex.ID]
-
-data = ADNIDataset(posdf, dktnames; min_scans=3)
-n_data = length(data)
-# Ask Jake where we got these cutoffs from? 
-mtl_cutoff = 1.375
-neo_cutoff = 1.395
-
-mtl_pos = filter(x -> regional_mean(data, mtl, x) >= mtl_cutoff, 1:n_data)
-neo_pos = filter(x -> regional_mean(data, neo, x) >= neo_cutoff, 1:n_data)
-
-tau_pos = findall(x -> x ∈ unique([mtl_pos; neo_pos]), 1:n_data)
-tau_neg = findall(x -> x ∉ tau_pos, 1:n_data)
-
-n_pos = length(tau_pos)
-n_neg = length(tau_neg)
-
-gmm_moments = CSV.read(projectdir("adni/data/component_moments.csv"), DataFrame)
-#gmm_moments2 = CSV.read(projectdir("data/adni-data/component_moments-bothcomps.csv"), DataFrame)
-ubase, upath = get_dkt_moments(gmm_moments, dktnames)
-u0 = mean.(ubase)
-cc = quantile.(upath, .99)
+include(projectdir("adni/inference/inference-preamble.jl"))
 #-------------------------------------------------------------------------------
 # Pos data 
 #-------------------------------------------------------------------------------
@@ -113,10 +70,10 @@ end
 #-------------------------------------------------------------------------------
 # Posteriors
 #-------------------------------------------------------------------------------
-local_pst = deserialize(projectdir("adni/chains/local-fkpp/length-free/pst-taupos-1x2000-three.jls"));
-global_pst = deserialize(projectdir("adni/chains/global-fkpp/length-free/pst-taupos-1x2000-three.jls"));
-diffusion_pst = deserialize(projectdir("adni/chains/diffusion/length-free/pst-taupos-1x2000-three.jls"));
-logistic_pst = deserialize(projectdir("adni/chains/logistic/pst-taupos-1x2000-three.jls"));
+local_pst = deserialize(projectdir("adni/new-chains/local-fkpp/length-free/pst-taupos-1x2000-three.jls"));
+global_pst = deserialize(projectdir("adni/new-chains/global-fkpp/length-free/pst-taupos-1x2000-three.jls"));
+diffusion_pst = deserialize(projectdir("adni/new-chains/diffusion/length-free/pst-taupos-1x2000-three.jls"));
+logistic_pst = deserialize(projectdir("adni/new-chains/logistic/pst-taupos-1x2000-three.jls"));
 
 [sum(p[:numerical_error]) for p in [local_pst, global_pst, diffusion_pst, logistic_pst]]
 #-------------------------------------------------------------------------------
@@ -193,7 +150,7 @@ begin
     ylabelsize = 30
     xticklabelsize = 20 
     yticklabelsize = 20
-    f = Figure(resolution = (2000, 1000), fontsize=30)
+    f = Figure(size = (2000, 1000), fontsize=30)
     gt = f[1,1] = GridLayout()
     gl = f[2, 1] = GridLayout()
     gb = f[3, 1] = GridLayout()
@@ -305,6 +262,71 @@ save(projectdir("visualisation/inference/model-selection/output/out-sample-fit-i
 
 
 begin
+
+    cols = ColorSchemes.seaborn_colorblind[1:10]
+    scan = 4
+    titlesize = 40
+    xlabelsize = 30
+    ylabelsize = 30
+    xticklabelsize = 20 
+    yticklabelsize = 20
+    f = Figure(size = (2000, 1000), fontsize=30)
+    gt = f[1,1] = GridLayout()
+    gl = f[2, 1] = GridLayout()
+    gb = f[3, 1] = GridLayout()
+    gl2 = f[4, 1] = GridLayout()
+    for (i, (preds, title)) in enumerate(
+        zip([local_preds, global_preds, diffusion_preds, logistic_preds], 
+        ["Local FKPP", "Global FKPP", "Diffusion", "Logistic"]))
+        mean_final_pred = vec(mean(reduce(hcat, [sd[:, end] for sd in preds]), dims=2))
+
+        start = 1.0
+        stop = 2.0
+        ax = Axis(gt[1,i],
+                ylabel="Predicted", 
+                title=title, titlesize=titlesize,
+                xlabelsize=xlabelsize, ylabelsize=ylabelsize, 
+                xticks = 1.0:0.25:2., yticks = 1.0:0.25:2.,
+                xticklabelsize=xticklabelsize, yticklabelsize=xticklabelsize,
+                xminorgridvisible=true,yminorgridvisible=true,
+                xminorticksvisible=true, yminorticksvisible=true,
+                xminorticks=collect(start:0.125:stop),yminorticks=collect(start:0.125:stop))
+        scatter!(mean_final_scan, mean_final_pred,
+                markersize=15, color=(cols[1], 0.75));
+        if i > 1
+            hideydecorations!(ax, ticks=false, grid=false)
+        end
+        xlims!(ax, 0.95,2.)
+        ylims!(ax, 0.95,2.)
+        lines!(0.9:0.1:2.7, 0.9:0.1:2.7, color=:grey)
+
+        ax = Axis(gb[1,i], 
+                    ylabel="Δ Predicted", 
+                    xlabelsize=xlabelsize, ylabelsize=ylabelsize, 
+                    xticklabelsize=xticklabelsize, yticklabelsize=xticklabelsize,
+                    yticks = -0.0:0.1:0.3, xticks =-0.0:0.1:0.3,
+                    xminorgridvisible=true,yminorgridvisible=true,
+                    xminorticksvisible=true, yminorticksvisible=true,)
+
+        scatter!(mean_final_scan .- mean_first_scan, mean_final_pred .- mean_first_scan, 
+                markersize=15, color=(cols[1], 0.75));
+        if i > 1
+            hideydecorations!(ax, ticks=false, grid=false)
+        end
+        
+        xlims!(ax, -0.025,0.3)
+        ylims!(ax, -0.025,0.3)
+        lines!(-0.3:0.01:1.05, -0.3:0.01:1.05, color=:grey)
+    end
+    Label(gl[1,1:4], "SUVR", tellwidth=false, rotation=0, padding = (0, 0, -10, -20), fontsize=30)
+    Label(gl2[1,1:4], "Δ SUVR", tellwidth=false, rotation=0, padding = (0, 0, -10, -20), fontsize=30)
+    # Label(f[0,:], "Regional prediction", font=:bold,
+    # tellwidth=false, rotation=0, padding = (0, 0, 0, 0), fontsize=40)
+    f
+end
+save(projectdir("visualisation/inference/model-selection/output/out-sample-fit-regional-average.pdf"), f)
+
+begin
     cols = ColorSchemes.seaborn_colorblind[1:10]
     scan = 4
     titlesize = 40
@@ -350,21 +372,21 @@ begin
     tellwidth=false, rotation=0, padding = (0, 0, 0, 0), fontsize=40)
     f
 end
-save(projectdir("visualisation/inference/model-selection/output/out-sample-fit-regional-average.pdf"), f)
 
 
-five_pred_mean = solve(ODEProblem(NetworkLocalFKPP, insample_inits[3], (0.0,20.0), local_params[3]), Tsit5(), saveat=collect(0.0:0.1:20.0))
+sub_idx = findall(x -> size(x,2) == 2, outsample_subdata)[1]
+five_pred_mean = solve(ODEProblem(NetworkLocalFKPP, insample_inits[sub_idx], (0.0,20.0), local_params[sub_idx]), Tsit5(), saveat=collect(0.0:0.1:20.0))
 five_preds = [solve(
-                ODEProblem(NetworkLocalFKPP, insample_inits[3], (0.0,20.0), [p, a]), 
+                ODEProblem(NetworkLocalFKPP, insample_inits[sub_idx], (0.0,20.0), [p, a]), 
                 Tsit5(), saveat=collect(0.0:0.1:20.0)) .+ (randn(72,201) .* σ) for (p, a, σ) in 
-                zip(local_ps[3], local_as[3], local_ss)];
+                zip(local_ps[sub_idx], local_as[sub_idx], local_ss)];
 
 
 right = [25, 27, 29]
 left = [61, 63, 65]
 begin
     cols = ColorSchemes.seaborn_bright
-    f = Figure(resolution = (2000, 550), fontsize=20)
+    f = Figure(size = (2000, 550), fontsize=20)
     for (i, (node, title)) in enumerate(zip(right, ["Fusiform", "Entorhinal", "Inf. Temporal"]))
         ax = Axis(f[1,i], title=title, titlesize=40, ylabel="SUVR", ylabelsize=30,
                 yticks = 1.0:0.5:3.5, yticksize=20, yticklabelsize=30,
@@ -390,8 +412,8 @@ begin
         q1, q2, q3 = get_quantiles(reduce(hcat, [five_preds[i][node, :] for i in 1:2000]))
         band!(0.0:0.1:20.0, q1, q2, color=(:grey, 0.5))
         lines!(five_pred_mean.t, five_pred_mean[node, :], color=:black)
-        scatter!(times[3][1:3], four_subdata[3][node,1:3], color=cols[1], markersize=25)
-        scatter!(times[3][4:end], four_subdata[3][node,4:end], color=cols[4], markersize=25)
+        scatter!(times[sub_idx][1:3], four_subdata[sub_idx][node,1:3], color=cols[1], markersize=25)
+        scatter!(times[sub_idx][4:end], four_subdata[sub_idx][node,4:end], color=cols[4], markersize=25)
     end
     ax = Axis(f[1, 4], title="Mean", titlesize=40,
                 yticks = 1.0:0.5:3.5, yticksize=20, yticklabelsize=30,
@@ -411,8 +433,8 @@ begin
     q1, q2, q3 = get_quantiles(transpose(reduce(vcat, [mean(five_preds[i], dims=1) for i in 1:2000])))
     band!(0.0:0.1:20.0, q1, q2, color=(:grey, 0.5), label="95% C.I.")
     lines!(five_pred_mean.t, vec(mean(five_pred_mean, dims=1)), color=:black, label="Mean pred.")
-    scatter!(times[3][1:3], vec(mean(four_subdata[3][:,1:3], dims=1)), color=cols[1], markersize=25, label="In-sample data")
-    scatter!(times[3][4:end], vec(mean(four_subdata[3][:,4:end], dims=1)), color=cols[4], markersize=25, label="Out-sample data")
+    scatter!(times[sub_idx][1:3], vec(mean(four_subdata[sub_idx][:,1:3], dims=1)), color=cols[1], markersize=25, label="In-sample data")
+    scatter!(times[sub_idx][4:end], vec(mean(four_subdata[sub_idx][:,4:end], dims=1)), color=cols[4], markersize=25, label="Out-sample data")
     axislegend()
     Label(f[2,1:4], "Time / years", tellwidth=false, rotation=0, fontsize=30, padding=(0, 0, 0, -20))
 
@@ -451,15 +473,15 @@ begin
         q1, q2, q3 = get_quantiles(reduce(hcat, [five_preds[i][right, :] for i in 1:2000]))
         band!(0.0:0.1:20.0, q1, q2, color=(cols[4], 0.25))
         lines!(five_pred_mean.t, five_pred_mean[right, :], color=cols[4])
-        scatter!(times[3][1:3], four_subdata[3][right,1:3], color=cols[4], markersize=25)
-        scatter!(times[3][4:end], four_subdata[3][right,4:end], color=cols[4], markersize=25, marker=:rect)
+        scatter!(times[sub_idx][1:3], four_subdata[sub_idx][right,1:3], color=cols[4], markersize=25)
+        scatter!(times[sub_idx][4:end], four_subdata[sub_idx][right,4:end], color=cols[4], markersize=25, marker=:rect)
 
         #left 
         q1, q2, q3 = get_quantiles(reduce(hcat, [five_preds[i][left, :] for i in 1:2000]))
         band!(0.0:0.1:20.0, q1, q2, color=(cols[1], 0.25))
         lines!(five_pred_mean.t, five_pred_mean[left, :], color=cols[1])
-        scatter!(times[3][1:3], four_subdata[3][left,1:3], color=cols[1], markersize=25)
-        scatter!(times[3][4:end], four_subdata[3][left,4:end], color=cols[1], markersize=25, marker=:rect)
+        scatter!(times[sub_idx][1:3], four_subdata[sub_idx][left,1:3], color=cols[1], markersize=25)
+        scatter!(times[sub_idx][4:end], four_subdata[sub_idx][left,4:end], color=cols[1], markersize=25, marker=:rect)
 
     end
     ax = Axis(f[1, 4], title="Mean", titlesize=40,
@@ -480,14 +502,14 @@ begin
     q1, q2, q3 = get_quantiles(transpose(reduce(vcat, [mean(five_preds[i][1:36,:], dims=1) for i in 1:2000])))
     band!(0.0:0.1:20.0, q1, q2, color=(cols[4], 0.25))
     lines!(five_pred_mean.t, vec(mean(five_pred_mean[1:36, :], dims=1)), color=cols[4])
-    scatter!(times[3][1:3], vec(mean(four_subdata[3][1:36,1:3], dims=1)), color=cols[4], markersize=25)
-    scatter!(times[3][4:end], vec(mean(four_subdata[3][1:36,4:end], dims=1)), color=cols[4], markersize=25, marker=:rect)
+    scatter!(times[sub_idx][1:3], vec(mean(four_subdata[sub_idx][1:36,1:3], dims=1)), color=cols[4], markersize=25)
+    scatter!(times[sub_idx][4:end], vec(mean(four_subdata[sub_idx][1:36,4:end], dims=1)), color=cols[4], markersize=25, marker=:rect)
 
     q1, q2, q3 = get_quantiles(transpose(reduce(vcat, [mean(five_preds[i][37:72,:], dims=1) for i in 1:2000])))
     band!(0.0:0.1:20.0, q1, q2, color=(cols[1], 0.25))
     lines!(five_pred_mean.t, vec(mean(five_pred_mean[37:72,:], dims=1)), color=cols[1])
-    scatter!(times[3][1:3], vec(mean(four_subdata[3][37:72,1:3], dims=1)), color=cols[1], markersize=25)
-    scatter!(times[3][4:end], vec(mean(four_subdata[3][37:72,4:end], dims=1)), color=cols[1], markersize=25, marker=:rect)
+    scatter!(times[sub_idx][1:3], vec(mean(four_subdata[sub_idx][37:72,1:3], dims=1)), color=cols[1], markersize=25)
+    scatter!(times[sub_idx][4:end], vec(mean(four_subdata[sub_idx][37:72,4:end], dims=1)), color=cols[1], markersize=25, marker=:rect)
 
     Label(f[2,1:4], "Time / years", tellwidth=false, rotation=0, fontsize=30, padding=(0, 0, 0, -20))
 
@@ -547,13 +569,13 @@ save(projectdir("visualisation/inference/model-selection/output/out-sample-traje
 # end
 
 
-right = [25, 27, 29]
-left = [61, 63, 65]
+right_nodes = [25, 27, 29]
+left_nodes = [61, 63, 65]
 cols = ColorSchemes.seaborn_bright
 
 begin
 f = Figure(resolution = (1500, 2000), fontsize=20)
-for (j, s) in enumerate([1, 2, 4, 5, 6, 7, 8, 9, 10])
+for (j, s) in enumerate(9:16)
     g = f[j, :] = GridLayout()
     five_pred_mean = solve(ODEProblem(NetworkLocalFKPP, insample_inits[s], (0.0,20.0), local_params[s]), Tsit5(), saveat=collect(0.0:0.1:20.0))
     five_preds = [solve(
@@ -561,7 +583,7 @@ for (j, s) in enumerate([1, 2, 4, 5, 6, 7, 8, 9, 10])
                     Tsit5(), saveat=collect(0.0:0.1:20.0)) .+ (randn(72,201) .* σ) for (p, a, σ) in 
                     zip(local_ps[s], local_as[s], local_ss)];
 
-    for (i, (left, right, title)) in enumerate(zip(left, right, ["Fusiform", "Entorhinal", "Inf. Temporal"]))
+    for (i, (left_nodes, right_nodes, title)) in enumerate(zip(left_nodes, right_nodes, ["Fusiform", "Entorhinal", "Inf. Temporal"]))
         
         if j == 1
             ax = Axis(g[1,i], title = title, titlesize=40, ylabel="SUVR", ylabelsize=30,
@@ -590,32 +612,32 @@ for (j, s) in enumerate([1, 2, 4, 5, 6, 7, 8, 9, 10])
         end
 
         if i == 1
-            if j < 9 
+            if j < 8 
                 hidexdecorations!(ax, grid=false, ticks=false,
                 minorticks=false, minorgrid=false)
             end
         else
             hideydecorations!(ax, grid=false, ticks=false, 
                             minorticks=false, minorgrid=false)
-            if j < 9 
+            if j < 8 
                 hidexdecorations!(ax, grid=false, ticks=false,
                 minorticks=false, minorgrid=false)
             end
         end
 
-        #right
-        q1, q2, q3 = get_quantiles(reduce(hcat, [five_preds[i][right, :] for i in 1:2000]))
+        #right_nodes
+        q1, q2, q3 = get_quantiles(reduce(hcat, [five_preds[i][right_nodes, :] for i in 1:2000]))
         band!(0.0:0.1:20.0, q1, q2, color=(cols[4], 0.25))
-        lines!(five_pred_mean.t, five_pred_mean[right, :], color=cols[4])
-        scatter!(times[s][1:3], four_subdata[s][right,1:3], color=cols[4], markersize=20)
-        scatter!(times[s][4:end], four_subdata[s][right,4:end], color=cols[4], markersize=20, marker=:rect)
+        lines!(five_pred_mean.t, five_pred_mean[right_nodes, :], color=cols[4])
+        scatter!(times[s][1:3], four_subdata[s][right_nodes,1:3], color=cols[4], markersize=20)
+        scatter!(times[s][4:end], four_subdata[s][right_nodes,4:end], color=cols[4], markersize=20, marker=:rect)
 
-        #left 
-        q1, q2, q3 = get_quantiles(reduce(hcat, [five_preds[i][left, :] for i in 1:2000]))
+        #left_nodes 
+        q1, q2, q3 = get_quantiles(reduce(hcat, [five_preds[i][left_nodes, :] for i in 1:2000]))
         band!(0.0:0.1:20.0, q1, q2, color=(cols[1], 0.25))
-        lines!(five_pred_mean.t, five_pred_mean[left, :], color=cols[1])
-        scatter!(times[s][1:3], four_subdata[s][left,1:3], color=cols[1], markersize=20)
-        scatter!(times[s][4:end], four_subdata[s][left,4:end], color=cols[1], markersize=20, marker=:rect)
+        lines!(five_pred_mean.t, five_pred_mean[left_nodes, :], color=cols[1])
+        scatter!(times[s][1:3], four_subdata[s][left_nodes,1:3], color=cols[1], markersize=20)
+        scatter!(times[s][4:end], four_subdata[s][left_nodes,4:end], color=cols[1], markersize=20, marker=:rect)
     end
     if j == 1
         ax = Axis(g[1, 4],  title="Mean", titlesize=40, ylabel="SUVR", ylabelsize=30,
@@ -642,7 +664,7 @@ for (j, s) in enumerate([1, 2, 4, 5, 6, 7, 8, 9, 10])
     end
     hideydecorations!(ax, grid=false, ticks=false, 
                         minorticks=false, minorgrid=false)
-    if s == 10
+    if s == 16
     hidexdecorations!(ax, grid=false, ticks=false, ticklabels=false, label=false,
                             minorticks=false, minorgrid=false)
     else
@@ -695,7 +717,7 @@ for (j, s) in enumerate([1, 2, 4, 5, 6, 7, 8, 9, 10])
     elem_7 = LineElement(color = (cols[4], 0.6), linewidth=5)
     elem_8 = PolyElement(color = (cols[4], 0.5))
 
-    legend = Legend(f[10,:],
+    legend = Legend(f[9,:],
            [elem_1, elem_2, 
             elem_5, elem_6 ,
            elem_3, elem_4, 
@@ -710,4 +732,4 @@ for (j, s) in enumerate([1, 2, 4, 5, 6, 7, 8, 9, 10])
 end
 f
 end
-save(projectdir("visualisation/inference/model-selection/output/out-sample-trajectories-supp.pdf"), f)
+save(projectdir("visualisation/inference/model-selection/output/out-sample-trajectories-9-16.pdf"), f)
