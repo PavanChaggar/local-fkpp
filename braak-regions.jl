@@ -1,6 +1,6 @@
 braak1 = [1006, 2006]
-braak2 = [17, 53]
-braak3 = [  1016,
+braak23 = [ 17, 53,
+            1016,
             1007,
             1013,
             18,
@@ -69,6 +69,6 @@ braak6 = [  1021,
             2024,
             2017]
 
-braak = [braak1, braak2, braak3, braak4, braak5, braak6]
+braak = [braak1, braak23, braak4, braak5, braak6]
 fsdict = Connectomes.FS2Connectome()
 getbraak(braak) = [fsdict[braak[i]] for i in 1:length(braak)]

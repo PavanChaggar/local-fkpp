@@ -172,6 +172,9 @@ global_ll = deserialize(projectdir("adni/new-chains/global-fkpp/length-free/ll-t
 diffusion_ll = deserialize(projectdir("adni/new-chains/diffusion/length-free/ll-taupos-4x2000.jls"));
 logistic_ll = deserialize(projectdir("adni/new-chains/logistic/ll-taupos-4x2000.jls"));
 
+nparams = [length(names(MCMCChains.get_sections(pst, :parameters))) for pst in [local_pst, global_pst, diffusion_pst, logistic_pst]]
+
 max_lls= [maximum(dict["data"]) for dict in [local_ll, global_ll, diffusion_ll, logistic_ll]]
+bic = [(n * log(13536) - (2 * maximum(dict["data"]))) for (dict, n) in zip([local_ll, global_ll, diffusion_ll, logistic_ll], nparams)]
 
 ll_df = DataFrame(zip(["Local", "Global", "Diffusion", "Logistic"], max_lls))

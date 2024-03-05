@@ -12,9 +12,10 @@ c = Connectomes.connectome_path() |> Connectome
 
 cortex = filter(x -> x.Lobe != "subcortex", c.parc)
 right_cortex = filter(x -> x.Hemisphere == "right", cortex)
+right_nodes = get_node_id.(right_cortex)
 
 dktdict = Connectomes.node2FS()
-dktnames = [dktdict[i] for i in cortex.ID]
+dktnames = [dktdict[i] for i in get_node_id.(cortex)]
 gmm_moments = CSV.read(projectdir("adni/data/component_moments.csv"), DataFrame)
 norm, path = get_dkt_moments(gmm_moments, dktnames)
 u0 = mean.(norm)
@@ -31,7 +32,7 @@ scaled_cc = (cc .- minimum(u0)) ./ (maximum(cc) .- minimum(u0))
 begin
     GLMakie.activate!()
     cmap = ColorSchemes.RdYlBu |> reverse
-    f = Figure(resolution=(1200,600))
+    f = Figure(size=(1000,400))
 
     ax = Axis3(f[1,1], 
                aspect = :data, 
@@ -40,10 +41,8 @@ begin
                #protrusions=(0.0,1.0,50.0,1.0))
     hidedecorations!(ax)
     hidespines!(ax)
-    for (i, j) in enumerate(right_cortex.ID)
-        w =  scaled_cc[i] / maximum(scaled_cc)
-        plot_roi!(j, get(cmap,w))
-    end
+    plot_roi!(right_nodes, scaled_cc, cmap)
+    
     ax = Axis3(f[1,2], 
                aspect = :data, 
                azimuth = 1.0pi, 
@@ -52,34 +51,7 @@ begin
                
     hidedecorations!(ax)
     hidespines!(ax)
-    for (i, j) in enumerate(right_cortex.ID)
-        w =  scaled_cc[i] / maximum(scaled_cc)
-        plot_roi!(j, get(cmap,w))
-    end
-
-    # ax = Axis3(f[2,1], 
-    #            aspect = :data, 
-    #            azimuth = 0.0pi, 
-    #            elevation=0.0pi,
-    #            protrusions=(1.0,1.0,1.0,1.0))
-    # hidedecorations!(ax)
-    # hidespines!(ax)
-    # for (i, j) in enumerate(42:82)
-    #     w =  cc[i] / maximum(cc)
-    #     plot_roi!(j, get(cmap,w))
-    # end
-    # ax = Axis3(f[2,2], 
-    #            aspect = :data, 
-    #            azimuth = 1.0pi, 
-    #            elevation=0.0pi,
-    #            protrusions=(1.0,1.0,1.0,1.0))
-    # hidedecorations!(ax)
-    # hidespines!(ax)
-    # for (i, j) in enumerate(42:82)
-    #     w =  cc[i] / maximum(cc)
-    #     plot_roi!(j, get(cmap,w))
-    # end
-    
+    plot_roi!(right_nodes, scaled_cc, cmap)
 
     Colorbar(f[1, 0], limits = (minimum(u0), maximum(cc)), colormap = cmap,
     vertical = true, label = "SUVR", labelsize=25, flipaxis=false,

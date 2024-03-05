@@ -44,7 +44,7 @@ moments = filter(x -> x.region == dktnames[node], gmm_moments)
 
 cols = Makie.wong_colors();
 begin
-    f1 = Figure(resolution=(1000, 600), fontsize=40, font = "CMU Serif");
+    f1 = Figure(resolution=(800, 400), fontsize=35, font = "CMU Serif");
     ax = Axis(f1[1, 1], xlabel="SUVR")
     xlims!(minimum(data) - 0.05, maximum(data) + 0.05)
     hist!(vec(data), color=(:grey, 0.7), bins=100, normalization=:pdf, label="Data")

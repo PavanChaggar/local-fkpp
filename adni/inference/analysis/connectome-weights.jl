@@ -9,7 +9,7 @@ using MCMCChains
 
 lf = deserialize(projectdir("adni/chains/local-fkpp/connectome-weights/ll-taupos-2x2000-lengthfree.jls"));
 diff = deserialize(projectdir("adni/chains/local-fkpp/connectome-weights/ll-taupos-2x2000-diffusive.jls"));
-bal = deserialize(projectdir("adni/chains/local-fkpp/ll-taupos-4x2000.jls"));
+bal = deserialize(projectdir("adni/chains/local-fkpp/ballistic/ll-taupos-4x2000.jls"));
 max_lls= [maximum(dict["data"]) for dict in [lf, diff, bal]]
 
 using CairoMakie
