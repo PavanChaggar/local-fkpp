@@ -106,12 +106,6 @@ t = get_times.(tau_data)
 
 c = [(s[1:36,:] .- u0[1:36]) ./ (cc[1:36] .- u0[1:36]) for s in subdata]
 
-f = scatter(t[1], c[1]', labels=false, color=:grey)
-scatter!(t[1], c[1][27,:], labels=false, color=:red)
-f
-
-
-
 for i in 1:11
     m = seeding(prob, t[i], 0.5)
     m() 
