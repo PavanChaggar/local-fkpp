@@ -12,7 +12,7 @@ using DelimitedFiles, LinearAlgebra
 using Plots
 using SciMLSensitivity
 using AdvancedHMC
-using GLMakie, Serialization
+using Serialization
 include(projectdir("functions.jl"))
 include(projectdir("adni/inference/inference-preamble.jl"))
 
@@ -110,11 +110,13 @@ f = scatter(t[1], c[1]', labels=false, color=:grey)
 scatter!(t[1], c[1][27,:], labels=false, color=:red)
 f
 
-m = seeding(prob, t[2], 0.5)
-m()
 
-for (i, _data) in enumerate(c)
-    pst = m | (d = vec(_data),)
+
+for i in 1:11
+    m = seeding(prob, t[i], 0.5)
+    m() 
+    
+    pst = m | (d = vec(c[i]),)
     pst()
 
     pst_samples = sample(pst, Turing.NUTS(0.8, metricT=AdvancedHMC.DenseEuclideanMetric), 1_000)
