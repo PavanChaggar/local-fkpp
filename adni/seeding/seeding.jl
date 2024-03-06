@@ -27,11 +27,11 @@ prob = ODEProblem(ScaledNetworkLocalFKPP,
                   (0.,15.), 
                   [0.1, 1.0])
                   
-sol = solve(prob, Tsit5(), saveat=1.0)
+# sol = solve(prob, Tsit5(), saveat=1.0)
 
-# Plots.plot(sol, labels=false)
+# # Plots.plot(sol, labels=false)
 
-d = vec(sol([3, 4, 5])) .+ (randn(length(vec(sol([3, 4, 5])))) .* 0.025)
+# d = vec(sol([3, 4, 5])) .+ (randn(length(vec(sol([3, 4, 5])))) .* 0.025)
 
 @model function seeding(prob, ts, m)
     σ ~ InverseGamma(2, 3)
@@ -39,7 +39,7 @@ d = vec(sol([3, 4, 5])) .+ (randn(length(vec(sol([3, 4, 5])))) .* 0.025)
     ρ ~ truncated(Normal(), lower=0)
     α ~ truncated(Normal(), lower=0)
     t ~ Uniform(0, 20)
-    u ~ Dirichlet(36, 0.5)
+    u ~ Dirichlet(36, 0.25)
 
     _ts = t .+ ts
     tspan = convert.(eltype(t),(0.0,maximum(_ts)))
@@ -57,27 +57,27 @@ d = vec(sol([3, 4, 5])) .+ (randn(length(vec(sol([3, 4, 5])))) .* 0.025)
     d ~ MvNormal(vec(sol), σ^2 * I)
 end
 
-m = seeding(prob, [0.0, 1.0, 2.0], 0.5)
-m()
+# m = seeding(prob, [0.0, 1.0, 2.0], 0.5)
+# m()
 
-# pst = m | (data = d,)
+# pst = m | (d = d,)
 # pst()
 
 # # using TuringBenchmarking, ADTypes
 
-# # results = TuringBenchmarking.benchmark_model(pst; adbackends=[ADTypes.AutoForwardDiff(chunksize=40)])
+# results = TuringBenchmarking.benchmark_model(pst; adbackends=[ADTypes.AutoForwardDiff(chunksize=40)])
 
 # pst_samples = sample(pst, Turing.NUTS(0.8, metricT=AdvancedHMC.DenseEuclideanMetric), 1_000)
 
-div_idx = findall( x -> x == 1, vec(pst_samples[:numerical_error]))
-meanpst = mean(pst_samples)
+# div_idx = findall( x -> x == 1, vec(pst_samples[:numerical_error]))
+# meanpst = mean(pst_samples)
 
-sum(sol(3 - meanpst["t", :mean]))
+# sum(sol(3 - meanpst["t", :mean]))
 
-scatter([meanpst["u[$i]", :mean] for i in 1:36] .* 0.2)
-f = scatter(vec(pst_samples["u[27]"]))
-scatter!(div_idx, vec(pst_samples["u[27]"])[div_idx])
-f
+# scatter([meanpst["u[$i]", :mean] for i in 1:36] .* 0.2)
+# f = scatter(vec(pst_samples["u[27]"]))
+# scatter!(div_idx, vec(pst_samples["u[27]"])[div_idx])
+# f
 
 #------------------------------------------------------------------------
 # Data Application
@@ -109,31 +109,35 @@ f
 m = seeding(prob, t[2], 0.5)
 m()
 
-pst = m | (d = vec(c[2]),)
-pst()
+for (i, _data) in enumerate(c)
+    pst = m | (d = vec(_data),)
+    pst()
 
-pst_samples = sample(pst, Turing.NUTS(0.8, metricT=AdvancedHMC.DenseEuclideanMetric), 1_000)
+    pst_samples = sample(pst, Turing.NUTS(0.8, metricT=AdvancedHMC.DenseEuclideanMetric), 1_000)
+    serialize(projectdir("adni/chains/seed-samples-i.jls"), pst_samples)
+end
 
-pst_samples = deserialize(projectdir("adni/chains/seed_samples.jls"))
+# pst_samples = deserialize(projectdir("adni/chains/seed_samples.jls"))
 
-meanpst = mean(pst_samples)
+# meanpst = mean(pst_samples)
 
-pst_inits = [meanpst["u[$i]", :mean] for i in 1:36]
+# pst_inits = [meanpst["u[$i]", :mean] for i in 1:36]
 
-right_cortex = filter(x -> get_hemisphere(x) == "right", cortex)
-right_nodes = get_node_id.(right_cortex)
+# right_cortex = filter(x -> get_hemisphere(x) == "right", cortex)
+# right_nodes = get_node_id.(right_cortex)
 
-plot_roi(right_nodes, pst_inits ./ maximum(pst_inits), ColorSchemes.viridis)
+# plot_roi(right_nodes, pst_inits ./ maximum(pst_inits), ColorSchemes.viridis)
 
-scatter(pst_inits)
+# scatter(pst_inits)
 
-prob = ODEProblem(ScaledNetworkLocalFKPP, 
-                  pst_inits, 
-                  (0.,15.), 
-                  [meanpst[:ρ, :mean], meanpst[:α, :mean]])
+# prob = ODEProblem(ScaledNetworkLocalFKPP, 
+#                   pst_inits .* 0.5, 
+#                   (0.,15.), 
+#                   [meanpst[:ρ, :mean], meanpst[:α, :mean]])
                   
-sol = solve(prob, Tsit5(), saveat=meanpst[:t, :mean] .+ t[2])
+# sol = solve(prob, Tsit5(), saveat=meanpst[:t, :mean] .+ t[2])
 
-scatter(sum(Array(sol), dims=1), sum(c[2], dims=1))
+# sum(Array(sol), dims=1)
+# sum(c[2], dims=1)
 
-scatter(c[2][:, end], sol[end], xlims=(0.0,1.0), ylims=(0.0,1.0))
+# scatter(c[2][:, end], sol[end], xlims=(0.0,1.0), ylims=(0.0,1.0))

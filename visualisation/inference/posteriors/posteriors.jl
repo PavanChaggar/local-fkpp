@@ -25,23 +25,25 @@ begin
         g2 = f[2, 1] = GridLayout()
         g3 = f[3, 1] = GridLayout()
         g4 = f[4, 1] = GridLayout()
-        
-        Label(g1[1,1:3], "Transport", fontsize=45, tellwidth=false, tellheight=true)
-        Label(g3[1,1:3], "Production", fontsize=45, tellwidth=false)
+        Label(g1[1,1:3], "Transport", fontsize=50, tellwidth=false, tellheight=true)
+        Label(g3[1,1:3], "Production", fontsize=50, tellwidth=false)
         colors = reverse(alphacolor.(Makie.wong_colors(), 0.75)[1:3])
-        _category_label = reverse([L"A\beta^-", L"A\beta^+ \tau P^-", L"A\beta^+ \tau P^+"])
+        _category_label = reverse([L"A^-", L"A^+T^-", L"A^+T^+"])
         psts = [pst, pst2, pst3]
         for (i, (_label, pst, col)) in enumerate(zip(_category_label, psts, colors))
                 category_labels = fill(_label, n_samples)
                 transport = vec(pst[:Pm])
                 production = vec(pst[:Am])
+
+                Label(g2[i, 0], _label, fontsize=45, tellheight=false)
+
                 ax = Axis(g2[i,1], 
                         xticklabelsize=30, xlabelsize=30, xlabel="1 / yr", 
                         yticklabelsize=40,
-                        titlesize=40, xticks=0.0:0.025:0.075,
-                        xminorticks=0.0:0.0125:1, xminorticksvisible=true, 
+                        titlesize=40, xticks=0.0:0.02:0.08,
+                        xminorticks=0.0:0.01:1, xminorticksvisible=true, 
                         xticksize=20, xminorticksize=15, xgridcolor=RGBAf(0, 0, 0, 0.25))
-                        xlims!(ax, -0.005, 0.08)
+                        CairoMakie.xlims!(ax, -0.004, 0.084)
                 hideydecorations!(ax)
                 if i < 3
                         hidexdecorations!(ax, grid=false, minorticks=false, ticks=false)
@@ -62,7 +64,7 @@ begin
                 titlesize=40, xticks=0.0:0.025:0.125,
                 xminorticks=0.0:0.0125:1, xminorticksvisible=true, 
                 xticksize=20, xminorticksize=15, xgridcolor=RGBAf(0, 0, 0, 0.25))
-                xlims!(ax, -0.005, 0.13)
+                CairoMakie.xlims!(ax, -0.005, 0.105)
                 hideydecorations!(ax)
                 if i < 3
                         hidexdecorations!(ax, grid=false, minorticks=false, ticks=false)
@@ -73,15 +75,16 @@ begin
 
                 n_params = sum(contains.(string.(names(MCMCChains.get_sections(pst, :parameters))), "ρ"))
                 for j in 1:n_params
-                        density!(vec(Array(pst[Symbol("ρ[$j]")])), color=alphacolor(col, 0.5), strokecolor=:white, strokewidth=1)
+                        CairoMakie.CairoMakie.density!(vec(Array(pst[Symbol("ρ[$j]")])), color=alphacolor(col, 0.5), strokecolor=:white, strokewidth=1)
                 end
 
+                Label(g4[i, 0], _label, fontsize=45, tellheight=false)
                 ax = Axis(g4[i,1], 
                 xticklabelsize=30, xlabelsize=30, xlabel="1 / yr", 
-                yticklabelsize=40, ylabelsize=30, ylabel="Density", xticks=-0.18:0.06:0.18, 
-                xminorticks=-0.18:0.03:0.18, xminorticksvisible=true, 
+                yticklabelsize=40, ylabelsize=30, ylabel="Density", xticks=-0.20:0.1:0.20, 
+                xminorticks=-0.2:0.05:0.2, xminorticksvisible=true, 
                 xticksize=20, xminorticksize=15, xgridcolor=RGBAf(0, 0, 0, 0.25))
-                xlims!(ax, -0.2, 0.2)
+                CairoMakie.xlims!(ax, -0.22, 0.22)
                 hideydecorations!(ax)
                 if i < 3
                         hidexdecorations!(ax, grid=false, minorticks=false, ticks=false)
@@ -95,13 +98,14 @@ begin
                                 plot_boxplots = true, cloud_width=0.5,
                                 clouds=hist, hist_bins=100,
                                 color = col)
+
                 ax = Axis(g4[i,2:3], 
                 xticklabelsize=30, xlabelsize=30, xlabel="1 / yr", 
                 yticklabelsize=40,
-                titlesize=40, xticks=-1.:0.25:1.,
-                xminorticks=-1.:0.125:1, xminorticksvisible=true, 
+                titlesize=40, xticks=-1.:0.5:1.,
+                xminorticks=-1.:0.25:1, xminorticksvisible=true, 
                 xticksize=20, xminorticksize=15, xgridcolor=RGBAf(0, 0, 0, 0.25))
-                xlims!(ax, -1.1, 1.1)
+                CairoMakie.xlims!(ax, -1.1, 1.1)
                 hideydecorations!(ax)
                 if i < 3
                         hidexdecorations!(ax, grid=false, minorticks=false, ticks=false)
@@ -109,12 +113,13 @@ begin
                         hidexdecorations!(ax, grid=false, minorticks=false, label=false, ticks=false, ticklabels=false)
                 end
                 hidespines!(ax, :t, :r, :l)
-
                 n_params = sum(contains.(string.(names(MCMCChains.get_sections(pst, :parameters))), "α"))
                 for j in 1:n_params
-                        density!(vec(Array(pst[Symbol("α[$j]")])), color=alphacolor(col, 0.5), strokecolor=:white, strokewidth=1)
+                        CairoMakie.CairoMakie.density!(vec(Array(pst[Symbol("α[$j]")])), color=alphacolor(col, 0.5), strokecolor=:white, strokewidth=1)
                 end
         end
+        colgap!(g2, 2, 50.0)
+        colgap!(g4, 2, 50.0)
         f
 end
 save(projectdir("visualisation/inference/posteriors/output/adni-posteriors-all.pdf"), f)
@@ -137,7 +142,7 @@ begin
             titlesize=40, title="Transport", xticks=0.0:0.025:0.075,
             xminorticks=0.0:0.0125:1, xminorticksvisible=true, 
             xticksize=20, xminorticksize=15, xgridcolor=RGBAf(0, 0, 0, 0.25))
-            xlims!(ax, -0.005, 0.08)
+            CairoMakie.xlims!(ax, -0.005, 0.08)
     hideydecorations!(ax)
     hidexdecorations!(ax, grid=false, minorticks=false, label=false, ticks=false, ticklabels=false)
     hidespines!(ax, :t, :r, :l)
@@ -156,7 +161,7 @@ begin
             titlesize=40, title="Production", xticks=-0.18:0.06:0.18, 
             xminorticks=-0.18:0.03:0.18, xminorticksvisible=true, 
             xticksize=20, xminorticksize=15, xgridcolor=RGBAf(0, 0, 0, 0.25))
-            xlims!(ax, -0.2, 0.2)
+            CairoMakie.xlims!(ax, -0.2, 0.2)
         hideydecorations!(ax, label=false, ticklabels=false)
         hidexdecorations!(ax, grid=false, minorticks=false, label=false, ticks=false, ticklabels=false)
     hidespines!(ax, :t, :r, :l)
@@ -172,82 +177,6 @@ begin
 end
 save(projectdir("visualisation/inference/posteriors/new-output/adni-posteriors.pdf"), f)
 
-begin
-        colors = alphacolor.(Makie.wong_colors(), 0.75)
-
-        f = Figure(resolution=(2000,1000));
-        g1 = f[1, 2] = GridLayout()
-        g2= f[1, 1] = GridLayout()
-        g7 = f[1, 3] = GridLayout()
-
-        ax11 = Axis(g1[1, 1], title="Growth", titlesize=40, xticks=-3:1:2);
-        ax12 = Axis(g1[2, 1], xticks=-3:1.0:2);
-        ax13 = Axis(g1[3, 1], xticks=-3:1.0:2, xlabel="1 / yr", xlabelsize=30);
-        linkaxes!(ax13, ax11)
-        linkaxes!(ax13, ax12)
-
-        hideydecorations!(ax11, label=false)
-        hidexdecorations!(ax11, label=false, ticks=false, grid=false)
-        hidespines!(ax11, :t, :r, :l)
-        for i in 1:57
-                hist!(ax11, vec(pst[Symbol("α[$i]")]), bins=50, color=(colors[3], 0.6), normalization=:pdf, label=L"A\beta^+ \tau^+")
-        end
-
-
-        hideydecorations!(ax12, label=false)
-        hidexdecorations!(ax12, label=false, ticks=false, grid=false)
-        hidespines!(ax12, :t, :r, :l)
-        for i in 1:39
-                hist!(ax12, vec(pst2[Symbol("α[$i]")]), bins=50, color=(colors[2], 0.6), normalization=:pdf, label=L"A\beta^+ \tau^-")
-        end
-
-
-        hideydecorations!(ax13, label=false)
-        hidexdecorations!(ax13, label=false, ticks=false, ticklabels=false, grid=false)
-        hidespines!(ax13, :t, :r, :l)
-        xlims!(-1.5, 1.)
-        for i in 1:58
-                hist!(ax13, vec(pst3[Symbol("α[$i]")]), bins=50, color=(colors[1], 0.6), normalization=:pdf, label=L"A\beta^-")
-        end
-
-        ax21 = Axis(g2[1, 1], title="Diffusion", titlesize=40, ylabel="Density", ylabelsize=30, xticks=-0:0.05:0.2);
-        ax22 = Axis(g2[2, 1], ylabel="Density", ylabelsize=30, xticks=-0:0.05:0.2);
-        ax23 = Axis(g2[3, 1], ylabel="Density", ylabelsize=30, xlabel="mm² / yr", xlabelsize=30, xticks=-0:0.05:0.2);
-        linkaxes!(ax23, ax22)
-        linkaxes!(ax23, ax21)
-
-        hideydecorations!(ax21, label=false)
-        hidexdecorations!(ax21, label=false, ticks=false, grid=false)
-        hidespines!(ax21, :t, :r, :l)
-        for i in 1:57
-                hist!(ax21, vec(pst[Symbol("ρ[$i]")]), bins=50, color=(colors[3], 0.6), normalization=:pdf, label=L"A\beta^+ \tau^+")
-        end
-
-        hideydecorations!(ax22, label=false)
-        hidexdecorations!(ax22, label=false, ticks=false, grid=false)
-        hidespines!(ax22, :t, :r, :l)
-        for i in 1:39
-                hist!(ax22, vec(pst2[Symbol("ρ[$i]")]), bins=50, color=(colors[2], 0.6), normalization=:pdf, label=L"A\beta^+ \tau^-")
-        end
-
-        hideydecorations!(ax23, label=false)
-        hidexdecorations!(ax23, label=false, ticks=false, ticklabels=false, grid=false)
-        hidespines!(ax23, :t, :r, :l)
-        xlims!(-0.001, 0.15)
-        for i in 1:58
-                hist!(ax23, vec(pst3[Symbol("ρ[$i]")]), bins=50, color=(colors[1], 0.6), normalization=:pdf, label=L"A\beta^-")
-        end
-
-        elem_1 = PolyElement(color = (colors[3], 0.6))
-        elem_2 = PolyElement(color = (colors[2], 0.6))
-        elem_3 = PolyElement(color = (colors[1], 0.6))
-        legend = Legend(g7[1,1],
-                [elem_1, elem_2, elem_3],
-                [L"A\beta^+ \tau P^+", L"A\beta^+ \tau P^-", L"A\beta^-"],
-                patchsize = (35, 35), rowgap = 10, framevisible=false, labelsize=30)
-        colgap!(f.layout, 1, 50)
-        f
-end
 #-------------------------------------------------------------------------------
 # Hierarchical Distributions -- BF2
 #-------------------------------------------------------------------------------
@@ -270,7 +199,7 @@ begin
         Label(g1[1,1:3], "Transport", fontsize=45, tellwidth=false, tellheight=true)
         Label(g3[1,1:3], "Production", fontsize=45, tellwidth=false)
         colors = reverse(alphacolor.(Makie.wong_colors(), 0.75)[1:3])
-        _category_label = reverse([L"A\beta^-", L"A\beta^+ \tau P^-", L"A\beta^+ \tau P^+"])
+        _category_label = reverse([L"A^-", L"A^+T^-", L"A^+T^+"])
         psts = [pst, pst2, pst3]
         for (i, (_label, pst, col)) in enumerate(zip(_category_label, psts, colors))
                 category_labels = fill(_label, n_samples)
@@ -282,7 +211,7 @@ begin
                         titlesize=40, xticks=0.0:0.01:0.05,
                         xminorticks=0.0:0.005:0.05, xminorticksvisible=true, 
                         xticksize=20, xminorticksize=15, xgridcolor=RGBAf(0, 0, 0, 0.25))
-                        xlims!(ax, -0.005, 0.055)
+                        CairoMakie.xlims!(ax, -0.0025, 0.0525)
                 hideydecorations!(ax)
                 if i < 3
                         hidexdecorations!(ax, grid=false, minorticks=false, ticks=false)
@@ -290,7 +219,7 @@ begin
                         hidexdecorations!(ax, grid=false, minorticks=false, label=false, ticks=false, ticklabels=false)
                 end
                 hidespines!(ax, :t, :r, :l)
-
+                Label(g2[i, 0], _label, fontsize=40, tellheight=false)
                 rainclouds!(ax, category_labels, transport;
                                 orientation = :horizontal, gap=0.0,
                                 plot_boxplots = true, cloud_width=0.5,
@@ -300,10 +229,10 @@ begin
                 ax = Axis(g2[i,2:3], 
                 xticklabelsize=30, xlabelsize=30, xlabel="1 / yr", 
                 yticklabelsize=40,
-                titlesize=40, xticks=0.0:0.025:0.075,
-                xminorticks=0.0:0.0125:1, xminorticksvisible=true, 
+                titlesize=40, xticks=0.0:0.02:0.08,
+                xminorticks=0.0:0.01:1, xminorticksvisible=true, 
                 xticksize=20, xminorticksize=15, xgridcolor=RGBAf(0, 0, 0, 0.25))
-                xlims!(ax, -0.0025, 0.08)
+                CairoMakie.xlims!(ax, -0.004, 0.084)
                 hideydecorations!(ax)
                 if i < 3
                         hidexdecorations!(ax, grid=false, minorticks=false, ticks=false)
@@ -314,7 +243,7 @@ begin
 
                 n_params = sum(contains.(string.(names(MCMCChains.get_sections(pst, :parameters))), "ρ"))
                 for j in 1:n_params
-                        density!(vec(Array(pst[Symbol("ρ[$j]")])), color=alphacolor(col, 0.5), strokecolor=:white, strokewidth=1)
+                        CairoMakie.density!(vec(Array(pst[Symbol("ρ[$j]")])), color=alphacolor(col, 0.5), strokecolor=:white, strokewidth=1)
                 end
 
                 ax = Axis(g4[i,1], 
@@ -322,7 +251,7 @@ begin
                 yticklabelsize=40, ylabelsize=30, ylabel="Density", xticks=-0.2:0.1:0.2, 
                 xminorticks=-0.2:0.05:0.2, xminorticksvisible=true, 
                 xticksize=20, xminorticksize=15, xgridcolor=RGBAf(0, 0, 0, 0.25))
-                xlims!(ax, -0.21, 0.21)
+                CairoMakie.xlims!(ax, -0.22, 0.22)
                 hideydecorations!(ax)
                 if i < 3
                         hidexdecorations!(ax, grid=false, minorticks=false, ticks=false)
@@ -330,7 +259,7 @@ begin
                         hidexdecorations!(ax, grid=false, minorticks=false, label=false, ticks=false, ticklabels=false)
                 end
                 hidespines!(ax, :t, :r, :l)
-
+                Label(g4[i, 0], _label, fontsize=40, tellheight=false)
                 rainclouds!(ax, category_labels, production;
                                 orientation = :horizontal, gap=0.0,
                                 plot_boxplots = true, cloud_width=0.5,
@@ -339,10 +268,10 @@ begin
                 ax = Axis(g4[i,2:3], 
                 xticklabelsize=30, xlabelsize=30, xlabel="1 / yr", 
                 yticklabelsize=40,
-                titlesize=40, xticks=-0.75:0.25:0.75,
-                xminorticks=-1.:0.125:1, xminorticksvisible=true, 
+                titlesize=40, xticks=-0.8:0.4:0.8,
+                xminorticks=-1.:0.2:1, xminorticksvisible=true, 
                 xticksize=20, xminorticksize=15, xgridcolor=RGBAf(0, 0, 0, 0.25))
-                xlims!(ax, -0.8, 0.8)
+                CairoMakie.xlims!(ax, -0.88, 0.88)
                 hideydecorations!(ax)
                 if i < 3
                         hidexdecorations!(ax, grid=false, minorticks=false, ticks=false)
@@ -353,9 +282,11 @@ begin
 
                 n_params = sum(contains.(string.(names(MCMCChains.get_sections(pst, :parameters))), "α"))
                 for j in 1:n_params
-                        density!(vec(Array(pst[Symbol("α[$j]")])), color=alphacolor(col, 0.5), strokecolor=:white, strokewidth=1)
+                        CairoMakie.density!(vec(Array(pst[Symbol("α[$j]")])), color=alphacolor(col, 0.5), strokecolor=:white, strokewidth=1)
                 end
         end
+        colgap!(g2, 2, 50.0)
+        colgap!(g4, 2, 50.0)
         f
 end
 save(projectdir("visualisation/inference/posteriors/output/bf-posteriors-all.pdf"), f)
@@ -379,7 +310,7 @@ begin
                 titlesize=40, title="Transport", xticks=0.0:0.01:0.05,
                 xminorticks=0.0:0.005:0.05, xminorticksvisible=true, 
                 xticksize=20, xminorticksize=15, xgridcolor=RGBAf(0, 0, 0, 0.25))
-                xlims!(ax, -0.0025, 0.055)
+                CairoMakie.xlims!(ax, -0.0025, 0.055)
         hideydecorations!(ax)
         hidexdecorations!(ax, grid=false, minorticks=false, label=false, ticks=false, ticklabels=false)
         hidespines!(ax, :t, :r, :l)
@@ -399,7 +330,7 @@ begin
                 xminorticks=-0.2:0.05:0.2, xminorticksvisible=true, 
                 xticksize=20, xminorticksize=15, xgridcolor=RGBAf(0, 0, 0, 0.25), 
                 xtickformat = "{:.2f}")
-                xlims!(ax, -0.22, 0.22)
+                CairoMakie.xlims!(ax, -0.22, 0.22)
                 hideydecorations!(ax, label=false, ticklabels=false)
                 hidexdecorations!(ax, grid=false, minorticks=false, label=false, 
                                   ticks=false, ticklabels=false)
@@ -449,7 +380,7 @@ begin
         hideydecorations!(ax13, label=false)
         hidexdecorations!(ax13, label=false, ticks=false, ticklabels=false, grid=false)
         hidespines!(ax13, :t, :r, :l)
-        xlims!(-1.5, 1.)
+        CairoMakie.xlims!(-1.5, 1.)
         for i in 1:53
                 hist!(ax13, vec(pst3[Symbol("α[$i]")]), bins=50, color=(colors[1], 0.6), normalization=:pdf, label=L"A\beta^-")
         end
@@ -477,7 +408,7 @@ begin
         hideydecorations!(ax23, label=false)
         hidexdecorations!(ax23, label=false, ticks=false, ticklabels=false, grid=false)
         hidespines!(ax23, :t, :r, :l)
-        xlims!(-0.001, 0.15)
+        CairoMakie.xlims!(-0.001, 0.15)
         for i in 1:53
                 hist!(ax23, vec(pst3[Symbol("ρ[$i]")]), bins=50, color=(colors[1], 0.6), normalization=:pdf, label=L"A\beta^-")
         end
@@ -505,7 +436,7 @@ begin
 
         ax = Axis(g1[1,1], title="Production", titlesize=30, xticklabelsize=30,
         xlabel="1 / yr", xlabelsize=30, ylabel="Density", ylabelsize=30)
-        xlims!(ax, 0., 0.22)
+        CairoMakie.xlims!(ax, 0., 0.22)
         hideydecorations!(ax, label=false)
         hidespines!(ax, :t, :r, :l)
 
