@@ -8,6 +8,7 @@ using DelimitedFiles, LinearAlgebra
 using Plots
 using SciMLSensitivity
 using AdvancedHMC
+using GLMakie, Serialization
 include(projectdir("functions.jl"))
 include(projectdir("adni/inference/inference-preamble.jl"))
 
@@ -105,21 +106,26 @@ f = scatter(t[1], c[1]', labels=false, color=:grey)
 scatter!(t[1], c[1][27,:], labels=false, color=:red)
 f
 
-m = seeding(prob, t[2], 1.0)
+m = seeding(prob, t[2], 0.5)
 m()
 
 pst = m | (d = vec(c[2]),)
 pst()
 
 pst_samples = sample(pst, Turing.NUTS(0.8, metricT=AdvancedHMC.DenseEuclideanMetric), 1_000)
-using Serialization
-serialize(projectdir("adni/chains/seed_samples.jls"), pst_samples)
-div_idx = findall( x -> x == 1, vec(pst_samples[:numerical_error]))
+
+pst_samples = deserialize(projectdir("adni/chains/seed_samples.jls"))
+
 meanpst = mean(pst_samples)
 
-scatter([meanpst["u[$i]", :mean] for i in 1:36])
-
 pst_inits = [meanpst["u[$i]", :mean] for i in 1:36]
+
+right_cortex = filter(x -> get_hemisphere(x) == "right", cortex)
+right_nodes = get_node_id.(right_cortex)
+
+plot_roi(right_nodes, pst_inits ./ maximum(pst_inits), ColorSchemes.viridis)
+
+scatter(pst_inits)
 
 prob = ODEProblem(ScaledNetworkLocalFKPP, 
                   pst_inits, 
