@@ -50,9 +50,10 @@ d = vec(sol([3, 4, 5])) .+ (randn(length(vec(sol([3, 4, 5])))) .* 0.025)
     if SciMLBase.successful_retcode(sol) !== true
         Turing.@addlogprob! -Inf
         println("failed")
+        return nothing
     end
 
-    data ~ MvNormal(vec(sol), σ^2 * I)
+    d ~ MvNormal(vec(sol), σ^2 * I)
 end
 
 m = seeding(prob, [0.0, 1.0, 2.0], 0.5)
@@ -67,15 +68,15 @@ m()
 
 # pst_samples = sample(pst, Turing.NUTS(0.8, metricT=AdvancedHMC.DenseEuclideanMetric), 1_000)
 
-# div_idx = findall( x -> x == 1, vec(pst_samples[:numerical_error]))
-# meanpst = mean(pst_samples)
+div_idx = findall( x -> x == 1, vec(pst_samples[:numerical_error]))
+meanpst = mean(pst_samples)
 
-# sum(sol(3 - meanpst["t", :mean]))
+sum(sol(3 - meanpst["t", :mean]))
 
-# scatter([meanpst["u[$i]", :mean] for i in 1:36] .* 0.2)
-# f = scatter(vec(pst_samples["u[27]"]))
-# scatter!(div_idx, vec(pst_samples["u[27]"])[div_idx])
-# f
+scatter([meanpst["u[$i]", :mean] for i in 1:36] .* 0.2)
+f = scatter(vec(pst_samples["u[27]"]))
+scatter!(div_idx, vec(pst_samples["u[27]"])[div_idx])
+f
 
 #------------------------------------------------------------------------
 # Data Application
@@ -104,10 +105,29 @@ f = scatter(t[1], c[1]', labels=false, color=:grey)
 scatter!(t[1], c[1][27,:], labels=false, color=:red)
 f
 
-m = seeding(prob, t[1], 1.0)
+m = seeding(prob, t[2], 1.0)
 m()
 
 pst = m | (d = vec(c[2]),)
 pst()
 
 pst_samples = sample(pst, Turing.NUTS(0.8, metricT=AdvancedHMC.DenseEuclideanMetric), 1_000)
+using Serialization
+serialize(projectdir("adni/chains/seed_samples.jls"), pst_samples)
+div_idx = findall( x -> x == 1, vec(pst_samples[:numerical_error]))
+meanpst = mean(pst_samples)
+
+scatter([meanpst["u[$i]", :mean] for i in 1:36])
+
+pst_inits = [meanpst["u[$i]", :mean] for i in 1:36]
+
+prob = ODEProblem(ScaledNetworkLocalFKPP, 
+                  pst_inits, 
+                  (0.,15.), 
+                  [meanpst[:ρ, :mean], meanpst[:α, :mean]])
+                  
+sol = solve(prob, Tsit5(), saveat=meanpst[:t, :mean] .+ t[2])
+
+scatter(sum(Array(sol), dims=1), sum(c[2], dims=1))
+
+scatter(c[2][:, end], sol[end], xlims=(0.0,1.0), ylims=(0.0,1.0))
