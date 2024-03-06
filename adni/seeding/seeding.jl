@@ -1,3 +1,7 @@
+using Pkg
+cd("/home/chaggar/Projects/local-fkpp")
+Pkg.activate(".")
+
 using ADNIDatasets
 using Connectomes
 using DifferentialEquations
