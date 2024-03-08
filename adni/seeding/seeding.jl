@@ -114,7 +114,7 @@ for i in 1:11
     pst()
 
     pst_samples = sample(pst, Turing.NUTS(0.8, metricT=AdvancedHMC.DenseEuclideanMetric), 1_000)
-    serialize(projectdir("adni/chains/seed-samples-i.jls"), pst_samples)
+    serialize(projectdir("adni/chains/seed-samples-$(i).jls"), pst_samples)
 end
 
 # pst_samples = deserialize(projectdir("adni/chains/seed_samples.jls"))
