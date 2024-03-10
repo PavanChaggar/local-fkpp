@@ -43,7 +43,7 @@ prob = ODEProblem(ScaledNetworkLocalFKPP,
     ρ ~ truncated(Normal(), lower=0)
     α ~ truncated(Normal(), lower=0)
     t ~ Uniform(0, 20)
-    u ~ Dirichlet(36, 0.15)
+    u ~ Dirichlet(36, 0.5)
 
     _ts = t .+ ts
     tspan = convert.(eltype(t),(0.0,maximum(_ts)))
@@ -107,19 +107,20 @@ t = get_times.(tau_data)
 c = [(s[1:36,:] .- u0[1:36]) ./ (cc[1:36] .- u0[1:36]) for s in subdata]
 
 for i in 1:11
-    m = seeding(prob, t[i], 0.25)
+    m = seeding(prob, t[i], 025)
     m() 
     
     pst = m | (d = vec(c[i]),)
     pst()
 
-    pst_samples = sample(pst, Turing.NUTS(0.8, metricT=AdvancedHMC.DenseEuclideanMetric), 1_000)
-    serialize(projectdir("adni/chains/seeding/seed-samples-$(i)-025.jls"), pst_samples)
+    pst_samples = sample(pst, Turing.NUTS(0.9, metricT=AdvancedHMC.DenseEuclideanMetric), 1_000, n_adapts=1_000)
+    println(sum(pst_samples[:numerical_error]))
+    serialize(projectdir("adni/chains/seeding/seed-samples-$(i)-d05-m025.jls"), pst_samples)
 end
 
-# pst_samples = [deserialize(projectdir("adni/chains/seeding/seed-samples-$i.jls")) for i in 1:11]
+# pst_samples = [deserialize(projectdir("adni/chains/seeding/seed-samples-$i.jls")) for i in 1:11];
 
-# meanpsts = mean.(pst_samples)
+# meanpsts = mean.(pst_samples);
 
 # get_inits(pst) = [pst["u[$i]", :mean] for i in 1:36]
 # pst_inits = get_inits.(meanpsts)
@@ -127,11 +128,13 @@ end
 # right_cortex = filter(x -> get_hemisphere(x) == "right", cortex)
 # right_nodes = get_node_id.(right_cortex)
 
-# plot_roi(right_nodes, pst_inits[1] ./ maximum(pst_inits[1]), ColorSchemes.viridis)
-# plot_roi(right_nodes, c[10][:,end] , ColorSchemes.viridis)
+# plot_roi(right_nodes, pst_inits[10], ColorSchemes.viridis)
+# plot_roi(right_nodes, c[10][:,2] , ColorSchemes.viridis)
 
 # for pst_init in pst_inits
-#     display(Plots.scatter(pst_init))
+#     f = Plots.scatter(pst_init)
+#     Plots.scatter!([27], [pst_init[27]])
+#     display(f)
 # end
 
 # prob = [ODEProblem(ScaledNetworkLocalFKPP, 
