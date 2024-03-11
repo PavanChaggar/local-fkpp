@@ -107,18 +107,20 @@ t = get_times.(tau_data)
 c = [(s[1:36,:] .- u0[1:36]) ./ (cc[1:36] .- u0[1:36]) for s in subdata]
 
 for i in 1:11
-    m = seeding(prob, t[i], 025)
+    m = seeding(prob, t[i], 0.25)
     m() 
     
     pst = m | (d = vec(c[i]),)
     pst()
 
-    pst_samples = sample(pst, Turing.NUTS(0.9, metricT=AdvancedHMC.DenseEuclideanMetric), 1_000, n_adapts=1_000)
+    pst_samples = sample(pst, Turing.NUTS(0.95, metricT=AdvancedHMC.DenseEuclideanMetric), 1_000, n_adapts=1_000)
     println(sum(pst_samples[:numerical_error]))
     serialize(projectdir("adni/chains/seeding/seed-samples-$(i)-d05-m025.jls"), pst_samples)
 end
 
-# pst_samples = [deserialize(projectdir("adni/chains/seeding/seed-samples-$i.jls")) for i in 1:11];
+# pst_samples = [deserialize(projectdir("adni/chains/seeding/seed-samples-$i-d05-m025.jls")) for i in 1:11];
+
+# psts = filter(x -> sum(x[:numerical_error]) == 0, pst_samples)
 
 # meanpsts = mean.(pst_samples);
 
@@ -128,7 +130,7 @@ end
 # right_cortex = filter(x -> get_hemisphere(x) == "right", cortex)
 # right_nodes = get_node_id.(right_cortex)
 
-# plot_roi(right_nodes, pst_inits[10], ColorSchemes.viridis)
+# plot_roi(right_nodes, mean(pst_inits) ./ maximum(mean(pst_inits)), ColorSchemes.viridis)
 # plot_roi(right_nodes, c[10][:,2] , ColorSchemes.viridis)
 
 # for pst_init in pst_inits
