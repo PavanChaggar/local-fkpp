@@ -107,7 +107,7 @@ t = get_times.(tau_data)
 c = [(s[1:36,:] .- u0[1:36]) ./ (cc[1:36] .- u0[1:36]) for s in subdata]
 
 for i in 1:11
-    m = seeding(prob, t[i], 0.25)
+    m = seeding(prob, t[i], 0.5)
     m() 
     
     pst = m | (d = vec(c[i]),)
@@ -115,12 +115,12 @@ for i in 1:11
 
     pst_samples = sample(pst, Turing.NUTS(0.95, metricT=AdvancedHMC.DenseEuclideanMetric), 1_000, n_adapts=1_000)
     println(sum(pst_samples[:numerical_error]))
-    serialize(projectdir("adni/chains/seeding/seed-samples-$(i)-d05-m025.jls"), pst_samples)
+    serialize(projectdir("adni/chains/seeding/seed-samples-$(i)-d05-m05.jls"), pst_samples)
 end
 
-# pst_samples = [deserialize(projectdir("adni/chains/seeding/seed-samples-$i-d05-m025.jls")) for i in 1:11];
+# _pst_samples = [deserialize(projectdir("adni/chains/seeding/seed-samples-$i-d05-m025.jls")) for i in 1:11];
 
-# psts = filter(x -> sum(x[:numerical_error]) == 0, pst_samples)
+# pst_samples = filter(x -> sum(x[:numerical_error]) == 0, _pst_samples)
 
 # meanpsts = mean.(pst_samples);
 
@@ -140,17 +140,17 @@ end
 # end
 
 # prob = [ODEProblem(ScaledNetworkLocalFKPP, 
-#                   pst_init .* 0.5, 
+#                   pst_init .* 0.25, 
 #                   (0.,25.), 
 #                   [meanpst[:ρ, :mean], meanpst[:α, :mean]]) for (pst_init, meanpst) in zip(pst_inits,meanpsts)]
                   
 # sols = [solve(_prob, Tsit5(), saveat=meanpst[:t, :mean] .+ _t) for (_prob, meanpst, _t) in zip(prob, meanpsts, t)];
 
-# for i in 1:11
+# for i in 1:1-0
 #     display(Plots.scatter(sum(Array(sols[i]), dims=1), sum(c[i], dims=1), 
 #             xlims=(0, 10), ylims=(0, 10)))
 # end
 
-# for i in 1:11
+# for i in 1:10
 #     display(Plots.scatter(c[i][:, end], sols[i][end], xlims=(0.0,1.0), ylims=(0.0,1.0)))
 # end
