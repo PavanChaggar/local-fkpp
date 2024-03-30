@@ -35,3 +35,5 @@ adni/chains
 *.svg
 *.jls
 *.tif
+
+py-analysis/env

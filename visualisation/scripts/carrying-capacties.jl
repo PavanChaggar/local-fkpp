@@ -21,10 +21,16 @@ norm, path = get_dkt_moments(gmm_moments, dktnames)
 u0 = mean.(norm)
 cc = quantile.(path, .99)
 
+gmm_moments = CSV.read(projectdir("py-analysis/wm-moments.csv"), DataFrame)
+norm, path = get_dkt_moments(gmm_moments)
+x0 = mean.(norm)
+xi = quantile.(path, .99)
+
+
 describe(u0)
 std(u0)
 
-describe(cc)
+describe(xi)
 std(cc)
 
 scaled_cc = (cc .- minimum(u0)) ./ (maximum(cc) .- minimum(u0))
@@ -59,4 +65,4 @@ begin
     f
 end
 
-save(projectdir("visualisation/models/output/carrying-capacities.jpeg"), f)
+save(projectdir("visualisation/models/output/carrying-capacities-ic.jpeg"), f)

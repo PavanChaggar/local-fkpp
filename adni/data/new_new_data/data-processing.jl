@@ -3,7 +3,7 @@ using DataFrames
 using DrWatson
 
 # Load data
-taudata = CSV.read(projectdir("adni/data/new_new_data/UCBERKELEY_TAU_6MM_18Dec2023.csv"), DataFrame)
+taudata = CSV.read(projectdir("adni/data/new_new_data/pvc/UC-Berkeley-TAUPVC-6MM-Mar-30-2024.csv"), DataFrame)
 abdata =  CSV.read(projectdir("adni/data/new_new_data/UCBERKELEY_AMY_6MM_18Dec2023.csv"), DataFrame)
 
 # replace missing ab status with 0
@@ -45,7 +45,7 @@ ab_stats = map(get_ab_status, IDs)
 abdict = Dict(zip(IDs, ab_stats))
 
 taudata.AB_Status = map(x -> abdict[x], taudata.RID)
-CSV.write(projectdir("adni/data/new_new_data/UCBERKELEY_TAU_6MM_18Dec2023_AB_STATUS.csv"), taudata)
+CSV.write(projectdir("adni/data/new_new_data/pvc/UC-Berkeley-TAUPVC-6MM-Mar-30-2024-AB-Status.csv"), taudata)
 
 using ADNIDatasets, Connectomes
 include(projectdir("functions.jl"))

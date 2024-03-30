@@ -28,6 +28,22 @@ function get_dkt_moments(gmm_moments, dktnames)
     Normal.(μ_1, σ_1), Normal.(μ_2, σ_2)
 end
 
+function get_dkt_moments(gmm)
+    μ_1 = Vector{Float64}()
+    μ_2 = Vector{Float64}()
+
+    σ_1 = Vector{Float64}()
+    σ_2 = Vector{Float64}()
+    
+    for i in 1:72
+        push!(μ_1, gmm.C0_mean[i])
+        push!(μ_2, gmm.C1_mean[i])
+        push!(σ_1, sqrt(gmm.C0_cov[i]))
+        push!(σ_2, sqrt(gmm.C1_cov[i]))
+    end
+    Normal.(μ_1, σ_1), Normal.(μ_2, σ_2)
+end
+
 function make_idata(m, pst, data, args...)
     # m_predict = f(fill(missing, length(vec(data))), args...)
     # pst_pred = predict(m_predict, pst)

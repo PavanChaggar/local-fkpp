@@ -20,6 +20,11 @@ neo = findall(x -> x ∈ neo_regions, get_label.(cortex))
 sub_data_path = projectdir("adni/data/new_new_data/UCBERKELEY_TAU_6MM_18Dec2023_AB_STATUS.csv")
 
 alldf = CSV.read(sub_data_path, DataFrame)
+names(alldf)
+
+suvrnames = [ADNIDatasets.suvr_name.(dktnames); "ERODED_SUBCORTICALWM_SUVR"]
+d = Array(dropmissing(alldf[:, suvrnames]))
+writedlm(projectdir("data-nopvc-wm.txt"), d ./ d[:,end])
 
 #posdf = filter(x -> x.STATUS == "POS", alldf)
 posdf = filter(x -> x.AB_Status == 1, alldf)
@@ -27,7 +32,8 @@ posdf = filter(x -> x.AB_Status == 1, alldf)
 dktdict = Connectomes.node2FS()
 dktnames = [dktdict[i] for i in get_node_id.(cortex)]
 
-data = ADNIDataset(posdf, dktnames; min_scans=3)
+data = ADNIDataset(posdf, dktnames; min_scans=3, reference_region="INFERIORCEREBELLUM")
+data = ADNIDataset(posdf, dktnames; min_scans=3, reference_region="ERODED_SUBCORTICALWM")
 n_data = length(data)
 # Ask Jake where we got these cutoffs from? 
 mtl_cutoff = 1.375
