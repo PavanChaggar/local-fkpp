@@ -18,17 +18,12 @@ right_cortical_nodes = filter(x -> get_hemisphere(x) == "right", c.parc)
 rIDs =  get_node_id.(right_cortical_nodes)
 L = laplacian_matrix(c);
 
-volumes = "/Users/pavanchaggar/Projects/Connectomes/standard_connectome/parcellation/parcellation-files/sub-01_label-L2018_desc-scale1_stats.tsv"
-vol_df = CSV.read(volumes, DataFrame; delim=',')
-vols = sort(vol_df)[get_node_id.(cortex), " volume-mm3 "]
-Lv = inv(diagm(vols ./ maximum(vols))) * L
-
 function NetworkDiffusion(du, u, p, t)
-    du .= -p[1] * Lv * u
+    du .= -p[1] * L * u
 end
 
 p0 = zeros(72)
-seed_regions =  ["entorhinal", "Left-Amygdala", "Right-Amygdala", "Left-Hippocampus", "Right-Hippocampus"]
+seed_regions =  ["entorhinal"] # "Left-Amygdala", "Right-Amygdala", "Left-Hippocampus", "Right-Hippocampus"]
 seed = findall(x -> get_label(x) ∈ seed_regions, cortex)
 p0[seed] .= 0.5
 
@@ -49,9 +44,9 @@ using GLMakie, ColorSchemes
 cmap = reverse(ColorSchemes.RdYlBu);
 cols = [get(cmap, sol[i]) for i in 1:n]
 nodes = get_node_id.(right_cortical_nodes);
-
+line_cols = Makie.wong_colors()[1]
 begin
-    f = Figure(resolution=(1500, 800))
+    f = Figure(resolution=(1200, 800))
     g1 = f[1, 1] = GridLayout()
     g2 = f[2, 1] = GridLayout()
     for k in 1:n
@@ -78,8 +73,8 @@ begin
         #     plot_roi!(j, cols[k][i])
         # end
     end
-    # rowsize!(f.layout, 1, Auto(0.8))
-    # rowsize!(f.layout, 2, Auto(0.8))
+    # rowsize!(f.layout, 1, 10)
+    # rowsize!(f.layout, 2, 10)
     c = Colorbar(g1[1:2, 1], limits = (0, 1), colormap = cmap,
     label = "Concentration", labelsize=36, flipaxis=false,
     ticksize=18, ticks=collect(0.0:0.2:1.0), ticklabelsize=25, labelpadding=3)
@@ -98,7 +93,7 @@ begin
     # hideydecorations!(ax, label=false, ticks=false, ticklabels=false)
     hidespines!(ax, :t, :r)
     for i in 1:36
-        lines!(allsol.t, allsol[i, :], linewidth=2)
+        lines!(allsol.t, allsol[i, :], linewidth=2, color=(line_cols, 0.5))
     end
 
     # for (label, layout) in zip(["A", "B"], [g1, g2])

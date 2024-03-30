@@ -118,39 +118,39 @@ for i in 1:11
     serialize(projectdir("adni/chains/seeding/seed-samples-$(i)-d05-m05.jls"), pst_samples)
 end
 
-# _pst_samples = [deserialize(projectdir("adni/chains/seeding/seed-samples-$i-d05-m025.jls")) for i in 1:11];
+_pst_samples = [deserialize(projectdir("adni/chains/seeding/seed-samples-$i-d05-m05.jls")) for i in 1:11];
 
-# pst_samples = filter(x -> sum(x[:numerical_error]) == 0, _pst_samples)
+pst_samples = filter(x -> sum(x[:numerical_error]) == 0, _pst_samples)
 
-# meanpsts = mean.(pst_samples);
+meanpsts = mean.(pst_samples);
 
-# get_inits(pst) = [pst["u[$i]", :mean] for i in 1:36]
-# pst_inits = get_inits.(meanpsts)
+get_inits(pst) = [pst["u[$i]", :mean] for i in 1:36]
+pst_inits = get_inits.(meanpsts)
 
-# right_cortex = filter(x -> get_hemisphere(x) == "right", cortex)
-# right_nodes = get_node_id.(right_cortex)
+right_cortex = filter(x -> get_hemisphere(x) == "right", cortex)
+right_nodes = get_node_id.(right_cortex)
 
-# plot_roi(right_nodes, mean(pst_inits) ./ maximum(mean(pst_inits)), ColorSchemes.viridis)
-# plot_roi(right_nodes, c[10][:,2] , ColorSchemes.viridis)
+plot_roi(right_nodes, mean(pst_inits) ./ maximum(mean(pst_inits)), ColorSchemes.viridis)
+plot_roi(right_nodes, c[11][:,1] , ColorSchemes.viridis)
 
-# for pst_init in pst_inits
-#     f = Plots.scatter(pst_init)
-#     Plots.scatter!([27], [pst_init[27]])
-#     display(f)
-# end
+for pst_init in pst_inits
+    f = Plots.scatter(pst_init)
+    Plots.scatter!([27], [pst_init[27]])
+    display(f)
+end
 
-# prob = [ODEProblem(ScaledNetworkLocalFKPP, 
-#                   pst_init .* 0.25, 
-#                   (0.,25.), 
-#                   [meanpst[:ρ, :mean], meanpst[:α, :mean]]) for (pst_init, meanpst) in zip(pst_inits,meanpsts)]
+prob = [ODEProblem(ScaledNetworkLocalFKPP, 
+                  pst_init .* 0.25, 
+                  (0.,25.), 
+                  [meanpst[:ρ, :mean], meanpst[:α, :mean]]) for (pst_init, meanpst) in zip(pst_inits,meanpsts)]
                   
-# sols = [solve(_prob, Tsit5(), saveat=meanpst[:t, :mean] .+ _t) for (_prob, meanpst, _t) in zip(prob, meanpsts, t)];
+sols = [solve(_prob, Tsit5(), saveat=meanpst[:t, :mean] .+ _t) for (_prob, meanpst, _t) in zip(prob, meanpsts, t)];
 
-# for i in 1:1-0
-#     display(Plots.scatter(sum(Array(sols[i]), dims=1), sum(c[i], dims=1), 
-#             xlims=(0, 10), ylims=(0, 10)))
-# end
+for i in 1:11
+    display(Plots.scatter(sum(Array(sols[i]), dims=1), sum(c[i], dims=1), 
+            xlims=(0, 10), ylims=(0, 10)))
+end
 
-# for i in 1:10
-#     display(Plots.scatter(c[i][:, end], sols[i][end], xlims=(0.0,1.0), ylims=(0.0,1.0)))
-# end
+for i in 1:10
+    display(Plots.scatter(c[i][:, end], sols[i][end], xlims=(0.0,1.0), ylims=(0.0,1.0)))
+end
