@@ -21,7 +21,7 @@ include(projectdir("functions.jl"))
 #-------------------------------------------------------------------------------
 # Load connectome, regional parameters and sort data
 #-------------------------------------------------------------------------------
-include(projectdir("adni/inference/inference-preamble.jl"))
+include(projectdir("adni/inference/inference-preamble-pvc.jl"))
 
 #-------------------------------------------------------------------------------
 # Connectome + ODEE
@@ -114,25 +114,15 @@ Random.seed!(1234)
 m = localfkpp(vecsubdata, prob, initial_conditions, times, n_pos);
 m();
 
-# using BenchmarkTools
-# using TuringBenchmarking
-# suite = TuringBenchmarking.make_turing_suite(
-#     m,
-#     adbackends = [
-#         TuringBenchmarking.ZygoteAD()
-#     ]
-# );
-# @info "Turing.jl" run(suite)
-
 println("starting inference")
-n_chains = 4
+n_chains = 1
 n_samples = 2000
 pst = sample(m, 
              Turing.NUTS(0.8), #, metricT=AdvancedHMC.DenseEuclideanMetric), 
              MCMCSerial(), 
              n_samples, 
              n_chains)
-serialize(projectdir("adni/new-chains/local-fkpp/length-free/pst-taupos-$(n_chains)x$(n_samples).jls"), pst)
+serialize(projectdir("adni/chains-revisions/local-fkpp/pst-taupos-$(n_chains)x$(n_samples).jls"), pst)
 
 #calc log likelihood 
 log_likelihood = pointwise_loglikelihoods(m, MCMCChains.get_sections(pst, :parameters));

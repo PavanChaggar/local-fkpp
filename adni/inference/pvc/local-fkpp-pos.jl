@@ -46,6 +46,9 @@ posdf = filter(x -> x.AB_Status == 1, alldf)
 
 dktdict = Connectomes.node2FS()
 dktnames = [dktdict[i] for i in get_node_id.(cortex)]
+suvrnames = [ADNIDatasets.suvr_name.(dktnames); "CEREBRAL_WHITE_MATTER_SUVR"]
+d = Array(dropmissing(alldf[:, suvrnames]))
+writedlm(projectdir("data-pvc-wm.txt"), transpose(d ./ d[:,end]))
 
 data = ADNIDataset(posdf, dktnames; min_scans=3)
 n_data = length(data)

@@ -21,19 +21,12 @@ norm, path = get_dkt_moments(gmm_moments, dktnames)
 u0 = mean.(norm)
 cc = quantile.(path, .99)
 
-gmm_moments = CSV.read(projectdir("py-analysis/wm-moments.csv"), DataFrame)
+gmm_moments = CSV.read(projectdir("py-analysis/wm-pvc-moments-prob.csv"), DataFrame)
 norm, path = get_dkt_moments(gmm_moments)
 x0 = mean.(norm)
 xi = quantile.(path, .99)
 
-
-describe(u0)
-std(u0)
-
-describe(xi)
-std(cc)
-
-scaled_cc = (cc .- minimum(u0)) ./ (maximum(cc) .- minimum(u0))
+scaled_cc = (xi .- minimum(x0)) ./ (maximum(xi) .- minimum(x0))
 
 begin
     GLMakie.activate!()
@@ -59,10 +52,10 @@ begin
     hidespines!(ax)
     plot_roi!(right_nodes, scaled_cc, cmap)
 
-    Colorbar(f[1, 0], limits = (minimum(u0), maximum(cc)), colormap = cmap,
+    Colorbar(f[1, 0], limits = (minimum(x0), maximum(xi)), colormap = cmap,
     vertical = true, label = "SUVR", labelsize=25, flipaxis=false,
     ticksize=18, ticklabelsize=20, labelpadding=3)
     f
 end
 
-save(projectdir("visualisation/models/output/carrying-capacities-ic.jpeg"), f)
+save(projectdir("visualisation/models/output/carrying-capacities-wm-pvc.jpeg"), f)
