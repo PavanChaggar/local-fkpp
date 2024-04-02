@@ -126,4 +126,4 @@ serialize(projectdir("adni/chains-revisions/local-fkpp/pst-taupos-$(n_chains)x$(
 
 #calc log likelihood 
 log_likelihood = pointwise_loglikelihoods(m, MCMCChains.get_sections(pst, :parameters));
-serialize(projectdir("adni/new-chains/local-fkpp/length-free/ll-taupos-$(n_chains)x$(n_samples).jls"), log_likelihood)
+serialize(projectdir("adni/chains-revisions/local-fkpp/ll-tauos-$(n_chains)x$(n_samples).jls"), log_likelihood)
