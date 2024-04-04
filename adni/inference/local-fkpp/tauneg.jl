@@ -87,7 +87,7 @@ end
 @model function localfkpp(data, prob, initial_conditions, times, n)
     σ ~ LogNormal(0.0, 1.0)
     
-    Pm ~ LogNormal(0.0, 1.0) # LogNormal(0.0,1.0)
+    Pm ~ Beta(2.0, 4.0) # LogNormal(0.0,1.0)
     Ps ~ LogNormal(0.0, 1.0)
 
     Am ~ Normal(0.0, 1.0) # Normal(0.0,1.0)
@@ -127,9 +127,7 @@ n_chains = 1
 n_samples = 2000
 pst = sample(m, 
              Turing.NUTS(0.8), #, metricT=AdvancedHMC.DenseEuclideanMetric), 
-             MCMCSerial(), 
-             n_samples, 
-             n_chains)
+             n_samples)
 serialize(projectdir("adni/chains-revisions/local-fkpp/pst-tauneg-$(n_chains)x$(n_samples).jls"), pst)
 
 #calc log likelihood 
