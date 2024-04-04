@@ -117,7 +117,7 @@ end
 end
 
 # Turing.setadbackend(:zygote)
-Random.seed!(1234); 
+Random.seed!(8888); 
 
 m = localfkpp(vecsubdata, prob, initial_conditions, times, n_neg)
 m();
