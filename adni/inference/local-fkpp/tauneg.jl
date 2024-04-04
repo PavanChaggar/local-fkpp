@@ -108,6 +108,7 @@ end
                          sensealg=InterpolatingAdjoint(autojacvec=ReverseDiffVJP(true)))
     if !allequal(get_retcodes(ensemble_sol)) 
         Turing.@addlogprob! -Inf
+        println(findall(x -> x == 0, get_retcodes(ensemble_sol)))
         println("failed")
         return nothing
     end
