@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 from scipy.stats import norm 
 import pandas as pd
 
-all_data = np.genfromtxt('data-pvc-wm.txt', delimiter='')
+all_data = np.genfromtxt('data-nopvc-ic.txt', delimiter='')
 df =  pd.DataFrame(columns = ["region","C0_mean","C1_mean","C0_cov","C1_cov","cutoff"])
 
 
@@ -41,4 +41,4 @@ for i in np.arange(0, 72):
             print(argprob)
             df.loc[i] = [int(i+1), mean_2, mean_1, var_2, var_1, prob[0]]
 
-df.to_csv("wm-pvc-moments-prob.csv")
+df.to_csv("ic-pvc-moments-prob.csv")

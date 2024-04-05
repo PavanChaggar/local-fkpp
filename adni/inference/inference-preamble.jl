@@ -28,7 +28,7 @@ dktdict = Connectomes.node2FS()
 dktnames = [dktdict[i] for i in get_node_id.(cortex)]
 
 data = ADNIDataset(posdf, dktnames; min_scans=3, reference_region="INFERIORCEREBELLUM")
-data = ADNIDataset(posdf, dktnames; min_scans=3, reference_region="ERODED_SUBCORTICALWM")
+
 n_data = length(data)
 # Ask Jake where we got these cutoffs from? 
 mtl_cutoff = 1.375

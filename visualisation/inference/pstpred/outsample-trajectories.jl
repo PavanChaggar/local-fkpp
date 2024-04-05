@@ -26,9 +26,9 @@ cortex = filter(x -> x.Lobe != "subcortex", all_c.parc);
 c = slice(all_c, cortex) |> filter
 
 mtl_regions = ["entorhinal", "Left-Amygdala", "Right-Amygdala"]
-mtl = findall(x -> x ∈ mtl_regions, cortex.Label)
+mtl = findall(x -> x ∈ mtl_regions, get_label.(cortex))
 neo_regions = ["inferiortemporal", "middletemporal"]
-neo = findall(x -> x ∈ neo_regions, cortex.Label)
+neo = findall(x -> x ∈ neo_regions, get_label.(cortex))
 #-------------------------------------------------------------------------------
 # Data 
 #-----------------------------------------------------------------------------
@@ -38,7 +38,7 @@ alldf = CSV.read(sub_data_path, DataFrame)
 posdf = filter(x -> x.STATUS == "POS", alldf)
 
 dktdict = Connectomes.node2FS()
-dktnames = [dktdict[i] for i in cortex.ID]
+dktnames = [dktdict[i] for i in get_node_id.(cortex)]
 
 data = ADNIDataset(posdf, dktnames; min_scans=3)
 

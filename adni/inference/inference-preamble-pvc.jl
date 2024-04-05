@@ -18,10 +18,10 @@ neo = findall(x -> x ∈ neo_regions, get_label.(cortex))
 # Data 
 #-----------------------------------------------------------------------------
 sub_data_path = projectdir("adni/data/new_new_data/UCBERKELEY_TAU_6MM_18Dec2023_AB_STATUS.csv")
-alldf = CSV.read(sub_data_path, DataFrame)
-# suvrnames = [ADNIDatasets.suvr_name.(dktnames); "ERODED_SUBCORTICALWM_SUVR"] # no pvc
+# alldf = CSV.read(sub_data_path, DataFrame)
+# suvrnames = [ADNIDatasets.suvr_name.(dktnames); "INFERIORCEREBELLUM_SUVR"] # no pvc
 # d = Array(dropmissing(alldf[:, suvrnames]))
-# writedlm(projectdir("data-nopvc-wm.txt"), transpose(d ./ d[:,end]))
+# writedlm(projectdir("data-nopvc-ic.txt"), transpose(d ./ d[:,end]))
 
 # sub_data_path_pvc = projectdir("adni/data/new_new_data/pvc/UC-Berkeley-TAUPVC-6MM-Mar-30-2024-AB-Status.csv")
 # alldf = CSV.read(sub_data_path_pvc, DataFrame)

@@ -373,7 +373,6 @@ begin
     f
 end
 
-
 sub_idx = findall(x -> size(x,2) == 2, outsample_subdata)[1]
 five_pred_mean = solve(ODEProblem(NetworkLocalFKPP, insample_inits[sub_idx], (0.0,20.0), local_params[sub_idx]), Tsit5(), saveat=collect(0.0:0.1:20.0))
 five_preds = [solve(
@@ -569,13 +568,13 @@ save(projectdir("visualisation/inference/model-selection/output/out-sample-traje
 # end
 
 
-right_nodes = [25, 27, 29]
-left_nodes = [61, 63, 65]
+right_nodes = [25, 35, 29]
+left_nodes = [61, 71, 65]
 cols = ColorSchemes.seaborn_bright
 
 begin
 f = Figure(resolution = (1500, 2000), fontsize=20)
-for (j, s) in enumerate(9:16)
+for (j, s) in enumerate(1:8)
     g = f[j, :] = GridLayout()
     five_pred_mean = solve(ODEProblem(NetworkLocalFKPP, insample_inits[s], (0.0,20.0), local_params[s]), Tsit5(), saveat=collect(0.0:0.1:20.0))
     five_preds = [solve(
