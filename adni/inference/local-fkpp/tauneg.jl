@@ -87,7 +87,7 @@ end
 @model function localfkpp(data, prob, initial_conditions, times, n)
     σ ~ LogNormal(0.0, 1.0)
     
-    Pm ~ Beta(2.0, 4.0) # LogNormal(0.0,1.0)
+    Pm ~ LogNormal(0.0,1.0)
     Ps ~ LogNormal(0.0, 1.0)
 
     Am ~ Normal(0.0, 1.0) # Normal(0.0,1.0)
@@ -102,8 +102,8 @@ end
 
     ensemble_sol = solve(ensemble_prob, 
                          Tsit5(), 
-                         abstol = 1e-9, 
-                         reltol = 1e-9, 
+                         abstol = 1e-12, 
+                         reltol = 1e-12, 
                          trajectories=n, 
                          sensealg=InterpolatingAdjoint(autojacvec=ReverseDiffVJP(true)))
     if !allequal(get_retcodes(ensemble_sol)) 
@@ -118,7 +118,7 @@ end
 end
 
 # Turing.setadbackend(:zygote)
-Random.seed!(8888); 
+Random.seed!(1234); 
 
 m = localfkpp(vecsubdata, prob, initial_conditions, times, n_neg)
 m();

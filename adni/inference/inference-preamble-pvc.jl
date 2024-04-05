@@ -40,6 +40,7 @@ data = ADNIDataset(posdf, dktnames; min_scans=3, reference_region="ERODED_SUBCOR
 n_data = length(data)
 
 gmm_moments = CSV.read(projectdir("py-analysis/wm-nopvc-moments-prob.csv"), DataFrame)
+# gmm_moments = CSV.read(projectdir("adni/data/component_moments.csv"), DataFrame)
 
 mtl_cutoff = mean(gmm_moments.cutoff[mtl])
 neo_cutoff = mean(gmm_moments.cutoff[neo])
