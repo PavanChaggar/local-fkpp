@@ -102,8 +102,8 @@ end
 
     ensemble_sol = solve(ensemble_prob, 
                          Tsit5(), 
-                         abstol = 1e-12, 
-                         reltol = 1e-12, 
+                         abstol = 1e-9, 
+                         reltol = 1e-9, 
                          trajectories=n, 
                          sensealg=InterpolatingAdjoint(autojacvec=ReverseDiffVJP(true)))
     if !allequal(get_retcodes(ensemble_sol)) 
