@@ -5,17 +5,39 @@ using DrWatson: projectdir
 using Distributions
 using Serialization
 using DelimitedFiles
-using MCMCChains
+using Turing
 
 #-------------------------------------------------------------------------------
 # Hierarchical Distributions -- ADNI
 #-------------------------------------------------------------------------------
-pst = deserialize(projectdir("adni/new-chains/local-fkpp/length-free/pst-taupos-4x2000.jls"));
-pst2 = deserialize(projectdir("adni/new-chains/local-fkpp/length-free/pst-tauneg-4x2000.jls"));
+pst = deserialize(projectdir("adni/chains-revisions/local-fkpp/pst-taupos-1x2000.jls"));
+pst2 = deserialize(projectdir("adni/chains-revisions/local-fkpp/pst-tauneg-1x2000.jls"));
 pst3 = deserialize(projectdir("adni/new-chains/local-fkpp/length-free/pst-abneg-4x2000.jls"));
 
 [p[:numerical_error] |> sum for p in [pst, pst2, pst3]]
 
+begin
+        f = Figure(size=(2000, 1000), fontsize=40)
+        colors = reverse(alphacolor.(Makie.wong_colors(), 0.75)[1:3])
+
+        ax = Axis(f[1,1])
+        xlims!(ax, 0.0,0.5)
+        hist!(pst[:Am] |> vec, color=colors[1])
+
+        ax = Axis(f[2, 1])
+        xlims!(ax, 0.0,0.5)
+        hist!(pst2[:Am] |> vec, color=colors[2])
+
+        ax = Axis(f[1,2])
+        xlims!(ax, 0.0,0.075)
+        hist!(pst[:Pm] |> vec, color=colors[1])
+
+        ax = Axis(f[2, 2])
+        xlims!(ax, 0.0,0.075)
+        hist!(pst2[:Pm] |> vec, color=colors[2])
+
+        f
+end
 using CairoMakie; CairoMakie.activate!()
 using Colors
 begin

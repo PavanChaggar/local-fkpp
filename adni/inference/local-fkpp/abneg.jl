@@ -44,7 +44,8 @@ negdf = filter(x -> x.AB_Status == 0, alldf)
 dktdict = Connectomes.node2FS()
 dktnames = [dktdict[i] for i in get_node_id.(cortex)]
 
-data = ADNIDataset(negdf, dktnames; min_scans=3)
+data = ADNIDataset(negdf, dktnames; min_scans=3, reference_region="ERODED_SUBCORTICALWM")
+
 n_subjects = length(data)
 
 gmm_moments = CSV.read(projectdir("adni/data/component_moments.csv"), DataFrame)
@@ -148,11 +149,11 @@ Random.seed!(1234);
 m = localfkpp(vecsubdata, prob, initial_conditions, times, n_subjects)
 m();
 
-n_chains = 4
+n_chains = 1
 n_samples = 2_000
 pst = sample(m, 
              Turing.NUTS(0.8),
              MCMCSerial(), 
              n_samples, 
              n_chains)
-serialize(projectdir("adni/new-chains/local-fkpp/length-free/pst-abneg-$(n_chains)x$(n_samples).jls"), pst)
+serialize(projectdir("adni/chains-revisions/local-fkpp/pst-abneg-$(n_chains)x$(n_samples).jls"), pst)
