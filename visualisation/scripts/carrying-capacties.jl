@@ -21,7 +21,7 @@ norm, path = get_dkt_moments(gmm_moments, dktnames)
 u0 = mean.(norm)
 cc = quantile.(path, .99)
 
-gmm_moments = CSV.read(projectdir("py-analysis/wm-pvc-moments-prob.csv"), DataFrame)
+gmm_moments = CSV.read(projectdir("py-analysis/ic-pvc-moments-prob.csv"), DataFrame)
 norm, path = get_dkt_moments(gmm_moments)
 x0 = mean.(norm)
 xi = quantile.(path, .99)
@@ -58,4 +58,4 @@ begin
     f
 end
 
-save(projectdir("visualisation/models/output/carrying-capacities-wm-pvc.jpeg"), f)
+save(projectdir("visualisation/models/output/carrying-capacities-ic-pvc.jpeg"), f)

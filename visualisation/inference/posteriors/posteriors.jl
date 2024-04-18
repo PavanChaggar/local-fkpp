@@ -12,36 +12,14 @@ using Turing
 #-------------------------------------------------------------------------------
 pst = deserialize(projectdir("adni/chains-revisions/local-fkpp/pst-taupos-1x2000.jls"));
 pst2 = deserialize(projectdir("adni/chains-revisions/local-fkpp/pst-tauneg-1x2000.jls"));
-pst3 = deserialize(projectdir("adni/new-chains/local-fkpp/length-free/pst-abneg-4x2000.jls"));
+pst3 = deserialize(projectdir("adni/chains-revisions/local-fkpp/pst-abneg-1x2000.jls"));
 
 [p[:numerical_error] |> sum for p in [pst, pst2, pst3]]
 
-begin
-        f = Figure(size=(2000, 1000), fontsize=40)
-        colors = reverse(alphacolor.(Makie.wong_colors(), 0.75)[1:3])
-
-        ax = Axis(f[1,1])
-        xlims!(ax, 0.0,0.5)
-        hist!(pst[:Am] |> vec, color=colors[1])
-
-        ax = Axis(f[2, 1])
-        xlims!(ax, 0.0,0.5)
-        hist!(pst2[:Am] |> vec, color=colors[2])
-
-        ax = Axis(f[1,2])
-        xlims!(ax, 0.0,0.075)
-        hist!(pst[:Pm] |> vec, color=colors[1])
-
-        ax = Axis(f[2, 2])
-        xlims!(ax, 0.0,0.075)
-        hist!(pst2[:Pm] |> vec, color=colors[2])
-
-        f
-end
 using CairoMakie; CairoMakie.activate!()
 using Colors
 begin
-        n_samples = 8000
+        n_samples = 2000
         f = Figure(resolution=(2000, 2000), fontsize=50, font=:bold)
         g1 = f[1, 1] = GridLayout()
         g2 = f[2, 1] = GridLayout()
@@ -103,10 +81,10 @@ begin
                 Label(g4[i, 0], _label, fontsize=45, tellheight=false)
                 ax = Axis(g4[i,1], 
                 xticklabelsize=30, xlabelsize=30, xlabel="1 / yr", 
-                yticklabelsize=40, ylabelsize=30, ylabel="Density", xticks=-0.20:0.1:0.20, 
-                xminorticks=-0.2:0.05:0.2, xminorticksvisible=true, 
+                yticklabelsize=40, ylabelsize=30, ylabel="Density", xticks=-0.50:0.25:0.50, 
+                xminorticks=-0.5:0.125:0.5, xminorticksvisible=true, 
                 xticksize=20, xminorticksize=15, xgridcolor=RGBAf(0, 0, 0, 0.25))
-                CairoMakie.xlims!(ax, -0.22, 0.22)
+                CairoMakie.xlims!(ax, -0.55, 0.55)
                 hideydecorations!(ax)
                 if i < 3
                         hidexdecorations!(ax, grid=false, minorticks=false, ticks=false)
@@ -144,7 +122,7 @@ begin
         colgap!(g4, 2, 50.0)
         f
 end
-save(projectdir("visualisation/inference/posteriors/output/adni-posteriors-all.pdf"), f)
+save(projectdir("visualisation/inference/posteriors/output-revisions/adni-posteriors-all.pdf"), f)
 
 begin
     n_samples = 8000

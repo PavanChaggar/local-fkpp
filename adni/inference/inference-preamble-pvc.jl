@@ -17,17 +17,17 @@ neo = findall(x -> x ∈ neo_regions, get_label.(cortex))
 #-------------------------------------------------------------------------------
 # Data 
 #-----------------------------------------------------------------------------
-sub_data_path = projectdir("adni/data/new_new_data/UCBERKELEY_TAU_6MM_18Dec2023_AB_STATUS.csv")
-alldf = CSV.read(sub_data_path, DataFrame)
+# sub_data_path = projectdir("adni/data/new_new_data/UCBERKELEY_TAU_6MM_18Dec2023_AB_STATUS.csv")
+# alldf = CSV.read(sub_data_path, DataFrame)
 # suvrnames = [ADNIDatasets.suvr_name.(dktnames); "INFERIORCEREBELLUM_SUVR"] # no pvc
 # d = Array(dropmissing(alldf[:, suvrnames]))
 # writedlm(projectdir("data-nopvc-ic.txt"), transpose(d ./ d[:,end]))
 
-# sub_data_path_pvc = projectdir("adni/data/new_new_data/pvc/UC-Berkeley-TAUPVC-6MM-Mar-30-2024-AB-Status.csv")
-# alldf = CSV.read(sub_data_path_pvc, DataFrame)
-# suvrnames = [ADNIDatasets.suvr_name.(dktnames); "CEREBRAL_WHITE_MATTER_SUVR"] # pvc
+sub_data_path_pvc = projectdir("adni/data/new_new_data/pvc/UC-Berkeley-TAUPVC-6MM-Mar-30-2024-AB-Status.csv")
+alldf = CSV.read(sub_data_path_pvc, DataFrame)
+# suvrnames = ADNIDatasets.suvr_name.(dktnames) # pvc
 # d = Array(dropmissing(alldf[:, suvrnames]))
-# writedlm(projectdir("data-pvc-wm.txt"), transpose(d ./ d[:,end]))
+# writedlm(projectdir("py-analysis/data-pvc-ic.txt"), transpose(d))
 
 #posdf = filter(x -> x.STATUS == "POS", alldf)
 posdf = filter(x -> x.AB_Status == 1, alldf)
@@ -36,10 +36,13 @@ dktdict = Connectomes.node2FS()
 dktnames = [dktdict[i] for i in get_node_id.(cortex)]
 
 # data = ADNIDataset(posdf, dktnames; min_scans=3, reference_region="INFERIORCEREBELLUM")
-data = ADNIDataset(posdf, dktnames; min_scans=3, reference_region="ERODED_SUBCORTICALWM")
+# data = ADNIDataset(posdf, dktnames; min_scans=3, reference_region="ERODED_SUBCORTICALWM")
+data = ADNIDataset(posdf, dktnames; min_scans=3, reference_region="INFERIORCEREBELLUM", qc=false)
+
 n_data = length(data)
 
-gmm_moments = CSV.read(projectdir("py-analysis/wm-nopvc-moments-prob.csv"), DataFrame)
+gmm_moments = CSV.read(projectdir("py-analysis/ic-pvc-moments-prob.csv"), DataFrame)
+# gmm_moments = CSV.read(projectdir("py-analysis/wm-nopvc-moments-prob.csv"), DataFrame)
 # gmm_moments = CSV.read(projectdir("adni/data/component_moments.csv"), DataFrame)
 
 mtl_cutoff = mean(gmm_moments.cutoff[mtl])

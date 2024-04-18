@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 from scipy.stats import norm 
 import pandas as pd
 
-all_data = np.genfromtxt('data-nopvc-ic.txt', delimiter='')
+all_data = np.genfromtxt('data-pvc-ic.txt', delimiter='')
 df =  pd.DataFrame(columns = ["region","C0_mean","C1_mean","C0_cov","C1_cov","cutoff"])
 
 
