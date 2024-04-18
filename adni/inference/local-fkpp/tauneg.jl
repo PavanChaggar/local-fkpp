@@ -129,8 +129,8 @@ n_samples = 2000
 pst = sample(m, 
              Turing.NUTS(0.8), #, metricT=AdvancedHMC.DenseEuclideanMetric), 
              n_samples)
-serialize(projectdir("adni/chains-revisions/local-fkpp/pst-tauneg-$(n_chains)x$(n_samples).jls"), pst)
+serialize(projectdir("adni/chains-revisions/local-fkpp/pvc-ic/pst-tauneg-$(n_chains)x$(n_samples).jls"), pst)
 
 #calc log likelihood 
 log_likelihood = pointwise_loglikelihoods(m, MCMCChains.get_sections(pst, :parameters));
-serialize(projectdir("adni/chains-revisions/local-fkpp/ll-tauneg-$(n_chains)x$(n_samples).jls"), log_likelihood)
+serialize(projectdir("adni/chains-revisions/local-fkpp/pvc-ic/ll-tauneg-$(n_chains)x$(n_samples).jls"), log_likelihood)
