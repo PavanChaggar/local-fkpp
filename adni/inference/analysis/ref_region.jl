@@ -46,7 +46,7 @@ dktdict = Connectomes.node2FS()
 dktnames = [dktdict[i] for i in get_node_id.(cortex)]
 
 ic_data = ADNIDataset(posdf, dktnames; min_scans=3, reference_region="INFERIORCEREBELLUM")
-ic_data_with_wm = ADNIDataset(posdf, [dktnames; "ERODED_SUBCORTICALWM"]; min_scans=3, reference_region="INFERIORCEREBELLUM")
+ic_data_with_wm = ADNIDataset(posdf, [dktnames; "ERODED_SUBCORTICALWM"; "CEREBELLUM_CORTEX"]; min_scans=3, reference_region="INFERIORCEREBELLUM")
 wm_data = ADNIDataset(posdf, dktnames; min_scans=3, reference_region="ERODED_SUBCORTICALWM")
 n_data = length(ic_data)
 
@@ -150,14 +150,14 @@ save("suvr-wm-vs-ic-delta.pdf", f)
 cols = Makie.wong_colors();
 begin
     f = Figure(size=(1000, 500), fontsize=20)
-    ax = Axis(f[1,1], xlabel="REF SUVR", ylabel="MTL SUVR")
+    ax = Axis(f[1,1], xlabel="Δ REF SUVR", ylabel="Δ MTL SUVR")
     Label(f[0,1], "A+T+", tellwidth=false, fontsize=30)
     xlims!(ax, -0.35, 0.35); ylims!(ax, -0.5, 0.5)
     for (d, ic) in zip(wm_data[wm_tau_pos], ic_data[wm_tau_pos])
         scatter!(get_diff(get_ref_suvr(d)), get_diff(vec(mean(calc_suvr(ic)[mtl,:], dims=1))), markersize=15, color=cols[1])
     end
 
-    ax = Axis(f[1,2], xlabel="REF SUVR", ylabel="MTLSUVR")
+    ax = Axis(f[1,2], xlabel="Δ REF SUVR", ylabel="Δ MTL SUVR")
     Label(f[0,2], "A+T-", tellwidth=false, fontsize=30)
     xlims!(ax, -0.35, 0.35); ylims!(ax, -0.5, 0.5)
     # for (d, vol) in zip(wm_data, wm_ref_vols)
@@ -169,6 +169,28 @@ begin
     f
 end
 save("suvr-wm-vs-mtl.pdf", f)
+
+begin
+    f = Figure(size=(1000, 500), fontsize=20)
+    ax = Axis(f[1,1], xlabel="Δ REF SUVR", ylabel="Δ MTL SUVR")
+    Label(f[0,1], "A+T+", tellwidth=false, fontsize=30)
+    xlims!(ax, -0.35, 0.35); ylims!(ax, -0.5, 0.5)
+    for (cg, ic) in zip(ic_data_with_wm[wm_tau_pos], ic_data[wm_tau_pos])
+        scatter!(get_diff(calc_suvr(cg)[end,:]), get_diff(vec(mean(calc_suvr(ic)[mtl,:], dims=1))), markersize=15, color=cols[1])
+    end
+
+    ax = Axis(f[1,2], xlabel="Δ REF SUVR", ylabel="Δ MTL SUVR")
+    Label(f[0,2], "A+T-", tellwidth=false, fontsize=30)
+    xlims!(ax, -0.35, 0.35); ylims!(ax, -0.5, 0.5)
+    # for (d, vol) in zip(wm_data, wm_ref_vols)
+    #     scatter!(get_diff(get_ref_suvr(d)), get_diff(vol), color=:blue, markersize=15)
+    # end
+    for (cg, ic) in zip(ic_data_with_wm[wm_tau_neg], ic_data[wm_tau_neg])
+        scatter!(get_diff(calc_suvr(cg)[end,:]), get_diff(vec(mean(calc_suvr(ic)[mtl,:], dims=1))), markersize=15, color=cols[1])
+    end
+    f
+end
+save("suvr-cg-vs-mtl.pdf", f)
 
 begin
     f = Figure(size=(1000, 500), fontsize=20)
