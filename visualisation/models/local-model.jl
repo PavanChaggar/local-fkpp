@@ -1,5 +1,5 @@
 using Connectomes
-using DifferentialEquations
+using OrdinaryDiffEq
 using DrWatson
 using Distributions
 include(projectdir("functions.jl"))
@@ -133,3 +133,78 @@ begin
     f
 end
 save(projectdir("visualisation/models/output/local-fkpp.jpeg"), f)
+
+
+prob = ODEProblem(NetworkExFKPP, p0, (0.0,8.0), [r,a])
+ts = LinRange(0.0, 8., 480)
+sol = solve(prob, Rodas4(), reltol=1e-12, saveat=ts)
+n = length(sol)
+
+solcol = [(sol[i] .- minimum(u0)) ./ (maximum(cc) .- minimum(u0)) for i in 1:n]
+cmap = reverse(ColorSchemes.RdYlBu);
+cols = [get(cmap, solcol[i]) for i in 1:n]
+nodes = get_node_id.(right_cortical_nodes)
+
+begin 
+    p1 = Vector{Mesh}(undef, length(nodes))
+    p2 = Vector{Mesh}(undef, length(nodes))
+
+    f = Figure(resolution=(2560, 1200))
+    ax = Axis3(f[1:2,1], aspect = :data, azimuth = 1.0pi, elevation=0.0pi)
+    hidedecorations!(ax)
+    hidespines!(ax)
+    p1 .= plot_roi!(nodes, solcol[1], cmap)
+
+    ax = Axis3(f[3:4,1], aspect = :data, azimuth = 0.0pi, elevation=0.0pi)
+    hidedecorations!(ax)
+    hidespines!(ax)
+    p2 .= plot_roi!(nodes, solcol[1], cmap)
+
+    c = Colorbar(f[5, 1], limits = (minimum(u0), maximum(cc)), colormap = cmap,
+        vertical = false, label = "SUVR", labelsize=36, flipaxis=false,
+        ticksize=18, ticklabelsize=36, labelpadding=3)
+
+    ax = Axis(f[1,2])
+    hidedecorations!(ax)
+    hidespines!(ax)
+    text!(L"\frac{ds_i}{dt} = - \rho \sum_j^{R} L_{ij} (s_{j} - s_{0, j}) + \alpha (s_i - s_{0, i}) [(s_{\infty,i} - s_{0,i}) - (s_i - s_{0,i})]", 
+        fontsize=40, 
+        align = (:center, :center))
+    #rowsize!(f.layout, 1, Auto(0.15))
+
+    ax = Axis(f[2:5,2],
+            xautolimitmargin = (0, 0), xgridcolor = (:grey, 0.5), xgridwidth = 2,
+            xticklabelsize = 36, xticks = LinearTicks(4), xticksize=18,
+            xlabel="Time / years", xlabelsize = 36,
+            yautolimitmargin = (0, 0), ygridcolor = (:grey, 0.5), ygridwidth = 2,
+            yticklabelsize = 36, yticks = LinearTicks(4), yticksize=18,
+            ylabel="SUVR", ylabelsize = 36
+    )
+
+    GLMakie.ylims!(ax, minimum(u0)-0.1, maximum(cc)+0.1)
+    GLMakie.xlims!(ax, 0, 8)
+
+    for i in 1:36
+        lines!(sol.t, sol[i, :], color=Makie.wong_colors()[1])
+    end
+
+    x = Observable(0.0)
+    vlines!(ax, x, color=(:red, 0.5), linewidth=5)
+
+    sublayout = GridLayout(width = 75)
+    f[1,3] = sublayout
+
+    sublayout = GridLayout(height = 50)
+    f[6, 1:2] = sublayout
+    f
+end
+
+frames = 10 * 48
+
+record(f, projectdir("visualisation/models/output/local-fkpp-video.mp4"), 1:frames; framerate=48) do i
+    x[] = ts[i]
+    for k in 1:36
+        p1[k].color[] = cols[i][k]
+        p2[k].color[] = cols[i][k]
+    end
+end
