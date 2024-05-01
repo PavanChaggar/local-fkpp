@@ -50,6 +50,19 @@ ic_data_with_wm = ADNIDataset(posdf, [dktnames; "ERODED_SUBCORTICALWM"; "CEREBEL
 wm_data = ADNIDataset(posdf, dktnames; min_scans=3, reference_region="ERODED_SUBCORTICALWM")
 n_data = length(ic_data)
 
+ic_all_vols = [reduce(vcat, [dkt, ref']) for (dkt, ref) in zip(get_vol.(ic_data), get_ref_vol.(ic_data))]
+ic_tiv = sum.(ic_all_vols, dims=1)
+ic_tiv_vols = [v ./ t for (v, t) in zip(ic_all_vols, ic_tiv)]
+ic_ref_vols = [t[end, :] ./ t[end, 1] for t in ic_tiv_vols]
+ic_vols = [t[1:72, :] ./ t[1:72,1] for t in ic_tiv_vols]
+
+wm_all_vols = [reduce(vcat, [dkt, ref']) for (dkt, ref) in zip(get_vol.(wm_data), get_ref_vol.(wm_data))]
+wm_tiv = sum.(wm_all_vols, dims=1)
+wm_tiv_vols = [v ./ t for (v, t) in zip(wm_all_vols, wm_tiv)]
+wm_ref_vols = [t[end, :] ./ t[end, 1] for t in wm_tiv_vols]
+wm_vols = [t[1:72, :] ./ t[1:72,1] for t in wm_tiv_vols]
+
+
 ic_ref_vols = [d ./ d[1] for d in get_ref_vol.(ic_data)]
 wm_ref_vols = [d ./ d[1] for d in get_ref_vol.(wm_data)]
 
@@ -79,6 +92,18 @@ wm_tau_neg = findall(x -> x ∉ wm_tau_pos, 1:n_data)
 negdf = filter(x -> x.AB_Status == 0, alldf)
 ic_negdata = ADNIDataset(negdf, dktnames; min_scans=3, reference_region="INFERIORCEREBELLUM")
 wm_negdata = ADNIDataset(negdf, dktnames; min_scans=3, reference_region="ERODED_SUBCORTICALWM")
+
+
+ic_neg_all_vols = [reduce(vcat, [dkt, ref']) for (dkt, ref) in zip(get_vol.(ic_negdata), get_ref_vol.(ic_negdata))]
+ic_neg_tiv = sum.(ic_neg_all_vols, dims=1)
+ic_neg_tiv_vols = [v ./ t for (v, t) in zip(ic_neg_all_vols, ic_neg_tiv)]
+ic_neg_ref_vols = [t[end, :] ./ t[end, 1] for t in ic_neg_tiv_vols]
+
+
+wm_neg_all_vols = [reduce(vcat, [dkt, ref']) for (dkt, ref) in zip(get_vol.(wm_negdata), get_ref_vol.(wm_negdata))]
+wm_neg_tiv = sum.(wm_neg_all_vols, dims=1)
+wm_neg_tiv_vols = [v ./ t for (v, t) in zip(wm_neg_all_vols, wm_neg_tiv)]
+wm_neg_ref_vols = [t[end, :] ./ t[end, 1] for t in wm_neg_tiv_vols]
 
 ic_neg_ref_vols = [d ./ d[1] for d in get_ref_vol.(ic_negdata)]
 wm_neg_ref_vols = [d ./ d[1] for d in get_ref_vol.(wm_negdata)]
