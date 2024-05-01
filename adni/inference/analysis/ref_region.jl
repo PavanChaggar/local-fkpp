@@ -23,7 +23,7 @@ mtl = findall(x -> x ∈ mtl_regions, get_label.(cortex))
 neo_regions = ["inferiortemporal", "middletemporal"]
 neo = findall(x -> x ∈ neo_regions, get_label.(cortex))
 
-#------------------------------------------------------ -------------------------
+#-------------------------------------------------------------------------------
 # Data 
 #-----------------------------------------------------------------------------
 sub_data_path = projectdir("adni/data/new_new_data/UCBERKELEY_TAU_6MM_18Dec2023_AB_STATUS.csv")
@@ -57,7 +57,6 @@ ic_vols = [d ./ d[:,1] for d in get_vol.(ic_data)]
 wm_vols = [d ./ d[:,1] for d in get_vol.(wm_data)]
 
 ic_gmm_moments = CSV.read(projectdir("adni/data/component_moments.csv"), DataFrame)
-
 ic_mtl_cutoff = 1.375
 ic_neo_cutoff = 1.395
 
