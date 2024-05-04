@@ -10,16 +10,16 @@ using Turing
 #-------------------------------------------------------------------------------
 # Hierarchical Distributions -- ADNI
 #-------------------------------------------------------------------------------
-pst = deserialize(projectdir("adni/chains-revisions/local-fkpp/pst-taupos-1x2000.jls"));
-pst2 = deserialize(projectdir("adni/chains-revisions/local-fkpp/pst-tauneg-1x2000.jls"));
-pst3 = deserialize(projectdir("adni/chains-revisions/local-fkpp/pst-abneg-1x2000.jls"));
+pst = deserialize(projectdir("adni/chains/local-fkpp/length-free/pst-taupos-4x2000.jls"));
+pst2 = deserialize(projectdir("adni/chains/local-fkpp/length-free/pst-tauneg-4x2000.jls"));
+pst3 = deserialize(projectdir("adni/chains/local-fkpp/length-free/pst-abneg-4x2000.jls"));
 
 [p[:numerical_error] |> sum for p in [pst, pst2, pst3]]
 
 using CairoMakie; CairoMakie.activate!()
 using Colors
 begin
-        n_samples = 2000
+        n_samples = 8000
         f = Figure(resolution=(2000, 2000), fontsize=50, font=:bold)
         g1 = f[1, 1] = GridLayout()
         g2 = f[2, 1] = GridLayout()
