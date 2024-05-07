@@ -49,6 +49,7 @@ alldf.qc_flag = map(check_qc, alldf.RID)
 #posdf = filter(x -> x.STATUS == "POS", alldf)
 
 posdf = filter(x -> x.AB_Status == 1, alldf)
+negdf = filter(x -> x.AB_Status == 0, alldf)
 
 dktdict = Connectomes.node2FS()
 dktnames = [dktdict[i] for i in get_node_id.(cortex)]
