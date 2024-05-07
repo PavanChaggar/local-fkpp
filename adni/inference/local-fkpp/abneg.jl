@@ -37,19 +37,38 @@ neo = findall(x -> x ∈ neo_regions, get_label.(cortex))
 # Data 
 #-------------------------------------------------------------------------------
 sub_data_path = projectdir("adni/data/new_new_data/UCBERKELEY_TAU_6MM_18Dec2023_AB_STATUS.csv")
-alldf = CSV.read(sub_data_path, DataFrame)
+alldf_nopvc = CSV.read(sub_data_path, DataFrame);
+
+sub_data_path_pvc = projectdir("adni/data/new_new_data/pvc/UC-Berkeley-TAUPVC-6MM-Mar-30-2024-AB-Status.csv")
+alldf = CSV.read(sub_data_path_pvc, DataFrame);
+
+function check_qc(df, rid)
+    _df = filter(x -> x.RID == rid, df)
+    if length(_df.qc_flag) == 0
+        return -1
+    end
+
+    if _df.qc_flag[1] == 2 && allequal(_df.qc_flag)
+        return 2
+    else
+        return -1
+    end
+end
+check_qc(rid) =  check_qc(alldf_nopvc, rid)
+
+alldf.qc_flag = map(check_qc, alldf.RID)
 
 negdf = filter(x -> x.AB_Status == 0, alldf)
 
 dktdict = Connectomes.node2FS()
 dktnames = [dktdict[i] for i in get_node_id.(cortex)]
 
-data = ADNIDataset(negdf, dktnames; min_scans=3, reference_region="ERODED_SUBCORTICALWM")
+data = ADNIDataset(negdf, dktnames; min_scans=3, reference_region="INFERIORCEREBELLUM")
 
 n_subjects = length(data)
 
-gmm_moments = CSV.read(projectdir("adni/data/component_moments.csv"), DataFrame)
-ubase, upath = get_dkt_moments(gmm_moments, dktnames)
+gmm_moments = CSV.read(projectdir("py-analysis/ic-pvc-moments-prob.csv"), DataFrame)
+ubase, upath = get_dkt_moments(gmm_moments)
 u0 = mean.(ubase)
 cc = quantile.(upath, .99)
 
@@ -156,4 +175,4 @@ pst = sample(m,
              MCMCSerial(), 
              n_samples, 
              n_chains)
-serialize(projectdir("adni/chains-revisions/local-fkpp/pst-abneg-$(n_chains)x$(n_samples).jls"), pst)
+serialize(projectdir("adni/chains-revisions/local-fkpp/pvc-ic/pst-abneg-$(n_chains)x$(n_samples).jls"), pst)

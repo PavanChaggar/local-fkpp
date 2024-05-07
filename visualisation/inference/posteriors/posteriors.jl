@@ -10,16 +10,16 @@ using Turing
 #-------------------------------------------------------------------------------
 # Hierarchical Distributions -- ADNI
 #-------------------------------------------------------------------------------
-pst = deserialize(projectdir("adni/chains/local-fkpp/length-free/pst-taupos-4x2000.jls"));
-pst2 = deserialize(projectdir("adni/chains/local-fkpp/length-free/pst-tauneg-4x2000.jls"));
-pst3 = deserialize(projectdir("adni/chains/local-fkpp/length-free/pst-abneg-4x2000.jls"));
+pst = deserialize(projectdir("adni/chains-revisions/local-fkpp/pvc-ic/pst-taupos-1x2000.jls"));
+pst2 = deserialize(projectdir("adni/chains-revisions/local-fkpp/pvc-ic/pst-tauneg-1x2000.jls"));
+pst3 = deserialize(projectdir("adni/chains-revisions/local-fkpp/wm/pst-abneg-1x2000.jls"));
 
 [p[:numerical_error] |> sum for p in [pst, pst2, pst3]]
 
 using CairoMakie; CairoMakie.activate!()
 using Colors
 begin
-        n_samples = 8000
+        n_samples = 2000
         f = Figure(resolution=(2000, 2000), fontsize=50, font=:bold)
         g1 = f[1, 1] = GridLayout()
         g2 = f[2, 1] = GridLayout()
@@ -64,7 +64,8 @@ begin
                 titlesize=40, xticks=0.0:0.025:0.125,
                 xminorticks=0.0:0.0125:1, xminorticksvisible=true, 
                 xticksize=20, xminorticksize=15, xgridcolor=RGBAf(0, 0, 0, 0.25))
-                CairoMakie.xlims!(ax, -0.005, 0.105)
+                CairoMakie.ylims!(ax, -0.0, 350)
+                CairoMakie.xlims!(ax, -0.005, 0.505)
                 hideydecorations!(ax)
                 if i < 3
                         hidexdecorations!(ax, grid=false, minorticks=false, ticks=false)
@@ -84,7 +85,7 @@ begin
                 yticklabelsize=40, ylabelsize=30, ylabel="Density", xticks=-0.50:0.25:0.50, 
                 xminorticks=-0.5:0.125:0.5, xminorticksvisible=true, 
                 xticksize=20, xminorticksize=15, xgridcolor=RGBAf(0, 0, 0, 0.25))
-                CairoMakie.xlims!(ax, -0.55, 0.55)
+                CairoMakie.xlims!(ax, -0.25, 0.25)
                 hideydecorations!(ax)
                 if i < 3
                         hidexdecorations!(ax, grid=false, minorticks=false, ticks=false)
@@ -105,7 +106,9 @@ begin
                 titlesize=40, xticks=-1.:0.5:1.,
                 xminorticks=-1.:0.25:1, xminorticksvisible=true, 
                 xticksize=20, xminorticksize=15, xgridcolor=RGBAf(0, 0, 0, 0.25))
-                CairoMakie.xlims!(ax, -1.1, 1.1)
+                CairoMakie.xlims!(ax, -0.5, 0.5)
+                CairoMakie.ylims!(ax, -0.005, 250)
+
                 hideydecorations!(ax)
                 if i < 3
                         hidexdecorations!(ax, grid=false, minorticks=false, ticks=false)
