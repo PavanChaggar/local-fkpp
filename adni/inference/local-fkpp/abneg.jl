@@ -26,7 +26,7 @@ include(projectdir("adni/inference/inference-preamble-pvc.jl"))
 #-------------------------------------------------------------------------------
 # Data 
 #-------------------------------------------------------------------------------
-data = ADNIDataset(negdf, dktnames; min_scans=3, reference_region="INFERIORCEREBELLUM")
+data = ADNIDataset(negdf, dktnames; min_scans=3, reference_region="INFERIORCEREBELLUM", qc=true)
 n_subjects = length(data)
 
 subsuvr = [calc_suvr(data, i) for i in 1:n_subjects]
@@ -112,6 +112,7 @@ end
     if !allequal(get_retcodes(ensemble_sol)) 
         Turing.@addlogprob! -Inf
         println("failed")
+        println(findall(x -> x == 0, get_retcodes(ensemble_sol)))
         return nothing
     end
     vecsol = vec_sol(ensemble_sol)
