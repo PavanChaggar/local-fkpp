@@ -8,10 +8,10 @@ using DelimitedFiles
 using Turing
 
 #-------------------------------------------------------------------------------
-# Hierarchical Distributions -- ADNI
+# Hierarchical Distributions -- ADNI -- WHITE MATTER REFERENCE
 #-------------------------------------------------------------------------------
-pst = deserialize(projectdir("adni/chains-revisions/local-fkpp/pvc-ic/pst-taupos-1x2000.jls"));
-pst2 = deserialize(projectdir("adni/chains-revisions/local-fkpp/pvc-ic/pst-tauneg-1x2000.jls"));
+pst = deserialize(projectdir("adni/chains-revisions/local-fkpp/wm/pst-taupos-1x2000.jls"));
+pst2 = deserialize(projectdir("adni/chains-revisions/local-fkpp/wm/pst-tauneg-1x2000.jls"));
 pst3 = deserialize(projectdir("adni/chains-revisions/local-fkpp/wm/pst-abneg-1x2000.jls"));
 
 [p[:numerical_error] |> sum for p in [pst, pst2, pst3]]
@@ -61,11 +61,11 @@ begin
                 ax = Axis(g2[i,2:3], 
                 xticklabelsize=30, xlabelsize=30, xlabel="1 / yr", 
                 yticklabelsize=40,
-                titlesize=40, xticks=0.0:0.025:0.125,
-                xminorticks=0.0:0.0125:1, xminorticksvisible=true, 
+                titlesize=40, xticks=0.0:0.025:0.2,
+                xminorticks=0.0:0.0125:2, xminorticksvisible=true, 
                 xticksize=20, xminorticksize=15, xgridcolor=RGBAf(0, 0, 0, 0.25))
-                CairoMakie.ylims!(ax, -0.0, 350)
-                CairoMakie.xlims!(ax, -0.005, 0.505)
+                CairoMakie.ylims!(ax, -0.0, 500)
+                CairoMakie.xlims!(ax, -0.005, 0.21)
                 hideydecorations!(ax)
                 if i < 3
                         hidexdecorations!(ax, grid=false, minorticks=false, ticks=false)
@@ -85,7 +85,7 @@ begin
                 yticklabelsize=40, ylabelsize=30, ylabel="Density", xticks=-0.50:0.25:0.50, 
                 xminorticks=-0.5:0.125:0.5, xminorticksvisible=true, 
                 xticksize=20, xminorticksize=15, xgridcolor=RGBAf(0, 0, 0, 0.25))
-                CairoMakie.xlims!(ax, -0.25, 0.25)
+                CairoMakie.xlims!(ax, -0.5, 0.5)
                 hideydecorations!(ax)
                 if i < 3
                         hidexdecorations!(ax, grid=false, minorticks=false, ticks=false)
@@ -106,8 +106,8 @@ begin
                 titlesize=40, xticks=-1.:0.5:1.,
                 xminorticks=-1.:0.25:1, xminorticksvisible=true, 
                 xticksize=20, xminorticksize=15, xgridcolor=RGBAf(0, 0, 0, 0.25))
-                CairoMakie.xlims!(ax, -0.5, 0.5)
-                CairoMakie.ylims!(ax, -0.005, 250)
+                CairoMakie.xlims!(ax, -1.05, 1.05)
+                CairoMakie.ylims!(ax, -0.00, 50)
 
                 hideydecorations!(ax)
                 if i < 3
@@ -128,24 +128,84 @@ end
 save(projectdir("visualisation/inference/posteriors/output-revisions/adni-posteriors-all.pdf"), f)
 
 begin
-    n_samples = 8000
+        n_samples = 2000
+        f = Figure(resolution=(2000, 750), fontsize=50)
+        g1 = f[1, 1] = GridLayout()
+        g2 = f[1, 2] = GridLayout()
+    
+        colors = alphacolor.(Makie.wong_colors(), 0.75)
+        _category_label = [L"A\beta^-", L"A\beta^+ \tau P^-", L"A\beta^+ \tau P^+"]
+        
+        category_labels = reduce(vcat, fill.(_category_label, n_samples))
+        data_array = reduce(vcat, [vec(pst3[:Pm]), vec(pst2[:Pm]), vec(pst[:Pm])])
+        
+        ax = Axis(g2[1,1], 
+                xticklabelsize=30, xlabelsize=30, xlabel="1 / yr", 
+                yticklabelsize=40,
+                titlesize=40, title="Transport", xticks=0.0:0.025:0.075,
+                xminorticks=0.0:0.0125:1, xminorticksvisible=true, 
+                xticksize=20, xminorticksize=15, xgridcolor=RGBAf(0, 0, 0, 0.25))
+            CairoMakie.xlims!(ax, -0.005, 0.08)
+        hideydecorations!(ax)
+        hidexdecorations!(ax, grid=false, minorticks=false, label=false, ticks=false, ticklabels=false)
+        hidespines!(ax, :t, :r, :l)
+    
+        rainclouds!(ax, category_labels, data_array;
+                    orientation = :horizontal, gap=0.0,
+                    plot_boxplots = true, cloud_width=0.5,
+                    clouds=hist, hist_bins=100,
+                    color = colors[indexin(category_labels, unique(category_labels))])
+    
+        category_labels = reduce(vcat, fill.(_category_label, n_samples))    
+        data_array = reduce(vcat, [vec(pst3[:Am]), vec(pst2[:Am]), vec(pst[:Am])])
+        ax = Axis(g1[1,1], 
+                xticklabelsize=30, xlabelsize=30, xlabel="1 / yr", 
+                yticklabelsize=40, ylabelsize=30, ylabel="Density",
+                titlesize=40, title="Production", xticks=-0.5:0.25:0.5, 
+                xminorticks=-0.25:0.125:0.25, xminorticksvisible=true, 
+                xticksize=20, xminorticksize=15, xgridcolor=RGBAf(0, 0, 0, 0.25))
+            CairoMakie.xlims!(ax, -0.51, 0.51)
+            hideydecorations!(ax, label=false, ticklabels=false)
+            hidexdecorations!(ax, grid=false, minorticks=false, label=false, ticks=false, ticklabels=false)
+        hidespines!(ax, :t, :r, :l)
+    
+        rainclouds!(ax, category_labels, data_array;
+                    orientation = :horizontal, gap=0.0,
+                    plot_boxplots = true, cloud_width=0.5,
+                    clouds=hist, hist_bins=100,
+                    color = colors[indexin(category_labels, unique(category_labels))])
+    
+        colgap!(f.layout, 1, 50)
+        f
+end
+
+#-------------------------------------------------------------------------------
+# PVC DISTRIBUTIONS
+#-------------------------------------------------------------------------------
+
+pst = deserialize(projectdir("adni/chains-revisions/local-fkpp/pvc-ic/pst-taupos-1x2000.jls"));
+pst2 = deserialize(projectdir("adni/chains-revisions/local-fkpp/pvc-ic/pst-tauneg-1x2000.jls"));
+pst3 = deserialize(projectdir("adni/chains-revisions/local-fkpp/wm/pst-abneg-1x2000.jls"));
+
+begin
+    n_samples = 2000
     f = Figure(resolution=(2000, 750), fontsize=50)
     g1 = f[1, 1] = GridLayout()
     g2 = f[1, 2] = GridLayout()
 
     colors = alphacolor.(Makie.wong_colors(), 0.75)
-    _category_label = [L"A\beta^-", L"A\beta^+ \tau P^-", L"A\beta^+ \tau P^+"]
+    _category_label = [L"A^-", L"A^+T^-", L"A^+T^+"]
     
     category_labels = reduce(vcat, fill.(_category_label, n_samples))
     data_array = reduce(vcat, [vec(pst3[:Pm]), vec(pst2[:Pm]), vec(pst[:Pm])])
     
     ax = Axis(g2[1,1], 
             xticklabelsize=30, xlabelsize=30, xlabel="1 / yr", 
-            yticklabelsize=40,
+            yticklabelsize=40, yticks=(1:3, reverse(["A+T+", "A+T-", "A-"])),
             titlesize=40, title="Transport", xticks=0.0:0.025:0.075,
             xminorticks=0.0:0.0125:1, xminorticksvisible=true, 
             xticksize=20, xminorticksize=15, xgridcolor=RGBAf(0, 0, 0, 0.25))
-            CairoMakie.xlims!(ax, -0.005, 0.08)
+    CairoMakie.xlims!(ax, -0.005, 0.08)
     hideydecorations!(ax)
     hidexdecorations!(ax, grid=false, minorticks=false, label=false, ticks=false, ticklabels=false)
     hidespines!(ax, :t, :r, :l)
@@ -160,11 +220,11 @@ begin
     data_array = reduce(vcat, [vec(pst3[:Am]), vec(pst2[:Am]), vec(pst[:Am])])
     ax = Axis(g1[1,1], 
             xticklabelsize=30, xlabelsize=30, xlabel="1 / yr", 
-            yticklabelsize=40, ylabelsize=30, ylabel="Density",
-            titlesize=40, title="Production", xticks=-0.18:0.06:0.18, 
-            xminorticks=-0.18:0.03:0.18, xminorticksvisible=true, 
+            yticklabelsize=40, ylabelsize=30, ylabel="Density",  yticks=(1:3, _category_label),
+            titlesize=40, title="Production", xticks=-0.25:0.125:0.25, 
+            xminorticks=-0.25:0.0625:0.25, xminorticksvisible=true, 
             xticksize=20, xminorticksize=15, xgridcolor=RGBAf(0, 0, 0, 0.25))
-            CairoMakie.xlims!(ax, -0.2, 0.2)
+        CairoMakie.xlims!(ax, -0.26, 0.256)
         hideydecorations!(ax, label=false, ticklabels=false)
         hidexdecorations!(ax, grid=false, minorticks=false, label=false, ticks=false, ticklabels=false)
     hidespines!(ax, :t, :r, :l)
@@ -178,6 +238,7 @@ begin
     colgap!(f.layout, 1, 50)
     f
 end
+
 save(projectdir("visualisation/inference/posteriors/new-output/adni-posteriors.pdf"), f)
 
 #-------------------------------------------------------------------------------
