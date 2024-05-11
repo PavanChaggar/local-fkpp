@@ -141,7 +141,7 @@ begin
         
         ax = Axis(g2[1,1], 
                 xticklabelsize=30, xlabelsize=30, xlabel="1 / yr", 
-                yticklabelsize=40,
+                yticklabelsize=40, yticks=(1:3, reverse(["A+T+", "A+T-", "A-"])),
                 titlesize=40, title="Transport", xticks=0.0:0.025:0.075,
                 xminorticks=0.0:0.0125:1, xminorticksvisible=true, 
                 xticksize=20, xminorticksize=15, xgridcolor=RGBAf(0, 0, 0, 0.25))
@@ -160,7 +160,7 @@ begin
         data_array = reduce(vcat, [vec(pst3[:Am]), vec(pst2[:Am]), vec(pst[:Am])])
         ax = Axis(g1[1,1], 
                 xticklabelsize=30, xlabelsize=30, xlabel="1 / yr", 
-                yticklabelsize=40, ylabelsize=30, ylabel="Density",
+                yticklabelsize=40, ylabelsize=30, ylabel="Density", yticks=(1:3, reverse([L"A^+T^+", L"A^+T^-",L"A^-"])),
                 titlesize=40, title="Production", xticks=-0.5:0.25:0.5, 
                 xminorticks=-0.25:0.125:0.25, xminorticksvisible=true, 
                 xticksize=20, xminorticksize=15, xgridcolor=RGBAf(0, 0, 0, 0.25))
@@ -178,6 +178,7 @@ begin
         colgap!(f.layout, 1, 50)
         f
 end
+save(projectdir("visualisation/inference/posteriors/output-revisions/adni-posteriors-ewm.pdf"), f)
 
 #-------------------------------------------------------------------------------
 # PVC DISTRIBUTIONS
@@ -185,7 +186,9 @@ end
 
 pst = deserialize(projectdir("adni/chains-revisions/local-fkpp/pvc-ic/pst-taupos-1x2000.jls"));
 pst2 = deserialize(projectdir("adni/chains-revisions/local-fkpp/pvc-ic/pst-tauneg-1x2000.jls"));
-pst3 = deserialize(projectdir("adni/chains-revisions/local-fkpp/wm/pst-abneg-1x2000.jls"));
+pst3 = deserialize(projectdir("adni/chains-revisions/local-fkpp/pvc-ic/pst-abneg-1x2000.jls"));
+
+[p[:numerical_error] |> sum for p in [pst, pst2, pst3]]
 
 begin
     n_samples = 2000
@@ -221,10 +224,10 @@ begin
     ax = Axis(g1[1,1], 
             xticklabelsize=30, xlabelsize=30, xlabel="1 / yr", 
             yticklabelsize=40, ylabelsize=30, ylabel="Density",  yticks=(1:3, _category_label),
-            titlesize=40, title="Production", xticks=-0.25:0.125:0.25, 
-            xminorticks=-0.25:0.0625:0.25, xminorticksvisible=true, 
+            titlesize=40, title="Production", xticks=-0.15:0.075:0.15, 
+            xminorticks=-0.15:0.0375:0.15, xminorticksvisible=true, 
             xticksize=20, xminorticksize=15, xgridcolor=RGBAf(0, 0, 0, 0.25))
-        CairoMakie.xlims!(ax, -0.26, 0.256)
+        CairoMakie.xlims!(ax, -0.16, 0.16)
         hideydecorations!(ax, label=false, ticklabels=false)
         hidexdecorations!(ax, grid=false, minorticks=false, label=false, ticks=false, ticklabels=false)
     hidespines!(ax, :t, :r, :l)
@@ -238,8 +241,7 @@ begin
     colgap!(f.layout, 1, 50)
     f
 end
-
-save(projectdir("visualisation/inference/posteriors/new-output/adni-posteriors.pdf"), f)
+save(projectdir("visualisation/inference/posteriors/output-revisions/adni-posteriors-pvc-ic.pdf"), f)
 
 #-------------------------------------------------------------------------------
 # Hierarchical Distributions -- BF2
