@@ -129,7 +129,7 @@ save(projectdir("visualisation/inference/posteriors/output-revisions/adni-poster
 
 begin
         n_samples = 2000
-        f = Figure(resolution=(2000, 750), fontsize=50)
+        f = Figure(resolution=(2000, 400), fontsize=50)
         g1 = f[1, 1] = GridLayout()
         g2 = f[1, 2] = GridLayout()
     
@@ -152,7 +152,7 @@ begin
     
         rainclouds!(ax, category_labels, data_array;
                     orientation = :horizontal, gap=0.0,
-                    plot_boxplots = true, cloud_width=0.5,
+                    plot_boxplots = true, cloud_width=0.6,
                     clouds=hist, hist_bins=100,
                     color = colors[indexin(category_labels, unique(category_labels))])
     
@@ -171,7 +171,7 @@ begin
     
         rainclouds!(ax, category_labels, data_array;
                     orientation = :horizontal, gap=0.0,
-                    plot_boxplots = true, cloud_width=0.5,
+                    plot_boxplots = true, cloud_width=0.6,
                     clouds=hist, hist_bins=100,
                     color = colors[indexin(category_labels, unique(category_labels))])
     
@@ -192,7 +192,7 @@ pst3 = deserialize(projectdir("adni/chains-revisions/local-fkpp/pvc-ic/pst-abneg
 
 begin
     n_samples = 2000
-    f = Figure(resolution=(2000, 750), fontsize=50)
+    f = Figure(resolution=(2000, 600), fontsize=50)
     g1 = f[1, 1] = GridLayout()
     g2 = f[1, 2] = GridLayout()
 
@@ -242,6 +242,121 @@ begin
     f
 end
 save(projectdir("visualisation/inference/posteriors/output-revisions/adni-posteriors-pvc-ic.pdf"), f)
+
+
+#-------------------------------------------------------------------------------
+# Hierarchical Distributions -- ADNI -- combined
+#-------------------------------------------------------------------------------
+pst = deserialize(projectdir("adni/chains-revisions/local-fkpp/wm/pst-taupos-1x2000.jls"));
+pst2 = deserialize(projectdir("adni/chains-revisions/local-fkpp/wm/pst-tauneg-1x2000.jls"));
+pst3 = deserialize(projectdir("adni/chains-revisions/local-fkpp/wm/pst-abneg-1x2000.jls"));
+
+pst4 = deserialize(projectdir("adni/chains-revisions/local-fkpp/pvc-ic/pst-taupos-1x2000.jls"));
+pst5 = deserialize(projectdir("adni/chains-revisions/local-fkpp/pvc-ic/pst-tauneg-1x2000.jls"));
+pst6 = deserialize(projectdir("adni/chains-revisions/local-fkpp/pvc-ic/pst-abneg-1x2000.jls"));
+
+
+begin
+        n_samples = 2000
+        f = Figure(resolution=(2000, 900), fontsize=50)
+        Label(f[1, 3], "Eroded \nWhite \nMatter", fontsize=35, tellheight=false)
+        Label(f[2, 3], "PVC", fontsize=35, tellheight=false)
+        g1 = f[1, 1] = GridLayout()
+        g2 = f[1, 2] = GridLayout()
+    
+        colors = alphacolor.(Makie.wong_colors(), 0.75)
+        _category_label = [L"A\beta^-", L"A\beta^+ \tau P^-", L"A\beta^+ \tau P^+"]
+        
+        category_labels = reduce(vcat, fill.(_category_label, n_samples))
+        data_array = reduce(vcat, [vec(pst3[:Pm]), vec(pst2[:Pm]), vec(pst[:Pm])])
+        
+        ax = Axis(g2[1,1], 
+                xticklabelsize=30, xlabelsize=30, 
+                yticklabelsize=40, yticks=(1:3, reverse(["A+T+", "A+T-", "A-"])),
+                titlesize=40, title="Transport", xticks=0.0:0.025:0.075,
+                xminorticks=0.0:0.0125:1, xminorticksvisible=true, 
+                xticksize=20, xminorticksize=15, xgridcolor=RGBAf(0, 0, 0, 0.25))
+            CairoMakie.xlims!(ax, -0.005, 0.08)
+        hideydecorations!(ax, label=false)
+        hidexdecorations!(ax, grid=false, minorticks=false, label=false, ticks=false, ticklabels=false)
+        hidespines!(ax, :t, :r, :l)
+    
+        rainclouds!(ax, category_labels, data_array;
+                    orientation = :horizontal, gap=0.0,
+                    plot_boxplots = false, cloud_width=0.7,
+                    clouds=hist, hist_bins=100, markersize=0,
+                    color = colors[indexin(category_labels, unique(category_labels))])
+    
+        category_labels = reduce(vcat, fill.(_category_label, n_samples))    
+        data_array = reduce(vcat, [vec(pst3[:Am]), vec(pst2[:Am]), vec(pst[:Am])])
+        ax = Axis(g1[1,1], 
+                xticklabelsize=30, xlabelsize=30, 
+                yticklabelsize=40, ylabelsize=30, ylabel="Density", yticks=(1:3, reverse([L"A^+T^+", L"A^+T^-",L"A^-"])),
+                titlesize=40, title="Production", xticks=-0.5:0.25:0.5, 
+                xminorticks=-0.25:0.125:0.25, xminorticksvisible=true, 
+                xticksize=20, xminorticksize=15, xgridcolor=RGBAf(0, 0, 0, 0.25))
+            CairoMakie.xlims!(ax, -0.533, 0.533)
+            hideydecorations!(ax, label=false, ticklabels=false)
+            hidexdecorations!(ax, grid=false, minorticks=false, ticks=false, ticklabels=false)
+        hidespines!(ax, :t, :r, :l)
+    
+        rainclouds!(ax, category_labels, data_array;
+                    orientation = :horizontal, gap=0.0,
+                    plot_boxplots = false, cloud_width=0.7,
+                    clouds=hist, hist_bins=100, markersize=0,
+                    color = colors[indexin(category_labels, unique(category_labels))])
+    
+        colgap!(f.layout, 1, 50)
+
+        g1 = f[2, 1] = GridLayout()
+        g2 = f[2, 2] = GridLayout()
+    
+        colors = alphacolor.(Makie.wong_colors(), 0.75)
+        _category_label = [L"A^-", L"A^+T^-", L"A^+T^+"]
+        
+        category_labels = reduce(vcat, fill.(_category_label, n_samples))
+        data_array = reduce(vcat, [vec(pst6[:Pm]), vec(pst5[:Pm]), vec(pst4[:Pm])])
+        
+        ax = Axis(g2[1,1], 
+                xticklabelsize=30, xlabelsize=30, xlabel="1 / yr", 
+                yticklabelsize=40, yticks=(1:3, reverse(["A+T+", "A+T-", "A-"])),
+                titlesize=40, xticks=0.0:0.025:0.075,
+                xminorticks=0.0:0.0125:1, xminorticksvisible=true, 
+                xticksize=20, xminorticksize=15, xgridcolor=RGBAf(0, 0, 0, 0.25))
+        CairoMakie.xlims!(ax, -0.005, 0.08)
+        hideydecorations!(ax)
+        hidexdecorations!(ax, grid=false, minorticks=false, label=false, ticks=false, ticklabels=false)
+        hidespines!(ax, :t, :r, :l)
+    
+        rainclouds!(ax, category_labels, data_array;
+                    orientation = :horizontal, gap=0.0,
+                    plot_boxplots = false, cloud_width=0.7,
+                    clouds=hist, hist_bins=100, markersize=0,
+                    color = colors[indexin(category_labels, unique(category_labels))])
+    
+        category_labels = reduce(vcat, fill.(_category_label, n_samples))    
+        data_array = reduce(vcat, [vec(pst6[:Am]), vec(pst5[:Am]), vec(pst4[:Am])])
+        ax = Axis(g1[1,1], 
+                xticklabelsize=30, xlabelsize=30, xlabel="1 / yr", 
+                yticklabelsize=40, ylabelsize=30, ylabel="Density",  yticks=(1:3, _category_label),
+                titlesize=40, xticks=-0.15:0.075:0.15, 
+                xminorticks=-0.15:0.0375:0.15, xminorticksvisible=true, 
+                xticksize=20, xminorticksize=15, xgridcolor=RGBAf(0, 0, 0, 0.25))
+            CairoMakie.xlims!(ax, -0.16, 0.16)
+            hideydecorations!(ax, label=false, ticklabels=false)
+            hidexdecorations!(ax, grid=false, minorticks=false, label=false, ticks=false, ticklabels=false)
+        hidespines!(ax, :t, :r, :l)
+    
+        rainclouds!(ax, category_labels, data_array;
+                    orientation = :horizontal, gap=0.0,
+                    plot_boxplots = false, cloud_width=0.75,
+                    clouds=hist, hist_bins=100,  markersize=0,
+                    color = colors[indexin(category_labels, unique(category_labels))])
+    
+        colgap!(f.layout, 1, 50)
+        f
+end
+save(projectdir("visualisation/inference/posteriors/output-revisions/adni-posteriors-2.pdf"), f)
 
 #-------------------------------------------------------------------------------
 # Hierarchical Distributions -- BF2
