@@ -157,7 +157,7 @@ begin
     data_array = reduce(vcat, [vec(pst3[:Am]), vec(pst2[:Am]), vec(pst[:Am])])
     ax = Axis(g1[1,1], 
             xticklabelsize=30, xlabelsize=30, xlabel="1 / yr", 
-            yticklabelsize=40, ylabelsize=30, ylabel="Density",
+            yticklabelsize=40, ylabelsize=30, ylabel="Density", yticks=(1:3, [L"A^-", L"A^+T^-", L"A^+T^+"]),
             titlesize=40, title="Production", xticks=-0.18:0.06:0.18, 
             xminorticks=-0.18:0.03:0.18, xminorticksvisible=true, 
             xticksize=20, xminorticksize=15, xgridcolor=RGBAf(0, 0, 0, 0.25))
