@@ -21,41 +21,15 @@ include(projectdir("functions.jl"))
 #-------------------------------------------------------------------------------
 # Connectome and ROIs
 #-------------------------------------------------------------------------------
-connectome_path = Connectomes.connectome_path()
-all_c = filter(Connectome(connectome_path; norm=true, weight_function = (n, l) -> n ), 1e-2);
+include(projectdir("adni/inference/inference-preamble.jl"))
 
-subcortex = filter(x -> x.Lobe == "subcortex", all_c.parc)
-cortex = filter(x -> x.Lobe != "subcortex", all_c.parc)
-
-c = slice(all_c, cortex) |> filter
-
-mtl_regions = ["entorhinal", "Left-Amygdala", "Right-Amygdala"]
-mtl = findall(x -> x ∈ mtl_regions, get_label.(cortex))
-neo_regions = ["inferiortemporal", "middletemporal"]
-neo = findall(x -> x ∈ neo_regions, get_label.(cortex))
 #-------------------------------------------------------------------------------
 # Data 
 #-------------------------------------------------------------------------------
-sub_data_path = projectdir("adni/data/new_new_data/UCBERKELEY_TAU_6MM_18Dec2023_AB_STATUS.csv")
-alldf = CSV.read(sub_data_path, DataFrame)
-
-negdf = filter(x -> x.AB_Status == 0, alldf)
-
-dktdict = Connectomes.node2FS()
-dktnames = [dktdict[i] for i in get_node_id.(cortex)]
-
-data = ADNIDataset(negdf, dktnames; min_scans=3)
+data = ADNIDataset(negdf, dktnames; min_scans=3, qc=true)
 n_subjects = length(data)
 
-gmm_moments = CSV.read(projectdir("adni/data/component_moments.csv"), DataFrame)
-ubase, upath = get_dkt_moments(gmm_moments, dktnames)
-u0 = mean.(ubase)
-cc = quantile.(upath, .99)
-
-#-------------------------------------------------------------------------------
-# Connectome + ODEE
-#-------------------------------------------------------------------------------
-subsuvr = [calc_suvr(data, i) for i in 1:n_subjects]
+subsuvr = calc_suvr.(data)
 _subdata = [normalise(sd, u0, cc) for sd in subsuvr]
 
 blsd = [sd .- u0 for sd in _subdata]
@@ -64,6 +38,14 @@ nonzerosubs = findall(x -> sum(x) < 2, [sum(sd, dims=1) .== 0 for sd in blsd])
 subdata = _subdata[nonzerosubs]
 vecsubdata = reduce(vcat, reduce(hcat, subdata))
 
+initial_conditions = [sd[:,1] for sd in subdata]
+_times =  [get_times(data, i) for i in 1:n_subjects]
+times = _times[nonzerosubs]
+
+n_subjects = length(subdata)
+#-------------------------------------------------------------------------------
+# Connectome + ODEE
+#-------------------------------------------------------------------------------
 L = laplacian_matrix(c)
 
 vols = [get_vol(data, i) for i in nonzerosubs]
@@ -86,11 +68,6 @@ function output_func(sol,i)
     (sol,false)
 end
 
-initial_conditions = [sd[:,1] for sd in subdata]
-_times =  [get_times(data, i) for i in 1:n_subjects]
-times = _times[nonzerosubs]
-
-n_subjects = length(subdata)
 prob = ODEProblem(NetworkLocalFKPP, 
                   initial_conditions[1], 
                   (0.,maximum(reduce(vcat, times))), 
