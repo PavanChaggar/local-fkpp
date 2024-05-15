@@ -6,7 +6,7 @@ project_hash = "74578124580265420cfe26af9dbaead9d7f5c086"
 
 [[deps.ADNIDatasets]]
 deps = ["CSV", "DataFrames", "Dates", "Setfield"]
-git-tree-sha1 = "998c719565dcc7e03866e807a1f23e5b3753f348"
+git-tree-sha1 = "08807e5ea458bbb8122069412f4d91942f0e5c29"
 repo-rev = "main"
 repo-url = "https://github.com/PavanChaggar/ADNIDatasets.jl.git"
 uuid = "3276ce4d-5fec-4d11-86fe-35d359dbefae"

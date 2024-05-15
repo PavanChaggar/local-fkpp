@@ -27,7 +27,8 @@ negdf = filter(x -> x.AB_Status == 0, alldf)
 dktdict = Connectomes.node2FS()
 dktnames = [dktdict[i] for i in get_node_id.(cortex)]
 
-data = ADNIDataset(posdf, dktnames; min_scans=3, qc=true)
+data = ADNIDataset(posdf, dktnames; min_scans=3, qc=false)
+qc_data = ADNIDataset(posdf, dktnames; min_scans=3, qc=true)
 n_data = length(data)
 
 # Ask Jake where we got these cutoffs from? 

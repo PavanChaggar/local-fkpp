@@ -6,7 +6,7 @@ using Distributions
 using Serialization
 using DelimitedFiles
 using MCMCChains
-
+using Turing
 #-------------------------------------------------------------------------------
 # Hierarchical Distributions -- ADNI
 #-------------------------------------------------------------------------------
