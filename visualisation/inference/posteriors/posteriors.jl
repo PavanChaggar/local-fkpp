@@ -20,7 +20,7 @@ using CairoMakie; CairoMakie.activate!()
 using Colors
 begin
         n_samples = 8000
-        f = Figure(resolution=(2000, 2000), fontsize=50, font=:bold)
+        f = Figure(size=(2000, 2000), fontsize=50, font=:bold)
         g1 = f[1, 1] = GridLayout()
         g2 = f[2, 1] = GridLayout()
         g3 = f[3, 1] = GridLayout()
@@ -125,57 +125,70 @@ end
 save(projectdir("visualisation/inference/posteriors/output/adni-posteriors-all.pdf"), f)
 
 begin
-    n_samples = 8000
-    f = Figure(resolution=(2000, 750), fontsize=50)
-    g1 = f[1, 1] = GridLayout()
-    g2 = f[1, 2] = GridLayout()
+        n_samples = 8000
+        f = Figure(size=(2000, 750), fontsize=50)
+        g1 = f[1, 1] = GridLayout()
+        g2 = f[1, 2] = GridLayout()
 
-    colors = alphacolor.(Makie.wong_colors(), 0.75)
-    _category_label = [L"A\beta^-", L"A\beta^+ \tau P^-", L"A\beta^+ \tau P^+"]
-    
-    category_labels = reduce(vcat, fill.(_category_label, n_samples))
-    data_array = reduce(vcat, [vec(pst3[:Pm]), vec(pst2[:Pm]), vec(pst[:Pm])])
-    
-    ax = Axis(g2[1,1], 
-            xticklabelsize=30, xlabelsize=30, xlabel="1 / yr", 
-            yticklabelsize=40,
-            titlesize=40, title="Transport", xticks=0.0:0.025:0.075,
-            xminorticks=0.0:0.0125:1, xminorticksvisible=true, 
-            xticksize=20, xminorticksize=15, xgridcolor=RGBAf(0, 0, 0, 0.25))
-            CairoMakie.xlims!(ax, -0.005, 0.08)
-    hideydecorations!(ax)
-    hidexdecorations!(ax, grid=false, minorticks=false, label=false, ticks=false, ticklabels=false)
-    hidespines!(ax, :t, :r, :l)
+        colors = alphacolor.(Makie.wong_colors(), 0.75)
 
-    rainclouds!(ax, category_labels, data_array;
-                orientation = :horizontal, gap=0.0,
-                plot_boxplots = true, cloud_width=0.5,
-                clouds=hist, hist_bins=100,
-                color = colors[indexin(category_labels, unique(category_labels))])
-
-    category_labels = reduce(vcat, fill.(_category_label, n_samples))    
-    data_array = reduce(vcat, [vec(pst3[:Am]), vec(pst2[:Am]), vec(pst[:Am])])
-    ax = Axis(g1[1,1], 
-            xticklabelsize=30, xlabelsize=30, xlabel="1 / yr", 
-            yticklabelsize=40, ylabelsize=30, ylabel="Density", yticks=(1:3, [L"A^-", L"A^+T^-", L"A^+T^+"]),
-            titlesize=40, title="Production", xticks=-0.18:0.06:0.18, 
-            xminorticks=-0.18:0.03:0.18, xminorticksvisible=true, 
-            xticksize=20, xminorticksize=15, xgridcolor=RGBAf(0, 0, 0, 0.25))
-            CairoMakie.xlims!(ax, -0.2, 0.2)
+        a3, a2, a1 = vec(pst3[:Am]), vec(pst2[:Am]), vec(pst[:Am])
+        ax = Axis(g1[1,1], 
+                xticklabelsize=30, xlabelsize=30, xlabel="1 / yr", 
+                yticklabelsize=40, ylabelsize=30, ylabel="Density", yticks=(1.5:1:3.5, [L"A^-", L"A^+T^-", L"A^+T^+"]),
+                titlesize=40, title="Production", xticks=-0.2:0.1:0.2, 
+                xminorticks=-0.2:0.05:0.2, xminorticksvisible=true, 
+                xticksize=20, xminorticksize=15, xgridcolor=RGBAf(0, 0, 0, 0.25))
+        CairoMakie.xlims!(ax, -0.225, 0.225)
+        CairoMakie.ylims!(ax, 0.75, 4)
         hideydecorations!(ax, label=false, ticklabels=false)
         hidexdecorations!(ax, grid=false, minorticks=false, label=false, ticks=false, ticklabels=false)
-    hidespines!(ax, :t, :r, :l)
+        hidespines!(ax, :t, :r, :l)
 
-    rainclouds!(ax, category_labels, data_array;
-                orientation = :horizontal, gap=0.0,
-                plot_boxplots = true, cloud_width=0.5,
-                clouds=hist, hist_bins=100,
-                color = colors[indexin(category_labels, unique(category_labels))])
+        rainclouds!(ax, 1.5 .* ones(n_samples), a3; orientation = :horizontal, gap=0.0, plot_boxplots = true, 
+                                                cloud_width=0.5, clouds=hist, hist_bins=50,
+                                                color = colors[1])
+        rainclouds!(ax, 2.5 .* ones(n_samples), a2; orientation = :horizontal, gap=0.0, plot_boxplots = true, 
+                                                cloud_width=0.5, clouds=hist, hist_bins=50,
+                                                color = colors[2])
+        rainclouds!(ax, 3.5 .* ones(n_samples), a1; orientation = :horizontal, gap=0.0, plot_boxplots = true, 
+                                                cloud_width=0.5, clouds=hist, hist_bins=25,
+                                                color = colors[3])                                         
+        bracket!(ax, median(a1), 1.25, median(a2), 1.25, text = "*", orientation = :down, textoffset = 20, linewidth = 2, color=(:grey, 0.75))
+        bracket!(ax, median(a2), 1.25, median(a3), 1.25, text = "*", orientation = :down, textoffset = 20, linewidth = 2, color=(:grey, 0.75))
+        bracket!(ax, median(a3), 1.05, median(a1), 1.05, text = "*", orientation = :down, textoffset = 20, linewidth = 2, color=(:grey, 0.75))
 
-    colgap!(f.layout, 1, 50)
-    f
+        p3, p2, p1 = vec(pst3[:Pm]), vec(pst2[:Pm]), vec(pst[:Pm])
+
+        ax = Axis(g2[1,1], 
+                xticklabelsize=30, xlabelsize=30, xlabel="1 / yr", yticks=(1.5:1:3.5, [L"A^-", L"A^+T^-", L"A^+T^+"]),
+                yticklabelsize=40,
+                titlesize=40, title="Transport", xticks=0.0:0.025:0.075,
+                xminorticks=0.0:0.0125:1, xminorticksvisible=true, 
+                xticksize=20, xminorticksize=15, xgridcolor=RGBAf(0, 0, 0, 0.25))
+        CairoMakie.xlims!(ax, -0.005, 0.085)
+        CairoMakie.ylims!(ax, 0.75, 4)
+        hideydecorations!(ax)
+        hidexdecorations!(ax, grid=false, minorticks=false, label=false, ticks=false, ticklabels=false)
+        hidespines!(ax, :t, :r, :l)
+
+
+        rainclouds!(ax, 1.5 .* ones(n_samples), p3; orientation = :horizontal, gap=0.0, plot_boxplots = true, 
+                                                cloud_width=0.5, clouds=hist, hist_bins=50,
+                                                color = colors[1])
+        rainclouds!(ax, 2.5 .* ones(n_samples), p2; orientation = :horizontal, gap=0.0, plot_boxplots = true, 
+                                                cloud_width=0.5, clouds=hist, hist_bins=50,
+                                                color = colors[2])
+        rainclouds!(ax, 3.5 .* ones(n_samples), p1; orientation = :horizontal, gap=0.0, plot_boxplots = true, 
+                                         cloud_width=0.5, clouds=hist, hist_bins=25,
+                                         color = colors[3])                                         
+        bracket!(ax, median(p1), 1.25, median(p2), 1.25, text = "*", orientation = :down, textoffset = 20, linewidth = 2, color=(:grey, 0.75))
+        bracket!(ax, median(p2), 1.25, median(p3), 1.25, text = "*", orientation = :down, textoffset = 20, linewidth = 2, color=(:grey, 0.75))
+        bracket!(ax, median(p3), 1.05, median(p1), 1.05, text = "*", orientation = :down, textoffset = 20, linewidth = 2, color=(:grey, 0.5))
+        colgap!(f.layout, 1, 50)
+        f
 end
-save(projectdir("visualisation/inference/posteriors/new-output/adni-posteriors.pdf"), f)
+save(projectdir("visualisation/inference/posteriors/output/adni-posteriors-with-sig.pdf"), f)
 
 #-------------------------------------------------------------------------------
 # Hierarchical Distributions -- BF2
@@ -190,7 +203,7 @@ using CairoMakie
 
 begin
         n_samples = 4000
-        f = Figure(resolution=(2000, 2000), fontsize=50, font=:bold)
+        f = Figure(size=(2000, 2000), fontsize=50, font=:bold)
         g1 = f[1, 1] = GridLayout()
         g2 = f[2, 1] = GridLayout()
         g3 = f[3, 1] = GridLayout()
@@ -294,35 +307,41 @@ save(projectdir("visualisation/inference/posteriors/output/bf-posteriors-all.pdf
 
 begin
         n_samples = 4000
-        f = Figure(resolution=(2000, 750), fontsize=50)
+        f = Figure(size=(2000, 750), fontsize=50)
         g1 = f[1, 1] = GridLayout()
         g2 = f[1, 2] = GridLayout()
 
         colors = alphacolor.(Makie.wong_colors(), 0.75)
-        _category_label = [L"A\beta^-", L"A\beta^+ \tau P^-", L"A\beta^+ \tau P^+"]
 
-        category_labels = reduce(vcat, fill.(_category_label, n_samples))
-        data_array = reduce(vcat, [vec(pst3[:Pm]), vec(pst2[:Pm]), vec(pst[:Pm])])
-
+        p3, p2, p1 = vec(pst3[:Pm]), vec(pst2[:Pm]), vec(pst[:Pm])
         ax = Axis(g2[1,1], 
                 xticklabelsize=30, xlabelsize=30, xlabel="1 / yr", 
                 yticklabelsize=40,
                 titlesize=40, title="Transport", xticks=0.0:0.01:0.05,
                 xminorticks=0.0:0.005:0.05, xminorticksvisible=true, 
                 xticksize=20, xminorticksize=15, xgridcolor=RGBAf(0, 0, 0, 0.25))
-                CairoMakie.xlims!(ax, -0.0025, 0.055)
-        hideydecorations!(ax)
+                CairoMakie.xlims!(ax, -0.0025, 0.06)
+                CairoMakie.ylims!(ax, 0.75, 4)
+
+        hideydecorations!(ax, label=false, ticklabels=false)
         hidexdecorations!(ax, grid=false, minorticks=false, label=false, ticks=false, ticklabels=false)
         hidespines!(ax, :t, :r, :l)
 
-        rainclouds!(ax, category_labels, data_array;
-                        orientation = :horizontal, gap=0.0,
-                        plot_boxplots = true, cloud_width=0.5,
-                        clouds=hist, hist_bins=100,
-                        color = colors[indexin(category_labels, unique(category_labels))])
+        rainclouds!(ax, 1.5 .* ones(n_samples), p3; orientation = :horizontal, gap=0.0, plot_boxplots = true, 
+                                                cloud_width=0.5, clouds=hist, hist_bins=50,
+                                                color = colors[1])
+        rainclouds!(ax, 2.5 .* ones(n_samples), p2; orientation = :horizontal, gap=0.0, plot_boxplots = true, 
+                                                cloud_width=0.5, clouds=hist, hist_bins=50,
+                                                color = colors[2])
+        rainclouds!(ax, 3.5 .* ones(n_samples), p1; orientation = :horizontal, gap=0.0, plot_boxplots = true, 
+                                                cloud_width=0.5, clouds=hist, hist_bins=25,
+                                                color = colors[3])                                         
+        bracket!(ax, median(p1), 1.25, median(p3), 1.25, text = "*", orientation = :down, textoffset = 20, linewidth = 2, color=(:grey, 0.75))
+        bracket!(ax, median(p2), 1.25, median(p3), 1.25, text = "*", orientation = :down, textoffset = 20, linewidth = 2, color=(:grey, 0.75))
+        bracket!(ax, median(p2), 1.05, median(p1), 1.05, text = "*", orientation = :down, textoffset = 20, linewidth = 2, color=(:grey, 0.75))
+        
+        a3, a2, a1 = vec(pst3[:Am]), vec(pst2[:Am]), vec(pst[:Am])
 
-        category_labels = reduce(vcat, fill.(_category_label, n_samples))    
-        data_array = reduce(vcat, [vec(pst3[:Am]), vec(pst2[:Am]), vec(pst[:Am])])
         ax = Axis(g1[1,1], 
                 xticklabelsize=30, xlabelsize=30, xlabel="1 / yr", 
                 yticklabelsize=40, ylabelsize=30, ylabel="Density",
@@ -330,27 +349,37 @@ begin
                 xminorticks=-0.2:0.05:0.2, xminorticksvisible=true, 
                 xticksize=20, xminorticksize=15, xgridcolor=RGBAf(0, 0, 0, 0.25), 
                 xtickformat = "{:.2f}")
-                CairoMakie.xlims!(ax, -0.22, 0.22)
-                hideydecorations!(ax, label=false, ticklabels=false)
-                hidexdecorations!(ax, grid=false, minorticks=false, label=false, 
-                                  ticks=false, ticklabels=false)
+        CairoMakie.xlims!(ax, -0.26, 0.26)
+        CairoMakie.ylims!(ax, 0.75, 4)
+        hideydecorations!(ax, label=false, ticklabels=false)
+        hidexdecorations!(ax, grid=false, minorticks=false, label=false, 
+                                ticks=false, ticklabels=false)
         hidespines!(ax, :t, :r, :l)
 
-        rainclouds!(ax, category_labels, data_array;
-        orientation = :horizontal, gap=0.0,
-        plot_boxplots = true, cloud_width=0.5,
-        clouds=hist, hist_bins=100,
-        color = colors[indexin(category_labels, unique(category_labels))])
+        rainclouds!(ax, 1.5 .* ones(n_samples), a3; orientation = :horizontal, gap=0.0, plot_boxplots = true, 
+                                                cloud_width=0.5, clouds=hist, hist_bins=50,
+                                                color = colors[1])
+        rainclouds!(ax, 2.5 .* ones(n_samples), a2; orientation = :horizontal, gap=0.0, plot_boxplots = true, 
+                                                cloud_width=0.5, clouds=hist, hist_bins=50,
+                                                color = colors[2])
+        rainclouds!(ax, 3.5 .* ones(n_samples), a1; orientation = :horizontal, gap=0.0, plot_boxplots = true, 
+                                                cloud_width=0.5, clouds=hist, hist_bins=25,
+                                                color = colors[3])                                         
+        bracket!(ax, median(a1), 1.25, median(a2), 1.25, text = "*", orientation = :down, textoffset = 20, linewidth = 2, color=(:grey, 0.75))
+        bracket!(ax, median(a2), 1.25, median(a3), 1.25, text = "*", orientation = :down, textoffset = 20, linewidth = 2, color=(:grey, 0.75))
+        bracket!(ax, median(a3), 1.05, median(a1), 1.05, text = "*", orientation = :down, textoffset = 20, linewidth = 2, color=(:grey, 0.75))
+
+        colgap!(f.layout, 1, 50)
 
         colgap!(f.layout, 1, 50)
         f
 end 
-save(projectdir("visualisation/inference/posteriors/output/bf-posteriors.pdf"), f)
+save(projectdir("visualisation/inference/posteriors/output/bf-posteriors-with-sig.pdf"), f)
 
 begin
         colors = alphacolor.(Makie.wong_colors(), 0.75)
 
-        f = Figure(resolution=(2000,1000));
+        f = Figure(size=(2000,1000));
         g1 = f[1, 2] = GridLayout()
         g2= f[1, 1] = GridLayout()
         g7 = f[1, 3] = GridLayout()
@@ -424,81 +453,91 @@ begin
         f
 end
 
-# shuffled data
+#-------------------------------------------------------------------------------
+# Hierarchical Distributions -- shuffled
+#-------------------------------------------------------------------------------
+pst = deserialize(projectdir("adni/new-chains/local-fkpp/length-free/pst-taupos-4x2000.jls"));
+pst2 = deserialize(projectdir("adni/new-chains/local-fkpp/length-free/pst-tauneg-4x2000.jls"));
+pst3 = deserialize(projectdir("adni/new-chains/local-fkpp/length-free/pst-abneg-4x2000.jls"));
+
 _pos_shuffled = [deserialize(projectdir("adni/new-chains/local-fkpp/shuffled/pos/length-free/pst-taupos-1000-shuffled-$i.jls")) for i in 1:10];
 sh_idx = findall( x -> sum(x[:numerical_error]) == 0, _pos_shuffled)
-pos_shuffled = _pos_shuffled[sh_idx];
+pos_shuffled = chainscat(_pos_shuffled[sh_idx]...);
 begin
         colors = Makie.wong_colors()
 
-        f = Figure(resolution=(1000, 500), fontsize=35)
+        f = Figure(size=(1000, 500), fontsize=35)
         g1 = f[1, 1] = GridLayout()
 
         ax = Axis(g1[1,1], title="Production", titlesize=30, xticklabelsize=30,
         xlabel="1 / yr", xlabelsize=30, ylabel="Density", ylabelsize=30)
         CairoMakie.xlims!(ax, 0., 0.22)
+        CairoMakie.ylims!(ax, -4.125, 33)
         hideydecorations!(ax, label=false)
         hidespines!(ax, :t, :r, :l)
 
-        am = reduce(vcat, [vec(Array(sh[:Am])) for sh in pos_shuffled])
-        hist!(am, bins=20, normalization=:pdf, color=(:black, 0.8))
+        hist!(pos_shuffled[:Am] |> vec, bins=50, normalization=:pdf, color=(:black, 0.8))
         hist!(pst[:Am] |> vec, bins=50, normalization=:pdf, color=(colors[3], 0.75))
+        bracket!(ax, median(pos_shuffled[:Am]), -0.4125, median(pst[:Am]), -0.4125, text = "*", orientation = :down, fontsize=50, textoffset = 20, linewidth = 3, color=(:grey, 0.75))
 
         ax = Axis(g1[1,2], title="Transport", titlesize=30, xticklabelsize=30,
         xlabel="1 / yr", xlabelsize=30, ylabel="Density", ylabelsize=30)
+        CairoMakie.ylims!(ax, -50., 400)
         hideydecorations!(ax)
         hidespines!(ax, :t, :r, :l)
-        pm = reduce(vcat, [vec(Array(sh[:Pm])) for sh in pos_shuffled])
-        hist!(pm, bins=25, normalization=:pdf, color=(:black, 0.8), label="Shuffled")
+
+        hist!(pos_shuffled[:Pm] |> vec, bins=25, normalization=:pdf, color=(:black, 0.8), label="Shuffled")
         hist!(pst[:Pm] |> vec, bins=50, normalization=:pdf, color=(colors[3], 0.75), label=L"A\beta^+ \tau P^+")
+        bracket!(ax, median(pos_shuffled[:Pm]), -5, median(pst[:Pm]), -5, text = "*", orientation = :down, fontsize=50, textoffset = 20, linewidth = 3, color=(:grey, 0.75))
         axislegend()
 
         colgap!(g1, 50)
         f
 end     
-save(projectdir("visualisation/inference/posteriors/output/adni-pos-shuffled.pdf"), f)
+save(projectdir("visualisation/inference/posteriors/output/adni-pos-shuffled-with-sig.pdf"), f)
 
 
 _neg_shuffled = [deserialize(projectdir("adni/new-chains/local-fkpp/shuffled/neg/length-free/pst-tauneg-1000-shuffled-$i.jls")) for i in 1:10];
 sh_idx = findall( x -> sum(x[:numerical_error]) == 0, _neg_shuffled)
-neg_shuffled = _neg_shuffled[sh_idx];
+neg_shuffled = chainscat(_neg_shuffled[sh_idx]...);
 begin
         colors = Makie.wong_colors()
 
-        f = Figure(resolution=(1000, 500), fontsize=35)
+        f = Figure(size=(1000, 500), fontsize=35)
         g1 = f[1, 1] = GridLayout()
 
         ax = Axis(g1[1,1], title="Production", titlesize=30, xticklabelsize=30,
         xlabel="1 / yr", xlabelsize=30, ylabel="Density", ylabelsize=30)
+        CairoMakie.ylims!(ax, -11. .* 0.125, 11.)
         hideydecorations!(ax, label=false)
         hidespines!(ax, :t, :r, :l)
 
-        am = reduce(vcat, [vec(Array(sh[:Am])) for sh in neg_shuffled])
-        hist!(am, bins=50, normalization=:pdf, color=(:black, 0.8))
+        hist!(neg_shuffled[:Am] |> vec, bins=50, normalization=:pdf, color=(:black, 0.8))
         hist!(pst2[:Am] |> vec, bins=50, normalization=:pdf, color=(colors[2], 0.75))
+        bracket!(ax, median(neg_shuffled[:Am]), -0.11, median(pst2[:Am]), -0.11, text = "*", orientation = :down, fontsize=50, textoffset = 20, linewidth = 3, color=(:grey, 0.75))
 
         ax = Axis(g1[1,2], title="Transport", titlesize=30, xticklabelsize=30,
         xlabel="1 / yr", xlabelsize=30, ylabel="Density", ylabelsize=30)
+        CairoMakie.ylims!(ax, -100 .* 0.125, 100)
         hideydecorations!(ax)
         hidespines!(ax, :t, :r, :l)
-        pm = reduce(vcat, [vec(Array(sh[:Pm])) for sh in neg_shuffled])
         
-        hist!(pm, bins=50, normalization=:pdf, color=(:black, 0.8), label="Shuffled")
-        # hist!(pst3[:Pm] |> vec, bins=25, normalization=:pdf, color=(colors[1], 0.5), label=L"A\beta^-")
+        hist!(neg_shuffled[:Pm] |> vec, bins=50, normalization=:pdf, color=(:black, 0.8), label="Shuffled")
         hist!(pst2[:Pm] |> vec, bins=50, normalization=:pdf, color=(colors[2], 0.75), label=L"A\beta^+ \tau P^-")
+        bracket!(ax, median(neg_shuffled[:Pm]), -1.0, median(pst2[:Pm]), -1., text = "*", orientation = :down, fontsize=50, textoffset = 20, linewidth = 3, color=(:grey, 0.75))
         axislegend()
         colgap!(g1, 50)
 
         f
 end     
-save(projectdir("visualisation/inference/posteriors/output/adni-neg-shuffled.pdf"), f)
+save(projectdir("visualisation/inference/posteriors/output/adni-neg-shuffled-with-sig.pdf"), f)
 
 # ab_shuffled = deserialize(projectdir("adni/chains/local-fkpp/shuffled/ab/pst-abneg-1000-shuffled-1.jls"))
 
 # begin
 #         colors = Makie.wong_colors()
 
-#         f = Figure(resolution=(1000, 500), fontsize=35)
+#         f = Figure(size=(1000, 500), fontsize=35)
 #         ax = Axis(f[1,1], title="Production", titlesize=30, xticklabelsize=30,
 #         xlabel="1 / yr", xlabelsize=30, ylabel="Density", ylabelsize=30)
 #         hideydecorations!(ax, label=false)
