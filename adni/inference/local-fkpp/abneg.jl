@@ -63,11 +63,6 @@ function output_func(sol,i)
     (sol,false)
 end
 
-initial_conditions = [sd[:,1] for sd in subdata]
-_times =  [get_times(data, i) for i in 1:n_subjects]
-times = _times[nonzerosubs]
-
-n_subjects = length(subdata)
 prob = ODEProblem(NetworkLocalFKPP, 
                   initial_conditions[1], 
                   (0.,maximum(reduce(vcat, times))), 

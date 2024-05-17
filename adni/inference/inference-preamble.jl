@@ -13,7 +13,6 @@ mtl_regions = ["entorhinal", "Left-Amygdala", "Right-Amygdala"]
 mtl = findall(x -> x ∈ mtl_regions, get_label.(cortex))
 neo_regions = ["inferiortemporal", "middletemporal"]
 neo = findall(x -> x ∈ neo_regions, get_label.(cortex))
-
 #-------------------------------------------------------------------------------
 # Data 
 #-----------------------------------------------------------------------------
@@ -22,6 +21,7 @@ alldf = CSV.read(sub_data_path, DataFrame)
 
 #posdf = filter(x -> x.STATUS == "POS", alldf)
 posdf = filter(x -> x.AB_Status == 1, alldf)
+negdf = filter(x -> x.AB_Status == 0, alldf)
 
 dktdict = Connectomes.node2FS()
 dktnames = [dktdict[i] for i in get_node_id.(cortex)]
@@ -29,6 +29,7 @@ dktnames = [dktdict[i] for i in get_node_id.(cortex)]
 data = ADNIDataset(posdf, dktnames; min_scans=3, reference_region="INFERIORCEREBELLUM")
 
 n_data = length(data)
+
 # Ask Jake where we got these cutoffs from? 
 mtl_cutoff = 1.375
 neo_cutoff = 1.395
@@ -39,8 +40,11 @@ neo_pos = filter(x -> regional_mean(data, neo, x) >= neo_cutoff, 1:n_data)
 tau_pos = findall(x -> x ∈ unique([mtl_pos; neo_pos]), 1:n_data)
 tau_neg = findall(x -> x ∉ tau_pos, 1:n_data)
 
-n_pos = length(tau_pos)
-n_neg = length(tau_neg)
+pos_data = data[tau_pos]
+neg_data = data[tau_neg]
+
+n_pos = length(pos_data)
+n_neg = length(neg_data)
 
 # Regional parameters
 gmm_moments = CSV.read(projectdir("adni/data/component_moments.csv"), DataFrame)

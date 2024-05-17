@@ -1,5 +1,5 @@
 using Connectomes
-using DifferentialEquations
+using OrdinaryDiffEq
 using DrWatson
 using Distributions
 include(projectdir("functions.jl"))

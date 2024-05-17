@@ -24,17 +24,28 @@ include(projectdir("functions.jl"))
 include(projectdir("adni/inference/inference-preamble-pvc.jl"))
 
 #-------------------------------------------------------------------------------
-# Connectome + ODEE
+# Data
 #-------------------------------------------------------------------------------
-subsuvr = [calc_suvr(data, i) for i in tau_neg]
+subsuvr = calc_suvr.(neg_data)
 _subdata = [normalise(sd, u0, cc) for sd in subsuvr]
 
 blsd = [sd .- u0 for sd in _subdata]
 nonzerosubs = findall(x -> sum(x) < 2, [sum(sd, dims=1) .== 0 for sd in blsd])
 
+subdata = _subdata[nonzerosubs]
+vecsubdata = reduce(vcat, reduce(hcat, subdata))
+
+initial_conditions = [sd[:,1] for sd in subdata]
+times =  get_times.(neg_data[nonzerosubs])
+
+n_neg = length(neg_data[nonzerosubs])
+
+#-------------------------------------------------------------------------------
+# Connectome + ODE
+#-------------------------------------------------------------------------------
 L = laplacian_matrix(c)
 
-vols = [get_vol(data, i) for i in nonzerosubs]
+vols = [get_vol(neg_data, i) for i in nonzerosubs]
 init_vols = [v[:,1] for v in vols]
 max_norm_vols = reduce(hcat, [v ./ maximum(v) for v in init_vols])
 mean_norm_vols = vec(mean(max_norm_vols, dims=2))
@@ -54,14 +65,6 @@ function output_func(sol,i)
     (sol,false)
 end
 
-subdata = _subdata[nonzerosubs]
-vecsubdata = reduce(vcat, reduce(hcat, subdata))
-
-initial_conditions = [sd[:,1] for sd in subdata]
-_times =  [get_times(data, i) for i in tau_neg]
-times = _times[nonzerosubs]
-
-n_neg = length(nonzerosubs)
 
 prob = ODEProblem(NetworkLocalFKPP, 
                   initial_conditions[1], 
