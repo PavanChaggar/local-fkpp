@@ -31,12 +31,12 @@ dktweights= filter(x -> x.Column1 ∈ dktnames, gmm_weights)
 
 function get_dkt_weights(weights::DataFrame, dktnames)
     _weights = dropmissing(weights)
-    w = Array{Float64}(undef, 72, 2)
+    w = Vector{Vector{Float64}}()
     for (i, name) in enumerate(dktnames)
         _df = filter(x -> x.Column1 == name, _weights)
         _w = [_df.Comp_0[1], _df.Comp_1[1]]
         @assert _w[1] > _w[2]
-        w[i, :] = _w
+        push!(w, _w)
     end
     w
 end
@@ -44,7 +44,7 @@ end
 weights = get_dkt_weights(dktweights, dktnames)
 
 ubase, upath = get_dkt_moments(gmm_moments, dktnames)
-mm = [MixtureModel([u0, ui]) for (u0, ui) in zip(ubase, upath)]
+mm = [MixtureModel([u0, ui], [w...]) for (u0, ui, w) in zip(ubase, upath, weights)]
 u0 = mean.(ubase)
 cc = quantile.(mm, .99)
 
@@ -71,13 +71,13 @@ begin
 
     μ = moments.C0_mean[1]
     Σ = moments.C0_cov[1]
-    plot_density!(μ, Σ, weights[node,1]; color=cols[1], label="Healthy")
-    vlines!(ax, quantile(Normal(μ, sqrt(Σ)), 0.5), linewidth=3, label=L"p_0", color=cols[1])
+    plot_density!(μ, Σ, weights[node][1]; color=cols[1], label="Healthy")
+    vlines!(ax, u0[node], linewidth=3, label=L"p_0", color=cols[1])
 
     μ = moments.C1_mean[1]
     Σ = moments.C1_cov[1]
-    plot_density!(μ, Σ, weights[node,2]; color=cols[6], label="Pathological")
-    vlines!(ax, quantile(mm[node], 0.99), linewidth=3, label=L"p_\infty", color=cols[6])
+    plot_density!(μ, Σ, weights[node][2]; color=cols[6], label="Pathological")
+    vlines!(ax, cc[node], linewidth=3, label=L"p_\infty", color=cols[6])
     axislegend(; merge = true)
     f1
 end
@@ -99,12 +99,12 @@ begin
 
     μ = moments.C0_mean[1]
     Σ = moments.C0_cov[1]
-    plot_density!(μ, Σ, weights[node,1]; color=cols[1], label="Healthy")
+    plot_density!(μ, Σ, weights[node][1]; color=cols[1], label="Healthy")
     vlines!(ax, quantile(Normal(μ, sqrt(Σ)), 0.5), linestyle=:dash, linewidth=3, label=L"s_0", color=cols[1])
 
     μ = moments.C1_mean[1]
     Σ = moments.C1_cov[1]
-    plot_density!(μ, Σ, weights[node,2]; color=cols[6], label="Pathological")
+    plot_density!(μ, Σ, weights[node][2]; color=cols[6], label="Pathological")
     vlines!(ax, quantile(mm[node], 0.99), linestyle=:dash, linewidth=3, label=L"s_\infty", color=cols[6])
 
     node = 29
@@ -119,12 +119,12 @@ begin
 
     μ = moments.C0_mean[1]
     Σ = moments.C0_cov[1]
-    plot_density!(μ, Σ, weights[node,1]; color=cols[1], label="Healthy")
+    plot_density!(μ, Σ, weights[node][1]; color=cols[1], label="Healthy")
     vlines!(ax, quantile(Normal(μ, sqrt(Σ)), 0.5), linestyle=:dash, linewidth=3, label=L"s_0", color=cols[1])
 
     μ = moments.C1_mean[1]
     Σ = moments.C1_cov[1]
-    plot_density!(μ, Σ, weights[node,2]; color=cols[6], label="Pathological")
+    plot_density!(μ, Σ, weights[node][2]; color=cols[6], label="Pathological")
     vlines!(ax, quantile(mm[node], 0.99), linestyle=:dash, linewidth=3, label=L"s_\infty", color=cols[6])
 
     axislegend(ax; merge = true, patchsize=(30, 30), labelsize=22)
@@ -148,12 +148,12 @@ begin
 
     μ = moments.C0_mean[1]
     Σ = moments.C0_cov[1]
-    plot_density!(μ, Σ, weights[node,1]; color=cols[1], label="Healthy")
+    plot_density!(μ, Σ, weights[node][1]; color=cols[1], label="Healthy")
     vlines!(ax, quantile(Normal(μ, sqrt(Σ)), 0.5), linestyle=:dash, linewidth=3, label=L"s_0", color=cols[1])
 
     μ = moments.C1_mean[1]
     Σ = moments.C1_cov[1]
-    plot_density!(μ, Σ, weights[node,2]; color=cols[6], label="Pathological")
+    plot_density!(μ, Σ, weights[node][2]; color=cols[6], label="Pathological")
     vlines!(ax, quantile(mm[node], 0.99), linestyle=:dash, linewidth=3, label=L"s_\infty", color=cols[6])
 
     node = 65
@@ -168,12 +168,12 @@ begin
 
     μ = moments.C0_mean[1]
     Σ = moments.C0_cov[1]
-    plot_density!(μ, Σ, weights[node,1]; color=cols[1], label="Healthy")
+    plot_density!(μ, Σ, weights[node][1]; color=cols[1], label="Healthy")
     vlines!(ax, quantile(Normal(μ, sqrt(Σ)), 0.5), linestyle=:dash, linewidth=3, label=L"s_0", color=cols[1])
 
     μ = moments.C1_mean[1]
     Σ = moments.C1_cov[1]
-    plot_density!(μ, Σ, weights[node,2]; color=cols[6], label="Pathological")
+    plot_density!(μ, Σ, weights[node][2]; color=cols[6], label="Pathological")
     vlines!(ax, quantile(mm[node], 0.99), linestyle=:dash, linewidth=3, label=L"s_\infty", color=cols[6])
 
     Legend(f1[3, 1], ax, framevisible=false, patchsize=(10, 10), labelsize=20, nbanks=2, rowgap = 0, tellheight=true, tellwidth=false)

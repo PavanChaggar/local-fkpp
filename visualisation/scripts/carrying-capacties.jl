@@ -37,12 +37,9 @@ end
 weights = get_dkt_weights(dktweights, dktnames)
 
 ubase, upath = get_dkt_moments(gmm_moments, dktnames)
-mm = [MixtureModel([u0, ui], w) for (u0, ui, w) in zip(ubase, upath, weights)]
+mm = [MixtureModel([u0, ui], [w...]) for (u0, ui, w) in zip(ubase, upath, weights)]
 u0 = mean.(ubase)
 cc = quantile.(mm, .99)
-
-# u0 = mean.(norm)
-# cc = quantile.(path, .99)
 
 describe(u0)
 std(u0)
