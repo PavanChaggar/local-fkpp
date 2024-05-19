@@ -52,25 +52,9 @@ gmm_moments = CSV.read(projectdir("adni/data/component_moments.csv"), DataFrame)
 gmm_weights = CSV.read(projectdir("adni/data/component_weights.csv"), DataFrame)
 dktweights= filter(x -> x.Column1 ∈ dktnames, gmm_weights)
 
-function get_dkt_weights(weights::DataFrame, dktnames)
-    _weights = dropmissing(weights)
-    w = Vector{Vector{Float64}}()
-    for (i, name) in enumerate(dktnames)
-        _df = filter(x -> x.Column1 == name, _weights)
-        _w = [_df.Comp_0[1], _df.Comp_1[1]]
-        @assert _w[1] > _w[2]
-        push!(w, _w)
-    end
-    w
-end
-
 weights = get_dkt_weights(dktweights, dktnames)
 
 ubase, upath = get_dkt_moments(gmm_moments, dktnames)
-mm = [MixtureModel([u0, ui], [w...]) for (u0, ui, w) in zip(ubase, upath, weights)]
+mm = [MixtureModel([u0, ui], w) for (u0, ui, w) in zip(ubase, upath, weights)]
 u0 = mean.(ubase)
-quantile.(mm, .99)
 cc = quantile.(mm, .99)
-
-u0 = mean.(ubase)
-cc = quantile.(upath, .99)
