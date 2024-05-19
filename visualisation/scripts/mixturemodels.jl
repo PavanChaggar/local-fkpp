@@ -53,15 +53,15 @@ function plot_density!(μ, Σ, weight; color=:blue, label="")
     d = Normal(μ, sqrt(Σ))
     x = LinRange(quantile(d, .00001),quantile(d, .99999), 200)
     lines!(x, weight .* fg(x, μ, sqrt(Σ)); color = color, label=label)
-    band!(x, fill(0, length(x)), weight .* fg(x, μ, sqrt(Σ)); color = (color, 0.1), label=label)
+    band!(x, fill(0, length(x)), weight .* fg(x, μ, sqrt(Σ)); color = (color, 0.1))
 end
-
-node = 29
-data = alldata[node, :]
-moments = filter(x -> x.region == dktnames[node], gmm_moments)
 
 cols = Makie.wong_colors();
 begin
+    node = 29
+    data = alldata[node, :]
+    moments = filter(x -> x.region == dktnames[node], gmm_moments)
+
     f1 = Figure(resolution=(500, 400), fontsize=20, font = "CMU Serif");
     ax = Axis(f1[1, 1], xlabel="SUVR")
     xlims!(minimum(data) - 0.05, maximum(data) + 0.05)
@@ -83,19 +83,16 @@ begin
 end
 save(projectdir("visualisation/models/output/gmm-rIT.pdf"), f1)
 
-node = 36
-data = alldata[node, :]
-moments = filter(x -> x.region == dktnames[node], gmm_moments)
 
 cols = Makie.wong_colors();
 begin
-    f1 = Figure(resolution=(1000, 400), fontsize=20, font = "CMU Serif");
+    f1 = Figure(size=(1000, 300), fontsize=20, font = "CMU Serif");
     node = 36
     data = alldata[node, :]
     moments = filter(x -> x.region == dktnames[node], gmm_moments)
 
     ax = Axis(f1[1, 1], xlabel="SUVR", title="Right Amygdala")
-    xlims!(minimum(data) - 0.05, maximum(data) + 0.05)
+    CairoMakie.xlims!(minimum(data) - 0.05, maximum(data) + 0.05)
     hist!(vec(data), color=(:grey, 0.7), bins=50, normalization=:pdf, label="Data")
     hideydecorations!(ax)
     hidespines!(ax, :t, :r, :l)
@@ -115,7 +112,7 @@ begin
     moments = filter(x -> x.region == dktnames[node], gmm_moments)
     
     ax = Axis(f1[1, 2], xlabel="SUVR", title="Right Inferior Temporal")
-    xlims!(minimum(data) - 0.05, maximum(data) + 0.05)
+    CairoMakie.xlims!(minimum(data) - 0.05, maximum(data) + 0.05)
     hist!(vec(data), color=(:grey, 0.7), bins=50, normalization=:pdf, label="Data")
     hideydecorations!(ax)
     hidespines!(ax, :t, :r, :l)
@@ -134,3 +131,53 @@ begin
     f1
 end
 save(projectdir("visualisation/models/output/gmm-amygdala-rIT.pdf"), f1)
+
+cols = Makie.wong_colors();
+begin
+    f1 = Figure(size=(250, 400), fontsize=15, font = "CMU Serif");
+    node = 71
+    data = alldata[node, :]
+    moments = filter(x -> x.region == dktnames[node], gmm_moments)
+
+    ax = Axis(f1[1, 1], xlabel="SUVR", title="Left Hippocampus", titlesize=15)
+    CairoMakie.xlims!(minimum(data) - 0.05, quantile(mm[node], 0.99) .+ 0.05)
+    hist!(vec(data), color=(:grey, 0.7), bins=40, normalization=:pdf)
+    hideydecorations!(ax)
+    hidexdecorations!(ax, grid=false, ticks=false, ticklabels=false)
+    hidespines!(ax, :t, :r, :l)
+
+    μ = moments.C0_mean[1]
+    Σ = moments.C0_cov[1]
+    plot_density!(μ, Σ, weights[node,1]; color=cols[1], label="Healthy")
+    vlines!(ax, quantile(Normal(μ, sqrt(Σ)), 0.5), linestyle=:dash, linewidth=3, label=L"s_0", color=cols[1])
+
+    μ = moments.C1_mean[1]
+    Σ = moments.C1_cov[1]
+    plot_density!(μ, Σ, weights[node,2]; color=cols[6], label="Pathological")
+    vlines!(ax, quantile(mm[node], 0.99), linestyle=:dash, linewidth=3, label=L"s_\infty", color=cols[6])
+
+    node = 65
+    data = alldata[node, :]
+    moments = filter(x -> x.region == dktnames[node], gmm_moments)
+    
+    ax = Axis(f1[2, 1], xlabel="SUVR", title="Left Inferior Temporal", titlesize=15)
+    CairoMakie.xlims!(minimum(data) - 0.05, quantile(mm[node], 0.99) .+ 0.05)
+    hist!(vec(data), color=(:grey, 0.7), bins=40, normalization=:pdf)
+    hideydecorations!(ax)
+    hidespines!(ax, :t, :r, :l)
+
+    μ = moments.C0_mean[1]
+    Σ = moments.C0_cov[1]
+    plot_density!(μ, Σ, weights[node,1]; color=cols[1], label="Healthy")
+    vlines!(ax, quantile(Normal(μ, sqrt(Σ)), 0.5), linestyle=:dash, linewidth=3, label=L"s_0", color=cols[1])
+
+    μ = moments.C1_mean[1]
+    Σ = moments.C1_cov[1]
+    plot_density!(μ, Σ, weights[node,2]; color=cols[6], label="Pathological")
+    vlines!(ax, quantile(mm[node], 0.99), linestyle=:dash, linewidth=3, label=L"s_\infty", color=cols[6])
+
+    Legend(f1[3, 1], ax, framevisible=false, patchsize=(10, 10), labelsize=20, nbanks=2, rowgap = 0, tellheight=true, tellwidth=false)
+    rowgap!(f1.layout, 1)
+    f1
+end
+save(projectdir("visualisation/models/output/gmm-hc-lIT-vertical.pdf"), f1)
