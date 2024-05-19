@@ -26,7 +26,7 @@ include(projectdir("adni/inference/inference-preamble.jl"))
 #-------------------------------------------------------------------------------
 # Data 
 #-------------------------------------------------------------------------------
-data = ADNIDataset(negdf, dktnames; min_scans=3, qc=false)
+data = ADNIDataset(negdf, dktnames; min_scans=3, qc=true)
 n_subjects = length(data)
 
 subsuvr = calc_suvr.(data)
