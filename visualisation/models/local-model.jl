@@ -21,6 +21,9 @@ dktnames = [dktdict[i] for i in get_node_id.(cortex)]
 
 gmm_moments = CSV.read(projectdir("adni/data/component_moments.csv"), DataFrame)
 
+gmm_weights = CSV.read(projectdir("adni/data/component_weights.csv"), DataFrame)
+dktweights= filter(x -> x.Column1 ∈ dktnames, gmm_weights)
+
 function get_dkt_weights(weights::DataFrame, dktnames)
     _weights = dropmissing(weights)
     w = Vector{Vector{Float64}}()
@@ -149,7 +152,6 @@ begin
     f
 end
 save(projectdir("visualisation/models/output/local-fkpp-small.jpeg"), f)
-
 
 prob = ODEProblem(NetworkExFKPP, p0, (0.0,8.0), [r,a])
 ts = LinRange(0.0, 8., 480)
