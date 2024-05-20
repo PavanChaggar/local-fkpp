@@ -27,9 +27,20 @@ include(projectdir("adni/inference/inference-preamble.jl"))
 # Data 
 #-------------------------------------------------------------------------------
 data = ADNIDataset(negdf, dktnames; min_scans=3, qc=true)
-n_subjects = length(data)
+n_data = length(data)
 
-subsuvr = calc_suvr.(data)
+mtl_cutoff = 1.375
+neo_cutoff = 1.395
+
+mtl_pos = filter(x -> regional_mean(data, mtl, x) >= mtl_cutoff, 1:n_data)
+neo_pos = filter(x -> regional_mean(data, neo, x) >= neo_cutoff, 1:n_data)
+
+tau_pos = findall(x -> x ∈ unique([mtl_pos; neo_pos]), 1:n_data)
+tau_neg = findall(x -> x ∉ tau_pos, 1:n_data)
+
+neg_data = data[tau_neg]
+
+subsuvr = calc_suvr.(neg_data)
 _subdata = [normalise(sd, u0, cc) for sd in subsuvr]
 
 blsd = [sd .- u0 for sd in _subdata]
@@ -39,8 +50,7 @@ subdata = _subdata[nonzerosubs]
 vecsubdata = reduce(vcat, reduce(hcat, subdata))
 
 initial_conditions = [sd[:,1] for sd in subdata]
-_times =  [get_times(data, i) for i in 1:n_subjects]
-times = _times[nonzerosubs]
+times =  [get_times(neg_data, i) for i in nonzerosubs]
 
 n_subjects = length(subdata)
 #-------------------------------------------------------------------------------
@@ -48,7 +58,7 @@ n_subjects = length(subdata)
 #-------------------------------------------------------------------------------
 L = laplacian_matrix(c)
 
-vols = [get_vol(data, i) for i in nonzerosubs]
+vols = [get_vol(neg_data, i) for i in nonzerosubs]
 init_vols = [v[:,1] for v in vols]
 max_norm_vols = reduce(hcat, [v ./ maximum(v) for v in init_vols])
 mean_norm_vols = vec(mean(max_norm_vols, dims=2))
