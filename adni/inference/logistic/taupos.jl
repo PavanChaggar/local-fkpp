@@ -41,13 +41,13 @@ function output_func(sol,i)
     (sol,false)
 end
 
-_subdata = [calc_suvr(data, i) for i in tau_pos]
+_subdata = calc_suvr.(pos_data)
 subdata = [normalise(sd, u0, cc) for sd in _subdata]
 
 vecsubdata = reduce(vcat, reduce(hcat, subdata))
 
 initial_conditions = [sd[:,1] for sd in subdata]
-times =  [get_times(data, i) for i in tau_pos]
+times =  get_times.(pos_data)
 
 prob = ODEProblem(NetworkLogistic, 
                   initial_conditions[1], 
@@ -83,7 +83,6 @@ end
 
     ensemble_sol = solve(ensemble_prob, 
                          Tsit5(), 
-                         EnsembleSerial(),
                          abstol = 1e-9, 
                          reltol = 1e-9, 
                          trajectories=n, 
