@@ -27,7 +27,7 @@ include(projectdir("adni/inference/inference-preamble.jl"))
 #-------------------------------------------------------------------------------
 L = laplacian_matrix(c)
 
-vols = [get_vol(data, i) for i in tau_pos]
+vols = get_vol.(pos_data)
 init_vols = [v[:,1] for v in vols]
 max_norm_vols = reduce(hcat, [v ./ maximum(v) for v in init_vols])
 mean_norm_vols = vec(mean(max_norm_vols, dims=2))
@@ -47,15 +47,13 @@ function output_func(sol,i)
     (sol,false)
 end
 
-subdata = [calc_suvr(data, i) for i in tau_pos]
-for i in 1:n_pos
-    normalise!(subdata[i], u0, cc)
-end
+_subdata = calc_suvr.(pos_data)
+subdata = [normalise(sd, u0, cc) for sd in _subdata]
 
 vecsubdata = reduce(vcat, reduce(hcat, subdata))
 
 initial_conditions = [sd[:,1] for sd in subdata]
-times =  [get_times(data, i) for i in tau_pos]
+times =  get_times.(pos_data)
 max_t = maximum(reduce(vcat, times))
 
 prob = ODEProblem(NetworkDiffusion, 
@@ -65,7 +63,7 @@ prob = ODEProblem(NetworkDiffusion,
                   
 sol = solve(prob, Tsit5())
 
-ensemble_prob = EnsembleProblem(prob, prob_func=make_prob_func(initial_conditions, collect(1:n_pos), times), output_func=output_func)
+ensemble_prob = EnsembleProblem(prob, prob_func=make_prob_func(initial_conditions, ones(n_pos), times), output_func=output_func)
 ensemble_sol = solve(ensemble_prob, Tsit5(), EnsembleSerial(), trajectories=n_pos)
 
 function get_retcodes(es)
@@ -108,7 +106,7 @@ end
     data ~ MvNormal(vecsol, σ^2 * I)
 end
 
-setadbackend(:zygote)
+# setadbackend(:zygote)
 Random.seed!(1234);
 
 m = diffusion(vecsubdata, prob, initial_conditions, times, n_pos);
