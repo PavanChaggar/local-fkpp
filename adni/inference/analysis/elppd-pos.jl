@@ -66,7 +66,7 @@ end
 #-------------------------------------------------------------------------------
 # Connectome + ODEE
 #-------------------------------------------------------------------------------
-local_pst = deserialize(projectdir("adni/new-chains/local-fkpp/length-free/pst-taupos-1x2000-three.jls"));
+local_pst = deserialize(projectdir("adni/new-chains/old/local-fkpp/length-free/pst-taupos-1x2000-three.jls"));
 local_ps = [Array(local_pst[Symbol("ρ[$i]")]) for i in outsample_idx];
 local_as = [Array(local_pst[Symbol("α[$i]")]) for i in outsample_idx];
 
@@ -91,7 +91,7 @@ local_elppd = elppd_local(local_pst, local_ps, local_as, insample_inits, outsamp
 #-------------------------------------------------------------------------------
 # Global FKPP
 #-------------------------------------------------------------------------------
-global_pst = deserialize(projectdir("adni/new-chains/global-fkpp/length-free/pst-taupos-1x2000-three.jls"));
+global_pst = deserialize(projectdir("adni/new-chains/old/global-fkpp/length-free/pst-taupos-1x2000-three.jls"));
 global_ps = [Array(global_pst[Symbol("ρ[$i]")]) for i in outsample_idx];
 global_as = [Array(global_pst[Symbol("α[$i]")]) for i in outsample_idx];
 
@@ -116,7 +116,7 @@ global_elppd = elppd_global(global_pst, global_ps, global_as, max_suvr, insample
 #-------------------------------------------------------------------------------
 # Diffusion
 #-------------------------------------------------------------------------------
-diffusion_pst = deserialize(projectdir("adni/new-chains/diffusion/length-free/pst-taupos-1x2000-three.jls"));
+diffusion_pst = deserialize(projectdir("adni/new-chains/old/diffusion/length-free/pst-taupos-1x2000-three.jls"));
 diffusion_ps = [Array(diffusion_pst[Symbol("ρ[$i]")]) for i in outsample_idx];
 
 function elppd_diffusion(pst, ps, initial_conditions, subdata, out_times)
@@ -139,7 +139,7 @@ diffusion_elppd = elppd_diffusion(diffusion_pst, diffusion_ps, insample_inits, o
 #-------------------------------------------------------------------------------
 # Logistic
 #-------------------------------------------------------------------------------
-logistic_pst = deserialize(projectdir("adni/new-chains/logistic/pst-taupos-1x2000-three.jls"));
+logistic_pst = deserialize(projectdir("adni/new-chains/old/logistic/pst-taupos-1x2000-three.jls"));
 logistic_as = [Array(logistic_pst[Symbol("α[$i]")]) for i in outsample_idx];
 
 function elppd_logistic(pst, as, initial_conditions, subdata, out_times)
@@ -168,8 +168,8 @@ elppd_df = DataFrame("Local" => local_elppd,
                      "Logistic" => logistic_elppd)
 
 local_ll = deserialize(projectdir("adni/new-chains/local-fkpp/length-free/ll-taupos-4x2000.jls"));
-global_ll = deserialize(projectdir("adni/new-chains/global-fkpp/length-free/ll-taupos-4x2000.jls"));
-diffusion_ll = deserialize(projectdir("adni/new-chains/diffusion/length-free/ll-taupos-4x2000.jls"));
+global_ll = deserialize(projectdir("adni/new-chains/old/global-fkpp/length-free/ll-taupos-4x2000.jls"));
+diffusion_ll = deserialize(projectdir("adni/new-chains/old/diffusion/length-free/ll-taupos-4x2000.jls"));
 logistic_ll = deserialize(projectdir("adni/new-chains/logistic/ll-taupos-4x2000.jls"));
 
 nparams = [length(names(MCMCChains.get_sections(pst, :parameters))) for pst in [local_pst, global_pst, diffusion_pst, logistic_pst]]

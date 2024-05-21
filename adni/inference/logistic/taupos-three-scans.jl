@@ -39,7 +39,7 @@ function output_func(sol,i)
     (sol,false)
 end
 
-_subdata = [calc_suvr(data, i) for i in tau_pos]
+_subdata = calc_suvr.(pos_data)
 [normalise!(_subdata[i], u0, cc) for i in 1:n_pos]
 
 subdata = [sd[:, 1:3] for sd in _subdata]
@@ -47,7 +47,7 @@ subdata = [sd[:, 1:3] for sd in _subdata]
 vecsubdata = reduce(vcat, reduce(hcat, subdata))
 
 initial_conditions = [sd[:,1] for sd in subdata]
-_times =  [get_times(data, i) for i in tau_pos]
+_times =  get_times.(pos_data)
 times = [t[1:3] for t in _times]
 maxt = maximum(reduce(vcat, times))
 
@@ -85,7 +85,6 @@ end
 
     ensemble_sol = solve(ensemble_prob, 
                          Tsit5(), 
-                         EnsembleSerial(),
                          abstol = 1e-9, 
                          reltol = 1e-9, 
                          trajectories=n, 

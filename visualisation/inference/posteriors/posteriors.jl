@@ -12,7 +12,7 @@ using Turing
 #-------------------------------------------------------------------------------
 pst = deserialize(projectdir("adni/new-chains/local-fkpp/length-free/pst-taupos-4x2000.jls"));
 pst2 = deserialize(projectdir("adni/new-chains/local-fkpp/length-free/pst-tauneg-4x2000.jls"));
-pst3 = deserialize(projectdir("adni/new-chains/local-fkpp/length-free/pst-abneg-4x2000.jls"));
+pst3 = deserialize(projectdir("adni/new-chains/old/local-fkpp/length-free/pst-abneg-4x2000.jls"));
 
 [p[:numerical_error] |> sum for p in [pst, pst2, pst3]]
 
