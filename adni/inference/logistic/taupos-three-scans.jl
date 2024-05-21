@@ -115,7 +115,7 @@ pst = sample(m,
              n_samples, 
              n_chains,
              progress=true)
-serialize(projectdir("adni/chains/logistic/pst-taupos-$(n_chains)x$(n_samples)-three.jls"), pst)
+serialize(projectdir("adni/new-chains/logistic/pst-taupos-$(n_chains)x$(n_samples)-three.jls"), pst)
 
 # calc log likelihood 
 # pst = deserialize(projectdir("adni/new-chains/logistic/pst-taupos-$(n_chains)x$(n_samples)-three.jls"));
