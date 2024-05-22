@@ -27,7 +27,7 @@ include(projectdir("adni/inference/inference-preamble.jl"))
 #-------------------------------------------------------------------------------
 L = laplacian_matrix(c)
 
-vols = [get_vol(data, i) for i in tau_pos]
+vols = get_vol.(pos_data)
 init_vols = [v[:,1] for v in vols]
 max_norm_vols = reduce(hcat, [v ./ maximum(v) for v in init_vols])
 mean_norm_vols = vec(mean(max_norm_vols, dims=2))
@@ -47,7 +47,7 @@ function output_func(sol,i)
     (sol,false)
 end
 
-_subdata = [calc_suvr(data, i) for i in tau_pos]
+_subdata = calc_suvr.(pos_data)
 [normalise!(_subdata[i], u0, cc) for i in 1:n_pos]
 subdata = [sd[:, 1:3] for sd in _subdata]
 
@@ -55,7 +55,7 @@ vecsubdata = reduce(vcat, reduce(hcat, subdata))
 
 initial_conditions = [sd[:,1] for sd in subdata]
 
-_times =  [get_times(data, i) for i in tau_pos]
+_times =  get_times.(pos_data)
 times = [t[1:3] for t in _times]
 max_t = maximum(reduce(vcat, times))
 

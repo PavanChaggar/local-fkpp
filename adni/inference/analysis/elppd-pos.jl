@@ -16,7 +16,7 @@ include(projectdir("adni/inference/inference-preamble.jl"))
 #-------------------------------------------------------------------------------
 # Pos data 
 #-------------------------------------------------------------------------------
-_subdata = [calc_suvr(data, i) for i in tau_pos]
+_subdata = calc_suvr.(pos_data)
 [normalise!(_subdata[i], u0, cc) for i in 1:n_pos]
 
 outsample_idx = findall(x -> size(x, 2) > 3, _subdata)
@@ -31,7 +31,7 @@ outsample_subdata = [sd[:, 4:end] for sd in four_subdata]
 
 max_suvr = maximum(reduce(vcat, reduce(hcat, insample_subdata)))
 
-_times =  [get_times(data, i) for i in tau_pos]
+_times =  get_times.(pos_data)
 times = _times[outsample_idx]
 insample_times = [t[1:3] for t in _times]
 
@@ -41,7 +41,7 @@ outsample_times = [t[4:end] for t in _times[outsample_idx]]
 #-------------------------------------------------------------------------------
 L = laplacian_matrix(c)
 
-vols = [get_vol(data, i) for i in tau_pos]
+vols = get_vol.(pos_data)
 init_vols = [v[:,1] for v in vols]
 max_norm_vols = reduce(hcat, [v ./ maximum(v) for v in init_vols])
 mean_norm_vols = vec(mean(max_norm_vols, dims=2))
@@ -66,7 +66,7 @@ end
 #-------------------------------------------------------------------------------
 # Connectome + ODEE
 #-------------------------------------------------------------------------------
-local_pst = deserialize(projectdir("adni/new-chains/old/local-fkpp/length-free/pst-taupos-1x2000-three.jls"));
+local_pst = deserialize(projectdir("adni/new-chains/local-fkpp/length-free/pst-taupos-1x2000-three.jls"));
 local_ps = [Array(local_pst[Symbol("ρ[$i]")]) for i in outsample_idx];
 local_as = [Array(local_pst[Symbol("α[$i]")]) for i in outsample_idx];
 
@@ -139,7 +139,7 @@ diffusion_elppd = elppd_diffusion(diffusion_pst, diffusion_ps, insample_inits, o
 #-------------------------------------------------------------------------------
 # Logistic
 #-------------------------------------------------------------------------------
-logistic_pst = deserialize(projectdir("adni/new-chains/old/logistic/pst-taupos-1x2000-three.jls"));
+logistic_pst = deserialize(projectdir("adni/new-chains/logistic/pst-taupos-1x2000-three.jls"));
 logistic_as = [Array(logistic_pst[Symbol("α[$i]")]) for i in outsample_idx];
 
 function elppd_logistic(pst, as, initial_conditions, subdata, out_times)
