@@ -48,13 +48,6 @@ n_neg = length(neg_data)
 
 # Regional parameters
 gmm_moments = CSV.read(projectdir("adni/data/component_moments.csv"), DataFrame)
-
-gmm_weights = CSV.read(projectdir("adni/data/component_weights.csv"), DataFrame)
-dktweights= filter(x -> x.Column1 ∈ dktnames, gmm_weights)
-
-weights = get_dkt_weights(dktweights, dktnames)
-
 ubase, upath = get_dkt_moments(gmm_moments, dktnames)
-mm = [MixtureModel([u0, ui], w) for (u0, ui, w) in zip(ubase, upath, weights)]
 u0 = mean.(ubase)
-cc = quantile.(mm, .99)
+cc = quantile.(upath, .99)
