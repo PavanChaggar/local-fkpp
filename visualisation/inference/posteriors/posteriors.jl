@@ -7,6 +7,9 @@ using Serialization
 using DelimitedFiles
 using MCMCChains
 using Turing
+using CairoMakie; CairoMakie.activate!()
+using Colors
+using HypothesisTests
 #-------------------------------------------------------------------------------
 # Hierarchical Distributions -- ADNI
 #-------------------------------------------------------------------------------
@@ -16,8 +19,21 @@ pst3 = deserialize(projectdir("adni/new-chains/local-fkpp/length-free/pst-abneg-
 
 [p[:numerical_error] |> sum for p in [pst, pst2, pst3]]
 
-using CairoMakie; CairoMakie.activate!()
-using Colors
+function param_test(p1, p2)
+        t = ApproximateTwoSampleKSTest(vec(p1), vec(p2))
+        if pvalue(t) < 0.01
+                return true
+        else
+                return false
+        end
+end 
+
+for p in [:Am, :Pm]
+        param_test(pst[p], pst2[p]) |> println
+        param_test(pst[p], pst3[p]) |> println
+        param_test(pst2[p], pst3[p]) |> println
+end
+
 begin
         n_samples = 8000
         f = Figure(size=(2000, 2000), fontsize=50, font=:bold)
@@ -153,7 +169,8 @@ begin
                                                 color = colors[2])
         rainclouds!(ax, 3.5 .* ones(n_samples), a1; orientation = :horizontal, gap=0.0, plot_boxplots = true, 
                                                 cloud_width=0.5, clouds=hist, hist_bins=25,
-                                                color = colors[3])                                         
+                                                color = colors[3])
+
         bracket!(ax, median(a1), 1.25, median(a2), 1.25, text = "*", orientation = :down, textoffset = 20, linewidth = 2, color=(:grey, 0.75))
         bracket!(ax, median(a2), 1.25, median(a3), 1.25, text = "*", orientation = :down, textoffset = 20, linewidth = 2, color=(:grey, 0.75))
         bracket!(ax, median(a3), 1.05, median(a1), 1.05, text = "*", orientation = :down, textoffset = 20, linewidth = 2, color=(:grey, 0.75))
@@ -198,6 +215,13 @@ pst2 = deserialize(projectdir("biofinder/chains/local-fkpp/pst-tauneg-4x1000-vc.
 pst3 = deserialize(projectdir("biofinder/chains/local-fkpp/pst-abneg-4x1000-vc.jls"));
 
 [p[:numerical_error] |> sum for p in [pst, pst2, pst3]]
+
+for p in [:Am, :Pm]
+        param_test(pst[p], pst2[p]) |> println
+        param_test(pst[p], pst3[p]) |> println
+        param_test(pst2[p], pst3[p]) |> println
+end
+
 
 using CairoMakie
 
@@ -373,7 +397,7 @@ begin
 
         colgap!(f.layout, 1, 50)
         f
-end 
+end
 save(projectdir("visualisation/inference/posteriors/output/bf-posteriors-with-sig.pdf"), f)
 
 begin
@@ -558,3 +582,83 @@ save(projectdir("visualisation/inference/posteriors/output/adni-neg-shuffled-wit
 #         axislegend()
 #         f
 # end     
+
+#-------------------------------------------------------------------------------
+# Hierarchical Distributions -- Schaefer
+#-------------------------------------------------------------------------------
+
+pst = deserialize(projectdir("biofinder/schaefer/pst-taupos-1x2000.jls"));
+pst2 = deserialize(projectdir("biofinder/schaefer/pst-tauneg-1x2000.jls"));
+pst3 = deserialize(projectdir("biofinder/schaefer/pst-abneg-1x2000.jls"));
+
+for p in [:Am, :Pm]
+        param_test(pst[p], pst2[p]) |> println
+        param_test(pst[p], pst3[p]) |> println
+        param_test(pst2[p], pst3[p]) |> println
+end
+
+begin
+        n_samples = 2000
+        f = Figure(size=(2000, 750), fontsize=50)
+        g1 = f[1, 1] = GridLayout()
+        g2 = f[1, 2] = GridLayout()
+
+        colors = alphacolor.(Makie.wong_colors(), 0.75)
+
+        a3, a2, a1 = vec(pst3[:Am]), vec(pst2[:Am]), vec(pst[:Am])
+        ax = Axis(g1[1,1], 
+                xticklabelsize=30, xlabelsize=30, xlabel="1 / yr", 
+                yticklabelsize=40, ylabelsize=30, ylabel="Density", yticks=(1.5:1:3.5, [L"A^-", L"A^+T^-", L"A^+T^+"]),
+                titlesize=40, title="Production", xticks=-0.2:0.1:0.2, 
+                xminorticks=-0.2:0.05:0.2, xminorticksvisible=true, 
+                xticksize=20, xminorticksize=15, xgridcolor=RGBAf(0, 0, 0, 0.25))
+        CairoMakie.xlims!(ax, -0.225, 0.225)
+        CairoMakie.ylims!(ax, 0.75, 4)
+        hideydecorations!(ax, label=false, ticklabels=false)
+        hidexdecorations!(ax, grid=false, minorticks=false, label=false, ticks=false, ticklabels=false)
+        hidespines!(ax, :t, :r, :l)
+
+        rainclouds!(ax, 1.5 .* ones(n_samples), a3; orientation = :horizontal, gap=0.0, plot_boxplots = true, 
+                                                cloud_width=0.5, clouds=hist, hist_bins=25,
+                                                 color = colors[1])
+        rainclouds!(ax, 2.5 .* ones(n_samples), a2; orientation = :horizontal, gap=0.0, plot_boxplots = true, 
+                                                cloud_width=0.5, clouds=hist, hist_bins=50,
+                                                color = colors[2])
+        rainclouds!(ax, 3.5 .* ones(n_samples), a1; orientation = :horizontal, gap=0.0, plot_boxplots = true, 
+                                                cloud_width=0.5, clouds=hist, hist_bins=25,
+                                                color = colors[3])                                         
+        bracket!(ax, median(a1), 1.25, median(a2), 1.25, text = "*", orientation = :down, textoffset = 20, linewidth = 2, color=(:grey, 0.75))
+        bracket!(ax, median(a2), 1.05, median(a3), 1.05, text = "*", orientation = :down, textoffset = 20, linewidth = 2, color=(:grey, 0.75))
+        bracket!(ax, median(a3), 1.05, median(a1), 1.05, text = "*", orientation = :down, textoffset = 20, linewidth = 2, color=(:grey, 0.75))
+
+        p3, p2, p1 = vec(pst3[:Pm]), vec(pst2[:Pm]), vec(pst[:Pm])
+
+        ax = Axis(g2[1,1], 
+                xticklabelsize=30, xlabelsize=30, xlabel="1 / yr", yticks=(1.5:1:3.5, [L"A^-", L"A^+T^-", L"A^+T^+"]),
+                yticklabelsize=40,
+                titlesize=40, title="Transport", xticks=0.0:0.025:0.075,
+                xminorticks=0.0:0.0125:1, xminorticksvisible=true, 
+                xticksize=20, xminorticksize=15, xgridcolor=RGBAf(0, 0, 0, 0.25))
+        CairoMakie.xlims!(ax, -0.005, 0.085)
+        CairoMakie.ylims!(ax, 0.75, 4)
+        hideydecorations!(ax)
+        hidexdecorations!(ax, grid=false, minorticks=false, label=false, ticks=false, ticklabels=false)
+        hidespines!(ax, :t, :r, :l)
+
+
+        rainclouds!(ax, 1.5 .* ones(n_samples), p3; orientation = :horizontal, gap=0.0, plot_boxplots = true, 
+                                                cloud_width=0.5, clouds=hist, hist_bins=25,
+                                                color = colors[1])
+        rainclouds!(ax, 2.5 .* ones(n_samples), p2; orientation = :horizontal, gap=0.0, plot_boxplots = true, 
+                                                cloud_width=0.5, clouds=hist, hist_bins=50,
+                                                color = colors[2])
+        rainclouds!(ax, 3.5 .* ones(n_samples), p1; orientation = :horizontal, gap=0.0, plot_boxplots = true, 
+                                         cloud_width=0.5, clouds=hist, hist_bins=25,
+                                         color = colors[3])                                         
+        bracket!(ax, median(p1), 1.25, median(p2), 1.25, text = "*", orientation = :down, textoffset = 20, linewidth = 2, color=(:grey, 0.75))
+        bracket!(ax, median(p2), 1.05, median(p3), 1.05, text = "*", orientation = :down, textoffset = 20, linewidth = 2, color=(:grey, 0.75))
+        bracket!(ax, median(p3), 1.05, median(p1), 1.05, text = "*", orientation = :down, textoffset = 20, linewidth = 2, color=(:grey, 0.5))
+        colgap!(f.layout, 1, 50)
+        f
+end
+save(projectdir("visualisation/inference/posteriors/output/bf2-schaefer-with-sig.pdf"), f)

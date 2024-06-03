@@ -7,6 +7,7 @@ using Distributions
 using Serialization, MCMCChains
 using DelimitedFiles, LinearAlgebra
 using Random
+using Turing
 using LinearAlgebra, SparseArrays
 include(projectdir("functions.jl"))
 #-------------------------------------------------------------------------------
@@ -168,8 +169,8 @@ elppd_df = DataFrame("Local" => local_elppd,
                      "Logistic" => logistic_elppd)
 
 local_ll = deserialize(projectdir("adni/new-chains/local-fkpp/length-free/ll-taupos-4x2000.jls"));
-global_ll = deserialize(projectdir("adni/new-chains/old/global-fkpp/length-free/ll-taupos-4x2000.jls"));
-diffusion_ll = deserialize(projectdir("adni/new-chains/old/diffusion/length-free/ll-taupos-4x2000.jls"));
+global_ll = deserialize(projectdir("adni/new-chains/global-fkpp/length-free/ll-taupos-4x2000.jls"));
+diffusion_ll = deserialize(projectdir("adni/new-chains/diffusion/length-free/ll-taupos-4x2000.jls"));
 logistic_ll = deserialize(projectdir("adni/new-chains/logistic/ll-taupos-4x2000.jls"));
 
 nparams = [length(names(MCMCChains.get_sections(pst, :parameters))) for pst in [local_pst, global_pst, diffusion_pst, logistic_pst]]
@@ -177,4 +178,4 @@ nparams = [length(names(MCMCChains.get_sections(pst, :parameters))) for pst in [
 max_lls= [maximum(dict["data"]) for dict in [local_ll, global_ll, diffusion_ll, logistic_ll]]
 bic = [(n * log(13536) - (2 * maximum(dict["data"]))) for (dict, n) in zip([local_ll, global_ll, diffusion_ll, logistic_ll], nparams)]
 
-ll_df = DataFrame(zip(["Local", "Global", "Diffusion", "Logistic"], max_lls))
+bic_df = DataFrame(zip(["Local", "Global", "Diffusion", "Logistic"], bic))

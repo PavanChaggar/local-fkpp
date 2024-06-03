@@ -12,11 +12,13 @@ cortex = filter(x -> x.Lobe != "subcortex", parc);
 dktdict = Connectomes.node2FS()
 dktnames = [dktdict[i] for i in get_node_id.(cortex)]
 
+amyloid_data =  CSV.read(projectdir("adni/data/new_new_data/UCBERKELEY_AMY_6MM_18Dec2023.csv"), DataFrame)
+
 sub_data_path = projectdir("adni/data/new_new_data/UCBERKELEY_TAU_6MM_18Dec2023_AB_STATUS.csv")
 alldf = CSV.read(sub_data_path, DataFrame)
 posdf = filter(x -> x.AB_Status == 1, alldf)
 
-data = ADNIDataset(posdf, dktnames; min_scans=3)
+data = ADNIDataset(posdf, dktnames; min_scans=3, qc=true)
 
 demo = CSV.read(projectdir("adni/data/new_new_data/demographics.csv"), DataFrame)
 diagnostics = CSV.read(projectdir("adni/data/new_new_data/ADNIMERGE_15Jan2024.csv"), DataFrame);
@@ -43,17 +45,17 @@ end
 mtl_cutoff = 1.375
 neo_cutoff = 1.395
 
-mtl_pos = filter(x -> regional_mean(data, mtl, x) >= mtl_cutoff, 1:97)
-neo_pos = filter(x -> regional_mean(data, neo, x) >= neo_cutoff, 1:97)
+mtl_pos = filter(x -> regional_mean(data, mtl, x) >= mtl_cutoff, 1:96)
+neo_pos = filter(x -> regional_mean(data, neo, x) >= neo_cutoff, 1:96)
 
-tau_pos = findall(x -> x ∈ unique([mtl_pos; neo_pos]), 1:97)
-tau_neg = findall(x -> x ∉ tau_pos, 1:97)
+tau_pos = findall(x -> x ∈ unique([mtl_pos; neo_pos]), 1:96)
+tau_neg = findall(x -> x ∉ tau_pos, 1:96)
 
 tauposdf = dmdf[tau_pos, :]
 taunegdf = dmdf[tau_neg, :]
 
 # Dataframe 
-df = DataFrame(Group=String[], Age=Float64[], Gender=Float64[], Education=Float64[], CN = Float64[], MCI = Float64[], AD = Float64[])
+df = DataFrame(Group=String[], Age=Float64[], Gender=Float64[], Education=Float64[], CN = Float64[], MCI = Float64[], AD = Float64[], Centiloids = Float64[])
 #-------------------------------------------------------------------------------
 # Tau Pos
 posdf3 = filter(x -> x.RID ∈ IDs, posdf)
@@ -71,8 +73,14 @@ age = mean(year.([data.SubjectData[i].scan_dates[1] for i in tau_pos]) .- (taupo
 Gender = count(==(2), tauposdf.PTGENDER) ./ length(tauposdf.PTGENDER)
 Education = mean(tauposdf.PTEDUCAT)
 
+# amylloid status
+amy_pos = filter(x -> x.RID ∈ get_id.(data[tau_pos]), amyloid_data)
+amy_pos_init_idx = [findfirst(isequal(id), amy_pos.RID) for id in get_id.(data[tau_pos])]
+
+pos_centiloids = mean(amy_pos[amy_pos_init_idx, :].CENTILOIDS)
+
 push!(df, (Group, age, Gender, Education, 
-          sum(percent_pdx_taupos[1:2]), sum(percent_pdx_taupos[3:4]), percent_pdx_taupos[5]))
+          sum(percent_pdx_taupos[1:2]), sum(percent_pdx_taupos[3:4]), percent_pdx_taupos[5], pos_centiloids))
 #-------------------------------------------------------------------------------
 # Tau neg
 posdfinit_tauneg = posdfinit[tau_neg,:]
@@ -86,14 +94,21 @@ Group = "tau -"
 age = mean(year.([data.SubjectData[i].scan_dates[1] for i in tau_neg]) .- (taunegdf.PTDOBYY))
 Gender = count(==(2), taunegdf.PTGENDER) ./ length(taunegdf.PTGENDER)
 Education = mean(taunegdf.PTEDUCAT)
-push!(df, (Group, age, Gender, Education, sum(percent_pdx_tauneg[1:2]), sum(percent_pdx_tauneg[3:4]), percent_pdx_tauneg[5]))
+
+# amyloid status
+amy_neg = filter(x -> x.RID ∈ get_id.(data[tau_neg]), amyloid_data)
+amy_neg_init_idx = [findfirst(isequal(id), amy_neg.RID) for id in get_id.(data[tau_neg])]
+
+neg_centiloids = mean(amy_neg[amy_neg_init_idx, :].CENTILOIDS)
+
+push!(df, (Group, age, Gender, Education, sum(percent_pdx_tauneg[1:2]), sum(percent_pdx_tauneg[3:4]), percent_pdx_tauneg[5], neg_centiloids))
 
 #-------------------------------------------------------------------------------
 # AB neg 
 #-------------------------------------------------------------------------------
 negdf = filter(x -> x.AB_Status == 0, alldf)
 
-negdata = ADNIDataset(negdf, dktnames; min_scans=3)
+negdata = ADNIDataset(negdf, dktnames; min_scans=3, qc=true)
 negIDs = get_id(negdata)
 
 _dmdfneg = reduce(vcat, [filter(x -> x.RID == id, demo) for id in negIDs])
@@ -102,7 +117,7 @@ idxneg = [findfirst(isequal(id), _dmdfneg.RID) for id in negIDs]
 dmdfneg = _dmdfneg[idxneg,:]
 
 Group = "Ab -"
-age = mean(year.([negdata.SubjectData[i].scan_dates[1] for i in 1:65]) .- (dmdfneg.PTDOBYY))
+age = mean(year.([negdata.SubjectData[i].scan_dates[1] for i in 1:66]) .- (dmdfneg.PTDOBYY))
 Gender = count(==(2), dmdfneg.PTGENDER) ./ length(dmdfneg.PTGENDER)
 Education = mean(dmdfneg.PTEDUCAT)
 
@@ -115,7 +130,12 @@ ab_diag_df = diagnostics[ab_diag_idx, :]
 pdx_ab = [count(==(pdx), ab_diag_df.DX_bl) for pdx in ["CN",  "SMC", "EMCI", "LMCI", "AD"]]
 percent_pdx_ab = pdx_ab ./ 65
 
-push!(df, (Group, age, Gender, Education, sum(percent_pdx_ab[1:2]), sum(percent_pdx_ab[3:4]), percent_pdx_ab[5]))
+amy_neg = filter(x -> x.RID ∈ negIDs, amyloid_data)
+amy_neg_init_idx = [findfirst(isequal(id), amy_neg.RID) for id in negIDs]
+
+neg_centiloids = mean(amy_neg[amy_neg_init_idx, :].CENTILOIDS)
+
+push!(df, (Group, age, Gender, Education, sum(percent_pdx_ab[1:2]), sum(percent_pdx_ab[3:4]), percent_pdx_ab[5], neg_centiloids))
 
 using PrettyTables
 formatter = (v, i, j) -> round(v, digits = 3);
