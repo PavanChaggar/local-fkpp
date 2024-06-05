@@ -6,40 +6,15 @@ using DrWatson
 using CSV, DataFrames
 using Distributions
 include(projectdir("functions.jl"))
+include(projectdir("adni/inference/inference-preamble.jl"))
 GLMakie.activate!()
 
-c = Connectomes.connectome_path() |> Connectome
-
-cortex = filter(x -> x.Lobe != "subcortex", c.parc)
 right_cortex = filter(x -> x.Hemisphere == "right", cortex)
 right_nodes = get_node_id.(right_cortex)
 
-dktdict = Connectomes.node2FS()
-dktnames = [dktdict[i] for i in get_node_id.(cortex)]
-gmm_moments = CSV.read(projectdir("adni/data/component_moments.csv"), DataFrame)
-norm, path = get_dkt_moments(gmm_moments, dktnames)
-
-gmm_weights = CSV.read(projectdir("adni/data/component_weights.csv"), DataFrame)
-dktweights= filter(x -> x.Column1 ∈ dktnames, gmm_weights)
-
-function get_dkt_weights(weights::DataFrame, dktnames)
-    _weights = dropmissing(weights)
-    w = Vector{Vector{Float64}}()
-    for (i, name) in enumerate(dktnames)
-        _df = filter(x -> x.Column1 == name, _weights)
-        _w = [_df.Comp_0[1], _df.Comp_1[1]]
-        @assert _w[1] > _w[2]
-        push!(w, _w)
-    end
-    w
-end
-
-weights = get_dkt_weights(dktweights, dktnames)
-
 ubase, upath = get_dkt_moments(gmm_moments, dktnames)
-mm = [MixtureModel([u0, ui], [w...]) for (u0, ui, w) in zip(ubase, upath, weights)]
 u0 = mean.(ubase)
-cc = quantile.(mm, .99)
+cc = quantile.(upath, .99)
 
 describe(u0)
 std(u0)
@@ -75,7 +50,7 @@ begin
 
     Colorbar(f[3, 1], limits = (0.98, maximum(cc)), colormap = cmap,
     vertical = false, label = "SUVR", labelsize=25, flipaxis=false,
-    ticksize=10, ticklabelsize=15, labelpadding=3, ticks=[0.98, 3.4])
+    ticksize=10, ticklabelsize=15, labelpadding=3, ticks=[0.98, 3.81])
     f
 end
 save(projectdir("visualisation/models/output/carrying-capacities-mm-vertical.jpeg"), f)
