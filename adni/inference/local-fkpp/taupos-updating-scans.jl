@@ -104,29 +104,42 @@ end
 Random.seed!(1234)
 
 for updates in 1:3
-    updating_subdata = [sd[:, updates] for sd in _updating_subdata]
+    if updates == 1
+        vecsubdata = reduce(vcat, reduce(hcat, fixed_subdata))
 
-    vecsubdata = [reduce(vcat, reduce(hcat, fixed_subdata)); reduce(vcat, reduce(hcat, updating_subdata))]
+        initial_conditions = [sd[:,1] for sd in fixed_subdata]
 
-    initial_conditions = [[sd[:,1] for sd in fixed_subdata]; [sd[:,1] for sd in updating_subdata]]
+        times = get_times.(fixed_data)
 
-    fixed_times = get_times.(fixed_data)
-    updating_times = [t[1:updates] for t in get_times.(updating_data)]
+        maxt = maximum(reduce(vcat, times))
 
-    times = [fixed_times; updating_times]
+        prob = ODEProblem(NetworkLocalFKPP, 
+                        initial_conditions[1], 
+                        (0.,maxt), 
+                        [1.0,1.0])
+        n_pos = length(times)
+    else
+        updating_subdata = [sd[:, 1:updates] for sd in _updating_subdata]
 
-    maxt = maximum(reduce(vcat, times))
+        vecsubdata = [reduce(vcat, reduce(hcat, fixed_subdata)); reduce(vcat, reduce(hcat, updating_subdata))]
 
-    prob = ODEProblem(NetworkLocalFKPP, 
-                    initial_conditions[1], 
-                    (0.,maxt), 
-                    [1.0,1.0])
-                    
-    sol = solve(prob, Tsit5())
+        initial_conditions = [[sd[:,1] for sd in fixed_subdata]; [sd[:,1] for sd in updating_subdata]]
 
-    ensemble_prob = EnsembleProblem(prob, prob_func=make_prob_func(initial_conditions, ones(n_pos), ones(n_pos), times), output_func=output_func)
-    ensemble_sol = solve(ensemble_prob, Tsit5(), trajectories=n_pos)
+        fixed_times = get_times.(fixed_data)
+        updating_times = [t[1:updates] for t in get_times.(updating_data)]
 
+        times = [fixed_times; updating_times]
+
+        maxt = maximum(reduce(vcat, times))
+
+        prob = ODEProblem(NetworkLocalFKPP, 
+                        initial_conditions[1], 
+                        (0.,maxt), 
+                        [1.0,1.0])
+        n_pos = length(times)
+    end
+    println(updates)
+    println(length(times))
     m = localfkpp(vecsubdata, prob, initial_conditions, times, n_pos);
     m();
 

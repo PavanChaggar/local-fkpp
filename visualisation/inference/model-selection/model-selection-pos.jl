@@ -358,11 +358,11 @@ begin
         for (scan, col) in zip(2:3, alphacolor.(cols, [1.0,0.5,0.5]))
             diffs = getdiff(obs, scan)
             soldiff = getdiff(preds, scan)
-            scatter!(diffs, soldiff, color=col, markersize=15, marker='●', label="Scan $(scan)")
+            scatter!(diffs, soldiff, color=col, markersize=20, marker='●', label="Scan $(scan)")
         end
         fdiff = getdiff(fobs, 4)
         fsoldiff = getdiff(fpreds, 4)
-        scatter!(fdiff, fsoldiff, color=(cols[3], 0.3), markersize=20, marker='●', label="Scan 4")
+        scatter!(fdiff, fsoldiff, color=(cols[3], 0.5), markersize=20, marker='●', label="Scan 4")
 
         Legend(gl[1, 1],
                 [MarkerElement(color = col, marker= '●', markersize=30) for col in cols],
@@ -383,6 +383,7 @@ function get_sol_t_end(sols)
 end
 
 begin 
+    CairoMakie.activate!()
     col = ColorSchemes.seaborn_colorblind[1]
     titlesize = 40
     xlabelsize = 25 
@@ -449,46 +450,220 @@ begin
 end
 save(projectdir("visualisation/inference/model-selection/output/model-fits-roi-average-final-scan.pdf"), f)
 
+begin 
+    CairoMakie.activate!()
+    _titles = ["Local FKPP", "Logistic"]
+
+    col = ColorSchemes.seaborn_colorblind[1]
+    titlesize = 25
+    xlabelsize = 25 
+    ylabelsize = 25
+    xticklabelsize = 20 
+    yticklabelsize = 20
+    f = Figure(resolution=(500, 600), fontsize=40);
+    g = [f[i, 1] = GridLayout() for i in 1:2]
+    for (i, _sol) in enumerate([local_sols, logistic_sols])
+        start = 0.0
+        stop = 0.2
+        border = 0.03
+        ax = Axis(g[i][1,1], 
+                xlabel="Δ SUVR",
+                ylabel="Δ Prediction",
+                titlesize=titlesize, xlabelsize=xlabelsize, ylabelsize=ylabelsize, 
+                xticklabelsize=xticklabelsize, yticklabelsize=xticklabelsize, xticksize=15, yticksize=15,
+                xticks=start:0.05:stop, yticks=start:0.05:stop, 
+                xminorticks=start:0.025:stop, xminorticksvisible=true, xminorgridvisible=true,
+                xminorgridcolor=RGBAf(0, 0, 0, 0.15), xgridcolor=RGBAf(0, 0, 0, 0.15),
+                yminorticks=start:0.025:stop, yminorticksvisible=true, yminorgridvisible=true,
+                yminorgridcolor=RGBAf(0, 0, 0, 0.15), ygridcolor=RGBAf(0, 0, 0, 0.15),
+                xtickformat = "{:.2f}", ytickformat = "{:.2f}")
+        if i == 1
+            hidexdecorations!(ax, minorgrid=false, minorticks=false, ticks=false, grid=false)
+        end
+        xlims!(ax, start, stop + border)
+        ylims!(ax, start, stop + border)
+        lines!(start:0.01:stop+border, start:0.01:stop+border, color=(:grey, 0.75), linewidth=5, linestyle=:dash)
+
+        final_diffs = mean(getdiff.(insample_pos_data))
+        final_soldiffs =  mean(getdiff.(_sol))
+        scatter!(final_diffs, final_soldiffs, color=(col, 0.5), markersize=15, marker='●')
+    end
+    Label(f[1, 0], "Local FKPP", rotation=pi/2, tellheight=false, fontsize=30, font=:bold)
+    Label(f[2, 0], "Logistic", rotation=pi/2, tellheight=false, fontsize=30, font=:bold)
+    f
+end
+save(projectdir("visualisation/inference/model-selection/output/regional_mean_error_final.pdf"), f)
 #-------------------------------------------------------------------------------
 # Error visualisation
 #-------------------------------------------------------------------------------
 using ColorSchemes, GLMakie; GLMakie.activate!()
 cmap = reverse(ColorSchemes.RdBu);
+local_meanerror = vec(mean(get_sol_t_end(local_sols) .- get_sol_t_end(insample_pos_data), dims=2))
+logistic_meanerror = vec(mean(get_sol_t_end(logistic_sols) .- get_sol_t_end(insample_pos_data), dims=2))
 
-meandata = mean(get_sol_t_end(insample_pos_data), dims=2) |> vec
-
-local_meansol = mean(get_sol_t_end(local_sols), dims=2) |> vec
-logistic_meansol = mean(get_sol_t_end(logistic_sols), dims=2) |> vec
-
-local_meanerror = meandata .- local_meansol
-logistic_meanerror = meandata .- logistic_meansol
-
-local_scaled_meanerror = ((local_meanerror ./ maximum(abs.(logistic_meanerror))) .+ 1) ./ 2
-logistic_scaled_meanerror = ((logistic_meanerror ./ maximum(abs.(logistic_meanerror))) .+ 1) ./ 2
 right_cortex = filter(x -> get_hemisphere(x) == "right", cortex)
-
+left_cortex = filter(x -> get_hemisphere(x) == "left", cortex)
+lims = maximum(abs.([local_meanerror; logistic_meanerror]))
 begin
-    f = Figure(resolution=(1600, 500))
-    ax = Axis3(f[1,1], aspect = :data, azimuth = 0.0pi, elevation=0.0pi)
-    hidedecorations!(ax)
-    hidespines!(ax)
-    plot_roi!(get_node_id.(right_cortex), logistic_scaled_meanerror, cmap)
+    GLMakie.activate!()
+    f = Figure(resolution=(1000, 300))
+    titlesize = 25
+    xlabelsize = 25 
+    ylabelsize = 25
+    xticklabelsize = 20 
+    yticklabelsize = 20
+    # for (i, _sol) in enumerate([local_sols, logistic_sols])
+    #     start = 0.0
+    #     stop = 0.2
+    #     border = 0.03
+    #     ax = Axis(f[i,1], 
+    #             xlabel="Δ SUVR",
+    #             ylabel="Δ Prediction",
+    #             titlesize=titlesize, xlabelsize=xlabelsize, ylabelsize=ylabelsize, 
+    #             xticklabelsize=xticklabelsize, yticklabelsize=xticklabelsize, xticksize=15, yticksize=15,
+    #             xticks=start:0.05:stop, yticks=start:0.05:stop, 
+    #             xminorticks=start:0.025:stop, xminorticksvisible=true, xminorgridvisible=true,
+    #             xminorgridcolor=RGBAf(0, 0, 0, 0.15), xgridcolor=RGBAf(0, 0, 0, 0.15),
+    #             yminorticks=start:0.025:stop, yminorticksvisible=true, yminorgridvisible=true,
+    #             yminorgridcolor=RGBAf(0, 0, 0, 0.15), ygridcolor=RGBAf(0, 0, 0, 0.15),
+    #             xtickformat = "{:.2f}", ytickformat = "{:.2f}")
+    #     if i == 1
+    #         hidexdecorations!(ax, minorgrid=false, minorticks=false, ticks=false, grid=false)
+    #     end
+    #     xlims!(ax, start, stop + border)
+    #     ylims!(ax, start, stop + border)
+    #     lines!(start:0.01:stop+border, start:0.01:stop+border, color=(:grey, 0.75), linewidth=5, linestyle=:dash)
 
-    ax = Axis3(f[1,2], aspect = :data, azimuth = 1.0pi, elevation=0.0pi)
+    #     final_diffs = mean(getdiff.(insample_pos_data))
+    #     final_soldiffs =  mean(getdiff.(_sol))
+    #     scatter!(final_diffs, final_soldiffs, color=(col, 0.5), markersize=20, marker='●')
+    # end
+    Label(f[1, 0], "Local FKPP", rotation=pi/2, tellheight=false, fontsize=20, font=:bold)
+    Label(f[2, 0], "Logistic", rotation=pi/2, tellheight=false, fontsize=20, font=:bold)
+
+    ax = Axis3(f[1,1 ], aspect = :data, azimuth = 0.0pi, elevation=0.0pi, protrusions=(0.0,0.0,0.0,0.0))
     hidedecorations!(ax)
     hidespines!(ax)
-    plot_roi!(get_node_id.(right_cortex), logistic_scaled_meanerror, cmap)
-    Colorbar(f[1, 0], 
-    limits = (-maximum(abs.(logistic_meanerror)), maximum(abs.(logistic_meanerror))), colormap = cmap, vertical=true, 
-    label="Mean error", flipaxis=false, labelsize=35)
+    for (i, j) in enumerate(get_node_id.(right_cortex))
+        plot_roi!(j, get(cmap, local_meanerror[i], (-lims, lims)))
+    end
+
+    ax = Axis3(f[1,2 ], aspect = :data, azimuth = 1.0pi, elevation=0.0pi, protrusions=(0.0,0.0,0.0,0.0))
+    hidedecorations!(ax)
+    hidespines!(ax)
+    for (i, j) in enumerate(get_node_id.(right_cortex))
+        plot_roi!(j, get(cmap, local_meanerror[i], (-lims, lims)))
+    end
+
+    ax = Axis3(f[1,3 ], aspect = :data, azimuth = 0.0pi, elevation=0.0pi, protrusions=(0.0,0.0,0.0,0.0))
+    hidedecorations!(ax)
+    hidespines!(ax)
+    for (i, j) in enumerate(get_node_id.(left_cortex))
+        plot_roi!(j, get(cmap, local_meanerror[i], (-lims, lims)))
+    end
+
+    ax = Axis3(f[1,4 ], aspect = :data, azimuth = 1.0pi, elevation=0.0pi, protrusions=(0.0,0.0,0.0,0.0))
+    hidedecorations!(ax)
+    hidespines!(ax)
+    for (i, j) in enumerate(get_node_id.(left_cortex))
+        plot_roi!(j, get(cmap, local_meanerror[i], (-lims, lims)))
+    end
+
+    ax = Axis3(f[2,1 ], aspect = :data, azimuth = 0.0pi, elevation=0.0pi, protrusions=(0.0,0.0,0.0,0.0))
+    hidedecorations!(ax)
+    hidespines!(ax)
+    for (i, j) in enumerate(get_node_id.(right_cortex))
+        plot_roi!(j, get(cmap, logistic_meanerror[i], (-lims, lims)))
+    end
+
+    ax = Axis3(f[2,2 ], aspect = :data, azimuth = 1.0pi, elevation=0.0pi, protrusions=(0.0,0.0,0.0,0.0))
+    hidedecorations!(ax)
+    hidespines!(ax)
+    for (i, j) in enumerate(get_node_id.(right_cortex))
+        plot_roi!(j, get(cmap, logistic_meanerror[i], (-lims, lims)))
+    end
+
+    ax = Axis3(f[2,3 ], aspect = :data, azimuth = 0.0pi, elevation=0.0pi, protrusions=(0.0,0.0,0.0,0.0))
+    hidedecorations!(ax)
+    hidespines!(ax)
+    for (i, j) in enumerate(get_node_id.(left_cortex))
+        plot_roi!(j, get(cmap, logistic_meanerror[i], (-lims, lims)))
+    end
+
+    ax = Axis3(f[2,4 ], aspect = :data, azimuth = 1.0pi, elevation=0.0pi, protrusions=(0.0,0.0,0.0,0.0))
+    hidedecorations!(ax)
+    hidespines!(ax)
+    for (i, j) in enumerate(get_node_id.(left_cortex))
+        plot_roi!(j, get(cmap, logistic_meanerror[i], (-lims, lims)))
+    end
+
+    # Label(f[1, 0], "Local FKPP", rotation=pi/2, tellheight=false, fontsize=30, font=:bold)
+    # Label(f[2, 0], "Logistic", rotation=pi/2, tellheight=false, fontsize=30, font=:bold)
+    Colorbar(f[1:2,5], 
+    limits = (-lims, lims),  ticks=-0.08:0.02:0.08, colormap = cmap, vertical=true, flipaxis=true, label="Mean Error", 
+    labelrotation=-pi/2, labelsize=25, ticklabelsize=20)
     f
 end
-save(projectdir("visualisation/inference/model-selection/output/regional_mean_error_logistic_tau_pos.jpeg"), f)
+save(projectdir("visualisation/inference/model-selection/output/regional_mean_error_tau_pos.jpeg"), f)
+
+begin
+    CairoMakie.activate!()
+    cols = Makie.wong_colors();
+    mean_data = vec(mean(get_sol_t_end(insample_pos_data), dims=2))
+    mean_local_error = vec(mean(get_sol_t_end(local_sols) .- get_sol_t_end(insample_pos_data), dims=2))
+    mean_logistic_error = vec(mean(get_sol_t_end(logistic_sols) .- get_sol_t_end(insample_pos_data), dims=2))
+    f = Figure(size=(1000, 600))
+    ax = Axis(f[1, 1:3], yticksize=15, ylabel="Mean Error", ylabelsize=20)
+    ylims!(-0.1, 0.1)
+    for (i, j) in zip(mean_data, mean_local_error)
+        linesegments!([i, i], [0, j], color=(cols[1], 0.5))
+    end
+    scatter!(mean_data, 
+            mean_local_error, 
+            markersize=15, color=(cols[1], 0.8))
+    hlines!(ax, 0, color=cols[1])
+    hlines!(ax, mean(mean_local_error), color=:black, linestyle=:dash)
+    
+    ax = Axis(f[1, 4])
+    hideydecorations!(ax, ticks=false)
+    hidexdecorations!(ax)
+    hidespines!(ax, :b, :t, :r)
+    ylims!(-0.1, 0.1)
+    density!(mean_local_error, direction=:y)
+    hlines!(ax, 0, color=cols[1])
+    hlines!(ax, mean(mean_local_error),  color=:black, linestyle=:dash)
+
+    ax = Axis(f[2, 1:3], yticksize=15, ylabel="Mean Error", xlabel="SUVR", ylabelsize=20, xlabelsize=20)
+    ylims!(-0.1, 0.1)
+    for (i, j) in zip(mean_data, mean_logistic_error)
+        linesegments!([i, i], [0, j], color=(cols[1], 0.5))
+    end
+    scatter!(mean_data, 
+            mean_logistic_error, 
+            markersize=15, color=(cols[1], 0.8))
+    hlines!(ax, 0, color=cols[1])
+    hlines!(ax, mean(mean_logistic_error),  color=:black, linestyle=:dash)
+
+    ax = Axis(f[2, 4])
+    hideydecorations!(ax, ticks=false)
+    hidexdecorations!(ax)
+    hidespines!(ax, :b, :t, :r)
+    ylims!(-0.1, 0.1)
+    density!(mean_logistic_error, direction=:y)
+    hlines!(ax, 0, color=cols[1])
+    hlines!(ax, mean(mean_logistic_error),  color=:black, linestyle=:dash)
+
+    colgap!(f.layout, 10)
+    Label(f[1, 0], "Local FKPP", rotation=pi/2, tellheight=false, fontsize=20, font=:bold)
+    Label(f[2, 0], "Logistic", rotation=pi/2, tellheight=false, fontsize=20, font=:bold)
+    f
+end
+save(projectdir("visualisation/inference/model-selection/output/regional_residuals_tau_pos.pdf"), f)
 
 #-------------------------------------------------------------------------------
 # Out of Sample Models
 #-------------------------------------------------------------------------------
-L = laplacian_matrix(c)
+ L = laplacian_matrix(c)
 
 vols = [get_vol(outsample_data, i) for i in outsample_tau_pos]
 init_vols = [v[:,1] for v in vols]
