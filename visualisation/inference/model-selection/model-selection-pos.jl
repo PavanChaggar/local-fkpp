@@ -30,7 +30,7 @@ neo = findall(x -> x ∈ neo_regions, get_label.(cortex))
 #-------------------------------------------------------------------------------
 # Data 
 #-------------------------------------------------------------------------------
-sub_data_path = projectdir("adni/data/new_data/UCBERKELEYAV1451_8mm_02_17_23_AB_Status.csv")
+sub_data_path = projectdir("adni/data/new_new_data/UCBERKELEY_TAU_6MM_18Dec2023_AB_STATUS.csv")
 alldf = CSV.read(sub_data_path, DataFrame)
 
 posdf = filter(x -> x.AB_Status == 1, alldf)
@@ -38,7 +38,7 @@ posdf = filter(x -> x.AB_Status == 1, alldf)
 dktdict = Connectomes.node2FS()
 dktnames = [dktdict[i] for i in get_node_id.(cortex)]
 
-insample_data = ADNIDataset(posdf, dktnames; min_scans=3)
+insample_data = ADNIDataset(posdf, dktnames; min_scans=3, qc=true)
 insample_n_data = length(insample_data)
 mtl_cutoff = 1.375
 neo_cutoff = 1.395
@@ -71,7 +71,7 @@ insample_max_t = maximum(reduce(vcat, insample_pos_times))
 #-------------------------------------------------------------------------------
 # Out of sample pos data 
 #-------------------------------------------------------------------------------
-outsample_data = ADNIDataset(posdf, dktnames; min_scans=2, max_scans=2)
+outsample_data = ADNIDataset(posdf, dktnames; min_scans=2, max_scans=2, qc=true)
 outsample_n_data = length(outsample_data)
 
 outsample_mtl_pos = filter(x -> regional_mean(outsample_data, mtl, x) >= mtl_cutoff, 1:outsample_n_data)
@@ -420,9 +420,9 @@ begin
         scatter!(final_obs, final_preds, color=(col, 0.5), markersize=20, marker='●')
 
         # end
-        start = -0.05
-        stop = 0.15
-        border = 0.01
+        start = -0.03
+        stop = 0.2
+        border = 0.05
         ax = Axis(g[2, i][1,1], 
                 xlabel="Δ SUVR",
                 ylabel="Δ Prediction",
@@ -453,12 +453,16 @@ save(projectdir("visualisation/inference/model-selection/output/model-fits-roi-a
 # Error visualisation
 #-------------------------------------------------------------------------------
 using ColorSchemes, GLMakie; GLMakie.activate!()
-cmap = ColorSchemes.RdBu;
+cmap = reverse(ColorSchemes.RdBu);
+
 meandata = mean(get_sol_t_end(insample_pos_data), dims=2) |> vec
+
 local_meansol = mean(get_sol_t_end(local_sols), dims=2) |> vec
 logistic_meansol = mean(get_sol_t_end(logistic_sols), dims=2) |> vec
+
 local_meanerror = meandata .- local_meansol
 logistic_meanerror = meandata .- logistic_meansol
+
 local_scaled_meanerror = ((local_meanerror ./ maximum(abs.(logistic_meanerror))) .+ 1) ./ 2
 logistic_scaled_meanerror = ((logistic_meanerror ./ maximum(abs.(logistic_meanerror))) .+ 1) ./ 2
 right_cortex = filter(x -> get_hemisphere(x) == "right", cortex)

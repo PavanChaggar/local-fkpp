@@ -101,7 +101,6 @@ end
     data ~ MvNormal(vecsol, σ^2 * I)
 end
 
-setadbackend(:zygote)
 Random.seed!(1234)
 
 for updates in 1:3
@@ -134,7 +133,7 @@ for updates in 1:3
     n_chains = 1
     n_samples = 2_000
     pst = sample(m, 
-                Turing.NUTS(0.8; adtype=AutoZygote()),
+                Turing.NUTS(0.8),
                 n_samples, 
                 progress=true)
     serialize(projectdir("adni/new-chains/local-fkpp/length-free/pst-taupos-$(n_chains)x$(n_samples)-updated-$(updates).jls"), pst)
