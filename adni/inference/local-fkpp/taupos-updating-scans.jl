@@ -134,7 +134,7 @@ for updates in 1:3
     n_chains = 1
     n_samples = 2_000
     pst = sample(m, 
-                Turing.NUTS(0.8),
+                Turing.NUTS(0.8, AutoZygote()),
                 n_samples, 
                 progress=true)
     serialize(projectdir("adni/new-chains/local-fkpp/length-free/pst-taupos-$(n_chains)x$(n_samples)-updated-$(updates).jls"), pst)
