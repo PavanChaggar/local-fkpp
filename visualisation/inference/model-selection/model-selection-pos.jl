@@ -599,9 +599,10 @@ begin
 
     # Label(f[1, 0], "Local FKPP", rotation=pi/2, tellheight=false, fontsize=30, font=:bold)
     # Label(f[2, 0], "Logistic", rotation=pi/2, tellheight=false, fontsize=30, font=:bold)
+    _tickformat(x) = x < 0 ? "$x" : " $x"
     Colorbar(f[1:2,5], 
     limits = (-lims, lims),  ticks=-0.08:0.02:0.08, colormap = cmap, vertical=true, flipaxis=true, label="Mean Error", 
-    labelrotation=-pi/2, labelsize=25, ticklabelsize=20)
+    labelrotation=-pi/2, labelsize=25, ticklabelsize=20, tickformat = xs -> [_tickformat(x) for x in xs])
     f
 end
 save(projectdir("visualisation/inference/model-selection/output/regional_mean_error_tau_pos.jpeg"), f)

@@ -101,9 +101,7 @@ end
     data ~ MvNormal(vecsol, σ^2 * I)
 end
 
-Random.seed!(1234)
-
-for updates in 1:3
+for updates in [3]
     if updates == 1
         vecsubdata = reduce(vcat, reduce(hcat, fixed_subdata))
 
@@ -142,6 +140,8 @@ for updates in 1:3
     println(length(times))
     m = localfkpp(vecsubdata, prob, initial_conditions, times, n_pos);
     m();
+
+    Random.seed!(1234)
 
     n_chains = 1
     n_samples = 2_000
