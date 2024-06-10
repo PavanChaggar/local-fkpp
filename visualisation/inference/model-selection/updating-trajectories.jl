@@ -187,110 +187,113 @@ begin
     f
 end
 
-node = 29
-begin
-    sol_idx = [2, 3, 4]
-    cols = Makie.wong_colors()
-    f = Figure(size=(1600, 1600), fontsize=35)
-    for i in 1:4
-        ax = Axis(f[1,i], xticksize=10, yticks=1:0.5:3.5, xticks=0:2.5:10, 
-                          ygridcolor=RGBAf(0, 0, 0, 0.35), xgridcolor=RGBAf(0, 0, 0, 0.35))
-        if i > 1 
-            hideydecorations!(ax, grid=false, ticks=false)
+for node in [61, 63, 65]
+    dktnames[node]
+    begin
+        _sols = noise_sols
+        sol_idx = [2, 3, 4]
+        cols = Makie.wong_colors()
+        f = Figure(size=(1600, 1600), fontsize=35)
+        for i in 1:4
+            ax = Axis(f[1,i], xticksize=10, yticks=1:0.5:3.5, xticks=0:2.5:10, 
+                            ygridcolor=RGBAf(0, 0, 0, 0.35), xgridcolor=RGBAf(0, 0, 0, 0.35))
+            if i > 1 
+                hideydecorations!(ax, grid=false, ticks=false)
+            end
+            hidexdecorations!(ax, grid=false, ticks=false, label=false)
+            xlims!(ax, -1.0,11.)
+            ylims!(ax, 1.0,3.25)
+            hidespines!(ax, :t, :r)
+            for (sol, idx, alpha) in zip(_sols[sol_idx], [1, 2, 3], [0.25, 0.5, 0.75])
+                q1, q2, q3 = get_quantiles(reduce(hcat, [sol[i][j][node, :] for j in 1:2000]))
+                band!(0.0:0.5:10.0, q1, q2, color=alphacolor(cols[idx], alpha))
+            end
+            for idx in 1:3
+                scatter!(times[i][idx], four_subdata[i][node,idx], markersize=35, color=(cols[idx], 0.75), strokewidth=3, strokecolor=:black)
+            end
+            scatter!(times[i][4:end], four_subdata[i][node,4:end], markersize=35, color=(cols[4], 0.75), strokewidth=3, strokecolor=:black)
         end
-        hidexdecorations!(ax, grid=false, ticks=false, label=false)
-        xlims!(ax, -1.0,11.)
-        ylims!(ax, 1.0,3.25)
-        hidespines!(ax, :t, :r)
-        for (sol, idx, alpha) in zip(sols[sol_idx], [1, 2, 3], [0.25, 0.5, 0.75])
-            q1, q2, q3 = get_quantiles(reduce(hcat, [sol[i][j][node, :] for j in 1:2000]))
-            band!(0.0:0.5:10.0, q1, q2, color=alphacolor(cols[idx], alpha))
+        for (k, i) in enumerate(5:8)
+            ax = Axis(f[2,k], xticksize=10, yticks=1:0.5:3.5, xticks=0:2.5:10, 
+                            ygridcolor=RGBAf(0, 0, 0, 0.35), xgridcolor=RGBAf(0, 0, 0, 0.35))
+            if k > 1 
+                hideydecorations!(ax, grid=false, ticks=false)
+            end
+            hidexdecorations!(ax, grid=false, ticks=false)
+            xlims!(ax, -1.0,11.)
+            ylims!(ax, 1.0,3.25)
+            hidespines!(ax, :t, :r)
+            for (sol, idx, alpha) in zip(_sols[sol_idx], [1, 2, 3], [0.25, 0.5, 0.75])
+                q1, q2, q3 = get_quantiles(reduce(hcat, [sol[i][j][node, :] for j in 1:2000]))
+                band!(0.0:0.5:10.0, q1, q2, color=alphacolor(cols[idx], alpha))
+            end
+            for idx in 1:3
+                scatter!(times[i][idx], four_subdata[i][node,idx], markersize=35, color=(cols[idx], 0.75), strokewidth=3, strokecolor=:black)
+            end
+            scatter!(times[i][4:end], four_subdata[i][node,4:end], markersize=35, color=(cols[4], 0.75), strokewidth=3, strokecolor=:black)
+
         end
-        for idx in 1:3
-            scatter!(times[i][idx], four_subdata[i][node,idx], markersize=35, color=(cols[idx], 0.75), strokewidth=3, strokecolor=cols[idx])
+        for (k, i) in enumerate(9:12)
+            ax = Axis(f[3,k], xticksize=10, yticks=1:0.5:3.5, xticks=0:2.5:10, 
+                            ygridcolor=RGBAf(0, 0, 0, 0.35), xgridcolor=RGBAf(0, 0, 0, 0.35))
+            if k > 1 
+                hideydecorations!(ax, grid=false, ticks=false)
+            end
+            hidexdecorations!(ax, grid=false, ticks=false)
+            xlims!(ax, -1.0,11.)
+            ylims!(ax, 1.0,3.25)
+            hidespines!(ax, :t, :r)
+            for (sol, idx, alpha) in zip(_sols[sol_idx], [1, 2, 3], [0.25, 0.5, 0.75])
+                q1, q2, q3 = get_quantiles(reduce(hcat, [sol[i][j][node, :] for j in 1:2000]))
+                band!(0.0:0.5:10.0, q1, q2, color=alphacolor(cols[idx], alpha))
+            end
+            for idx in 1:3
+                scatter!(times[i][idx], four_subdata[i][node,idx], markersize=35, color=(cols[idx], 0.75), strokewidth=3, strokecolor=:black)
+            end
+            scatter!(times[i][4:end], four_subdata[i][node,4:end], markersize=35, color=(cols[4], 0.75), strokewidth=3, strokecolor=:black)
+
         end
-        scatter!(times[i][4:end], four_subdata[i][node,4:end], markersize=35, color=(cols[4], 0.75), strokewidth=3, strokecolor=cols[4])
+        for (k, i) in enumerate(13:16)
+            ax = Axis(f[4,k], xticksize=10, yticks=1:0.5:3.5, xticks=0:2.5:10, 
+                            ygridcolor=RGBAf(0, 0, 0, 0.35), xgridcolor=RGBAf(0, 0, 0, 0.35),
+                            xlabel="Time / Years", ylabel="SUVR")
+            if k > 1 
+                hideydecorations!(ax, grid=false, ticks=false)
+                hidexdecorations!(ax, grid=false, ticks=false, ticklabels=false)
+            end
+            xlims!(ax, -1.0,11.)
+            ylims!(ax, 1.0,3.25)
+            hidespines!(ax, :t, :r)
+            for (sol, idx, alpha) in zip(_sols[sol_idx], [1, 2, 3], [0.25, 0.5, 0.75])
+                q1, q2, q3 = get_quantiles(reduce(hcat, [sol[i][j][node, :] for j in 1:2000]))
+                band!(0.0:0.5:10.0, q1, q2, color=alphacolor(cols[idx], alpha))
+            end
+            for idx in 1:3
+                scatter!(times[i][idx], four_subdata[i][node,idx], markersize=35, color=(cols[idx], 0.75), strokewidth=3, strokecolor=:black)
+            end
+            scatter!(times[i][4:end], four_subdata[i][node,4:end], markersize=35, color=(cols[4], 0.75), strokewidth=3, strokecolor=:black)
+
+        end
+        rowgap!(f.layout, 10)
+        colgap!(f.layout, 10)
+
+
+        markersizes = [10, 10, 10, 10]
+        colors = cols[1:4]
+        scatternames = ["1 In-Sample Scan", "2 In-Sample Scans", "3 In-Sample Scans", "Out-of-sample Scans"]
+        polynames = ["1 Training Scan", "2 Training Scans", "3 Training Scans"]
+        
+        group_size = [MarkerElement(color = col, marker= '●', markersize=30) for col in cols[1:4]]
+        
+        group_color = [PolyElement(color = alphacolor(col, 0.75)) for col in cols[1:3]]
+        
+        Legend(f[5,:],
+            [group_size, group_color],
+            [string.(scatternames), string.(polynames)],
+            ["Data", "Predictions"], 
+            patchsize=(50, 50), tellheight = true, orientation=:horizontal, titleposition=:top, nbanks=2,
+            framevisible=false, colgap=25, titlegap=10, groupgap=50, patchlabelgap=10)
+        display(f)
     end
-    for (k, i) in enumerate(5:8)
-        ax = Axis(f[2,k], xticksize=10, yticks=1:0.5:3.5, xticks=0:2.5:10, 
-                          ygridcolor=RGBAf(0, 0, 0, 0.35), xgridcolor=RGBAf(0, 0, 0, 0.35))
-        if k > 1 
-            hideydecorations!(ax, grid=false, ticks=false)
-        end
-        hidexdecorations!(ax, grid=false, ticks=false)
-        xlims!(ax, -1.0,11.)
-        ylims!(ax, 1.0,3.25)
-        hidespines!(ax, :t, :r)
-        for (sol, idx, alpha) in zip(sols[sol_idx], [1, 2, 3], [0.25, 0.5, 0.75])
-            q1, q2, q3 = get_quantiles(reduce(hcat, [sol[i][j][node, :] for j in 1:2000]))
-            band!(0.0:0.5:10.0, q1, q2, color=alphacolor(cols[idx], alpha))
-        end
-        for idx in 1:3
-            scatter!(times[i][idx], four_subdata[i][node,idx], markersize=35, color=(cols[idx], 0.75), strokewidth=3, strokecolor=cols[idx])
-        end
-        scatter!(times[i][4:end], four_subdata[i][node,4:end], markersize=35, color=(cols[4], 0.75), strokewidth=3, strokecolor=cols[4])
-
-    end
-    for (k, i) in enumerate(9:12)
-        ax = Axis(f[3,k], xticksize=10, yticks=1:0.5:3.5, xticks=0:2.5:10, 
-                          ygridcolor=RGBAf(0, 0, 0, 0.35), xgridcolor=RGBAf(0, 0, 0, 0.35))
-        if k > 1 
-            hideydecorations!(ax, grid=false, ticks=false)
-        end
-        hidexdecorations!(ax, grid=false, ticks=false)
-        xlims!(ax, -1.0,11.)
-        ylims!(ax, 1.0,3.25)
-        hidespines!(ax, :t, :r)
-        for (sol, idx, alpha) in zip(sols[sol_idx], [1, 2, 3], [0.25, 0.5, 0.75])
-            q1, q2, q3 = get_quantiles(reduce(hcat, [sol[i][j][node, :] for j in 1:2000]))
-            band!(0.0:0.5:10.0, q1, q2, color=alphacolor(cols[idx], alpha))
-        end
-        for idx in 1:3
-            scatter!(times[i][idx], four_subdata[i][node,idx], markersize=35, color=(cols[idx], 0.75), strokewidth=3, strokecolor=cols[idx])
-        end
-        scatter!(times[i][4:end], four_subdata[i][node,4:end], markersize=35, color=(cols[4], 0.75), strokewidth=3, strokecolor=cols[4])
-
-    end
-    for (k, i) in enumerate(13:16)
-        ax = Axis(f[4,k], xticksize=10, yticks=1:0.5:3.5, xticks=0:2.5:10, 
-                          ygridcolor=RGBAf(0, 0, 0, 0.35), xgridcolor=RGBAf(0, 0, 0, 0.35),
-                          xlabel="Time / Years", ylabel="SUVR")
-        if k > 1 
-            hideydecorations!(ax, grid=false, ticks=false)
-            hidexdecorations!(ax, grid=false, ticks=false, ticklabels=false)
-        end
-        xlims!(ax, -1.0,11.)
-        ylims!(ax, 1.0,3.25)
-        hidespines!(ax, :t, :r)
-        for (sol, idx, alpha) in zip(sols[sol_idx], [1, 2, 3], [0.25, 0.5, 0.75])
-            q1, q2, q3 = get_quantiles(reduce(hcat, [sol[i][j][node, :] for j in 1:2000]))
-            band!(0.0:0.5:10.0, q1, q2, color=alphacolor(cols[idx], alpha))
-        end
-        for idx in 1:3
-        scatter!(times[i][idx], four_subdata[i][node,idx], markersize=35, color=(cols[idx], 0.75), strokewidth=3, strokecolor=cols[idx])
-        end
-        scatter!(times[i][4:end], four_subdata[i][node,4:end], markersize=35, color=(cols[4], 0.75), strokewidth=3, strokecolor=cols[4])
-
-    end
-    rowgap!(f.layout, 10)
-    colgap!(f.layout, 10)
-
-
-    markersizes = [10, 10, 10, 10]
-    colors = cols[1:4]
-    scatternames = ["1 In-Sample Scan", "2 In-Sample Scans", "3 In-Sample Scans", "Out-of-sample Scans"]
-    polynames = ["1 Training Scan", "2 Training Scans", "3 Training Scans"]
-    
-    group_size = [MarkerElement(color = col, marker= '●', markersize=30) for col in cols[1:4]]
-    
-    group_color = [PolyElement(color = alphacolor(col, 0.75)) for col in cols[1:3]]
-    
-    Legend(f[5,:],
-        [group_size, group_color],
-        [string.(scatternames), string.(polynames)],
-        ["Data", "Predictions"], 
-        patchsize=(50, 50), tellheight = true, orientation=:horizontal, titleposition=:top, nbanks=2,
-        framevisible=false, colgap=25, titlegap=10, groupgap=50, patchlabelgap=10)
-    f
+    save(projectdir("visualisation/inference/model-selection/output/out-of-sample-updates-noise-$(dktnames[node]).pdf"), f)
 end
-save(projectdir("visualisation/inference/model-selection/output/out-of-sample-updates.pdf"), f)
