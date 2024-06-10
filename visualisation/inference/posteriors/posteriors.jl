@@ -210,9 +210,9 @@ save(projectdir("visualisation/inference/posteriors/output/adni-posteriors-with-
 #-------------------------------------------------------------------------------
 # Hierarchical Distributions -- BF2
 #-------------------------------------------------------------------------------
-pst = deserialize(projectdir("biofinder/chains/local-fkpp/pst-taupos-4x1000-vc.jls"));
-pst2 = deserialize(projectdir("biofinder/chains/local-fkpp/pst-tauneg-4x1000-vc.jls"));
-pst3 = deserialize(projectdir("biofinder/chains/local-fkpp/pst-abneg-4x1000-vc.jls"));
+pst = deserialize(projectdir("biofinder/chains/local-fkpp/03-06-24/pst-taupos-4x1000-vc.jls"));
+pst2 = deserialize(projectdir("biofinder/chains/local-fkpp/03-06-24/pst-tauneg-4x1000-vc.jls"));
+pst3 = deserialize(projectdir("biofinder/chains/local-fkpp/03-06-24/pst-abneg-4x1000-vc.jls"));
 
 [p[:numerical_error] |> sum for p in [pst, pst2, pst3]]
 
@@ -341,13 +341,13 @@ begin
         ax = Axis(g2[1,1], 
                 xticklabelsize=30, xlabelsize=30, xlabel="1 / yr", 
                 yticklabelsize=40,
-                titlesize=40, title="Transport", xticks=0.0:0.01:0.05,
-                xminorticks=0.0:0.005:0.05, xminorticksvisible=true, 
+                titlesize=40, title="Transport", xticks=0.0:0.025:0.075,
+                xminorticks=0.0:0.0125:1, xminorticksvisible=true, 
                 xticksize=20, xminorticksize=15, xgridcolor=RGBAf(0, 0, 0, 0.25))
-                CairoMakie.xlims!(ax, -0.0025, 0.06)
+                CairoMakie.xlims!(ax, -0.005, 0.085)
                 CairoMakie.ylims!(ax, 0.75, 4)
 
-        hideydecorations!(ax, label=false, ticklabels=false)
+        hideydecorations!(ax)
         hidexdecorations!(ax, grid=false, minorticks=false, label=false, ticks=false, ticklabels=false)
         hidespines!(ax, :t, :r, :l)
 
@@ -367,13 +367,13 @@ begin
         a3, a2, a1 = vec(pst3[:Am]), vec(pst2[:Am]), vec(pst[:Am])
 
         ax = Axis(g1[1,1], 
-                xticklabelsize=30, xlabelsize=30, xlabel="1 / yr", 
+                xticklabelsize=30, xlabelsize=30, xlabel="1 / yr", yticks=(1.5:1:3.5, [L"A^-", L"A^+T^-", L"A^+T^+"]),
                 yticklabelsize=40, ylabelsize=30, ylabel="Density",
                 titlesize=40, title="Production", xticks=-0.2:0.1:0.2, 
                 xminorticks=-0.2:0.05:0.2, xminorticksvisible=true, 
                 xticksize=20, xminorticksize=15, xgridcolor=RGBAf(0, 0, 0, 0.25), 
                 xtickformat = "{:.2f}")
-        CairoMakie.xlims!(ax, -0.26, 0.26)
+        CairoMakie.xlims!(ax, -0.225, 0.225)
         CairoMakie.ylims!(ax, 0.75, 4)
         hideydecorations!(ax, label=false, ticklabels=false)
         hidexdecorations!(ax, grid=false, minorticks=false, label=false, 

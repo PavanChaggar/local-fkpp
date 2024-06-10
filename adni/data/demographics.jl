@@ -55,7 +55,7 @@ tauposdf = dmdf[tau_pos, :]
 taunegdf = dmdf[tau_neg, :]
 
 # Dataframe 
-df = DataFrame(Group=String[], Age=Float64[], Gender=Float64[], Education=Float64[], CN = Float64[], MCI = Float64[], AD = Float64[], Centiloids = Float64[])
+df = DataFrame(Group=String[], Age=Float64[], Gender=Float64[], Education=Float64[], CN = Float64[], MCI = Float64[], AD = Float64[], Centiloids = Float64[], Centiloids_std = Float64[])
 #-------------------------------------------------------------------------------
 # Tau Pos
 posdf3 = filter(x -> x.RID ∈ IDs, posdf)
@@ -78,9 +78,10 @@ amy_pos = filter(x -> x.RID ∈ get_id.(data[tau_pos]), amyloid_data)
 amy_pos_init_idx = [findfirst(isequal(id), amy_pos.RID) for id in get_id.(data[tau_pos])]
 
 pos_centiloids = mean(amy_pos[amy_pos_init_idx, :].CENTILOIDS)
+pos_centiloids_st = std(amy_pos[amy_pos_init_idx, :].CENTILOIDS)
 
 push!(df, (Group, age, Gender, Education, 
-          sum(percent_pdx_taupos[1:2]), sum(percent_pdx_taupos[3:4]), percent_pdx_taupos[5], pos_centiloids))
+          sum(percent_pdx_taupos[1:2]), sum(percent_pdx_taupos[3:4]), percent_pdx_taupos[5], pos_centiloids, pos_centiloids_st))
 #-------------------------------------------------------------------------------
 # Tau neg
 posdfinit_tauneg = posdfinit[tau_neg,:]
@@ -88,7 +89,7 @@ posdfinit_tauneg = posdfinit[tau_neg,:]
 neg_diag_idx = [findfirst(isequal(id), diagnostics.RID) for id in posdfinit_tauneg.RID]
 neg_diag_df = diagnostics[neg_diag_idx, :]
 pdx_tauneg = [count(==(pdx), neg_diag_df.DX_bl) for pdx in ["CN",  "SMC", "EMCI", "LMCI", "AD"]]
-percent_pdx_tauneg = pdx_tauneg ./ 40
+percent_pdx_tauneg = pdx_tauneg ./ 37
 
 Group = "tau -"
 age = mean(year.([data.SubjectData[i].scan_dates[1] for i in tau_neg]) .- (taunegdf.PTDOBYY))
@@ -100,8 +101,9 @@ amy_neg = filter(x -> x.RID ∈ get_id.(data[tau_neg]), amyloid_data)
 amy_neg_init_idx = [findfirst(isequal(id), amy_neg.RID) for id in get_id.(data[tau_neg])]
 
 neg_centiloids = mean(amy_neg[amy_neg_init_idx, :].CENTILOIDS)
+neg_centiloids_std = std(amy_neg[amy_neg_init_idx, :].CENTILOIDS)
 
-push!(df, (Group, age, Gender, Education, sum(percent_pdx_tauneg[1:2]), sum(percent_pdx_tauneg[3:4]), percent_pdx_tauneg[5], neg_centiloids))
+push!(df, (Group, age, Gender, Education, sum(percent_pdx_tauneg[1:2]), sum(percent_pdx_tauneg[3:4]), percent_pdx_tauneg[5], neg_centiloids, neg_centiloids_std))
 
 #-------------------------------------------------------------------------------
 # AB neg 
@@ -134,11 +136,12 @@ amy_neg = filter(x -> x.RID ∈ negIDs, amyloid_data)
 amy_neg_init_idx = [findfirst(isequal(id), amy_neg.RID) for id in negIDs]
 
 neg_centiloids = mean(amy_neg[amy_neg_init_idx, :].CENTILOIDS)
+neg_centiloids_std = std(amy_neg[amy_neg_init_idx, :].CENTILOIDS)
 
-push!(df, (Group, age, Gender, Education, sum(percent_pdx_ab[1:2]), sum(percent_pdx_ab[3:4]), percent_pdx_ab[5], neg_centiloids))
+push!(df, (Group, age, Gender, Education, sum(percent_pdx_ab[1:2]), sum(percent_pdx_ab[3:4]), percent_pdx_ab[5], neg_centiloids, neg_centiloids_std))
 
 using PrettyTables
 formatter = (v, i, j) -> round(v, digits = 3);
 (df, digits=3)
 
-pretty_table(df; formatters = ft_printf("%5.4f"), backend=Val(:latex))
+pretty_table(df; formatters = ft_printf("%5.2f"), backend=Val(:latex))
