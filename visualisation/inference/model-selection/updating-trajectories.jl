@@ -63,7 +63,7 @@ end
 prr = deserialize(projectdir("adni/new-chains/local-fkpp/length-free/pst-taupos-1x2000-updated-0.jls"));
 pst1 = deserialize(projectdir("adni/new-chains/local-fkpp/length-free/pst-taupos-1x2000-updated-1.jls"));
 pst2 = deserialize(projectdir("adni/new-chains/local-fkpp/length-free/pst-taupos-1x2000-updated-2.jls"));
-pst3 = deserialize(projectdir("adni/new-chains/local-fkpp/length-free/pst-taupos-1x2000-three.jls"));
+pst3 = deserialize(projectdir("adni/new-chains/local-fkpp/length-free/pst-taupos-1x2000-updated-3.jls"));
 
 [sum(p[:numerical_error]) for p in [pst1, pst2, pst3]]
 #-------------------------------------------------------------------------------
@@ -110,15 +110,16 @@ function get_sols(psts, prob, insample_inits, outsample_idx)
                 ps, as = vec(pst[:Pm]), vec(pst[:Am]), vec(pst[:σ])
                 preds = ensemble_simulate(prob, insample_inits[j], ps, as, output_func)
                 push!(_sols, preds)
-            elseif i ∈ [1, 3]
+            else
                 ps, as = vec(pst["ρ[$(41 + j)]"]), vec(pst["α[$(41 + j)]"])
                 preds = ensemble_simulate(prob, insample_inits[j], ps, as, output_func)
                 push!(_sols, preds)
-            elseif i == 4
-                ps, as = vec(pst["ρ[$(outsample_idx[j])]"]), vec(pst["α[$(outsample_idx[j])]"])
-                preds = ensemble_simulate(prob, insample_inits[j], ps, as, output_func)
-                push!(_sols, preds)
-            end 
+            end
+            # elseif i == 4
+            #     ps, as = vec(pst["ρ[$(outsample_idx[j])]"]), vec(pst["α[$(outsample_idx[j])]"])
+            #     preds = ensemble_simulate(prob, insample_inits[j], ps, as, output_func)
+            #     push!(_sols, preds)
+            # end 
         end
         push!(sols, _sols)
     end
@@ -293,7 +294,3 @@ begin
     f
 end
 save(projectdir("visualisation/inference/model-selection/output/out-of-sample-updates.pdf"), f)
-
-f = Figure()
-
-
