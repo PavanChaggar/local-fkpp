@@ -101,27 +101,30 @@ end
     data ~ MvNormal(vecsol, σ^2 * I)
 end
 
-for updates in [3]
-    if updates == 1
-        vecsubdata = reduce(vcat, reduce(hcat, fixed_subdata))
+# prr = sample(m, Prior(), 2_000);
+# serialize(projectdir("adni/new-chains/local-fkpp/length-free/pst-taupos-1x2000-updated-0.jls"), prr);
 
-        initial_conditions = [sd[:,1] for sd in fixed_subdata]
+for updates in [1]
+    # if updates == 1
+    #     vecsubdata = reduce(vcat, reduce(hcat, fixed_subdata))
 
-        times = get_times.(fixed_data)
+    #     initial_conditions = [sd[:,1] for sd in fixed_subdata]
 
-        maxt = maximum(reduce(vcat, times))
+    #     times = get_times.(fixed_data)
 
-        prob = ODEProblem(NetworkLocalFKPP, 
-                        initial_conditions[1], 
-                        (0.,maxt), 
-                        [1.0,1.0])
-        n_pos = length(times)
-    else
+    #     maxt = maximum(reduce(vcat, times))
+
+    #     prob = ODEProblem(NetworkLocalFKPP, 
+    #                     initial_conditions[1], 
+    #                     (0.,maxt), 
+    #                     [1.0,1.0])
+    #     n_pos = length(times)
+    # else
         updating_subdata = [sd[:, 1:updates] for sd in _updating_subdata]
 
-        vecsubdata = [reduce(vcat, reduce(hcat, fixed_subdata)); reduce(vcat, reduce(hcat, updating_subdata))]
+        vecsubdata = reduce(vcat, reduce(hcat, [fixed_subdata; updating_subdata]))
 
-        initial_conditions = [[sd[:,1] for sd in fixed_subdata]; [sd[:,1] for sd in updating_subdata]]
+        initial_conditions = [sd[:,1] for sd in [fixed_subdata; updating_subdata]]
 
         fixed_times = get_times.(fixed_data)
         updating_times = [t[1:updates] for t in get_times.(updating_data)]
@@ -135,7 +138,7 @@ for updates in [3]
                         (0.,maxt), 
                         [1.0,1.0])
         n_pos = length(times)
-    end
+    # end
     println(updates)
     println(length(times))
     m = localfkpp(vecsubdata, prob, initial_conditions, times, n_pos);
