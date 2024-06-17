@@ -106,15 +106,9 @@ function get_sols(psts, prob, insample_inits, outsample_idx)
     for (i, pst) in enumerate(psts)
         _sols = Vector{EnsembleSolution}()
         for j in 1:16
-            if i == 2
-                ps, as = vec(pst[:Pm]), vec(pst[:Am]), vec(pst[:σ])
-                preds = ensemble_simulate(prob, insample_inits[j], ps, as, output_func)
-                push!(_sols, preds)
-            else
                 ps, as = vec(pst["ρ[$(41 + j)]"]), vec(pst["α[$(41 + j)]"])
                 preds = ensemble_simulate(prob, insample_inits[j], ps, as, output_func)
                 push!(_sols, preds)
-            end
             # elseif i == 4
             #     ps, as = vec(pst["ρ[$(outsample_idx[j])]"]), vec(pst["α[$(outsample_idx[j])]"])
             #     preds = ensemble_simulate(prob, insample_inits[j], ps, as, output_func)
@@ -154,43 +148,43 @@ end
 node = 65
 cols = ColorSchemes.seaborn_bright;
 
-begin
-    f = Figure(size=(1200, 1000))
-    idx = 2
-    for (i, node) in enumerate([61, 63, 65])
-        ax = Axis(f[i, 1])
-        ylims!(ax, 1.0,3.25)
-        q1, q2, q3 = get_quantiles(reduce(hcat, [sols[1][idx][j][node, :] for j in 1:2000]))
-        band!(0.0:0.5:15.0, q1, q2, color=alphacolor(get(ColorSchemes.Greys, 0.5), 0.75))
-        scatter!(times[idx][1], four_subdata[idx][node,1], color=:black, markersize=25)
-        scatter!(times[idx][2:end], four_subdata[idx][node,2:end], color=:white, markersize=25, strokewidth = 3, strokcolor=:black)
-        f
-    end
-    for (i, node) in enumerate([61, 63, 65])
-        ax = Axis(f[i, 2])
-        ylims!(ax, 1.0,3.25)
-        q1, q2, q3 = get_quantiles(reduce(hcat, [sols[3][idx][j][node, :] for j in 1:2000]))
-        band!(0.0:0.5:15.0, q1, q2, color=alphacolor(get(ColorSchemes.Greys, 0.5), 0.75))
-        scatter!(times[idx][1:2], four_subdata[idx][node,1:2], color=:black, markersize=25)
-        scatter!(times[idx][3:end], four_subdata[idx][node,3:end], color=:white, markersize=25, strokewidth = 3, strokcolor=:black)
-        f
-    end
-    for (i, node) in enumerate([61, 63, 65])
-        ax = Axis(f[i, 3])
-        ylims!(ax, 1.0,3.25)
-        q1, q2, q3 = get_quantiles(reduce(hcat, [sols[4][idx][j][node, :] for j in 1:2000]))
-        band!(0.0:0.5:15.0, q1, q2, color=alphacolor(get(ColorSchemes.Greys, 0.5), 0.75))
-        scatter!(times[idx][1:3], four_subdata[idx][node,1:3], color=:black, markersize=25)
-        scatter!(times[idx][4:end], four_subdata[idx][node,4:end], color=:white, markersize=25, strokewidth = 3, strokcolor=:black)
-        f
-    end
-    f
-end
+# begin
+#     f = Figure(size=(1200, 1000))
+#     idx = 2
+#     for (i, node) in enumerate([61, 63, 65])
+#         ax = Axis(f[i, 1])
+#         ylims!(ax, 1.0,3.25)
+#         q1, q2, q3 = get_quantiles(reduce(hcat, [sols[1][idx][j][node, :] for j in 1:2000]))
+#         band!(0.0:0.5:15.0, q1, q2, color=alphacolor(get(ColorSchemes.Greys, 0.5), 0.75))
+#         scatter!(times[idx][1], four_subdata[idx][node,1], color=:black, markersize=25)
+#         scatter!(times[idx][2:end], four_subdata[idx][node,2:end], color=:white, markersize=25, strokewidth = 3, strokcolor=:black)
+#         f
+#     end
+#     for (i, node) in enumerate([61, 63, 65])
+#         ax = Axis(f[i, 2])
+#         ylims!(ax, 1.0,3.25)
+#         q1, q2, q3 = get_quantiles(reduce(hcat, [sols[3][idx][j][node, :] for j in 1:2000]))
+#         band!(0.0:0.5:15.0, q1, q2, color=alphacolor(get(ColorSchemes.Greys, 0.5), 0.75))
+#         scatter!(times[idx][1:2], four_subdata[idx][node,1:2], color=:black, markersize=25)
+#         scatter!(times[idx][3:end], four_subdata[idx][node,3:end], color=:white, markersize=25, strokewidth = 3, strokcolor=:black)
+#         f
+#     end
+#     for (i, node) in enumerate([61, 63, 65])
+#         ax = Axis(f[i, 3])
+#         ylims!(ax, 1.0,3.25)
+#         q1, q2, q3 = get_quantiles(reduce(hcat, [sols[4][idx][j][node, :] for j in 1:2000]))
+#         band!(0.0:0.5:15.0, q1, q2, color=alphacolor(get(ColorSchemes.Greys, 0.5), 0.75))
+#         scatter!(times[idx][1:3], four_subdata[idx][node,1:3], color=:black, markersize=25)
+#         scatter!(times[idx][4:end], four_subdata[idx][node,4:end], color=:white, markersize=25, strokewidth = 3, strokcolor=:black)
+#         f
+#     end
+#     f
+# end
 
 for node in [61, 63, 65]
     dktnames[node]
     begin
-        _sols = noise_sols
+        _sols = sols
         sol_idx = [2, 3, 4]
         cols = Makie.wong_colors()
         f = Figure(size=(1600, 1600), fontsize=35)
@@ -295,5 +289,5 @@ for node in [61, 63, 65]
             framevisible=false, colgap=25, titlegap=10, groupgap=50, patchlabelgap=10)
         display(f)
     end
-    save(projectdir("visualisation/inference/model-selection/output/out-of-sample-updates-noise-$(dktnames[node]).pdf"), f)
+    save(projectdir("visualisation/inference/model-selection/output/out-of-sample-updates-$(dktnames[node]).pdf"), f)
 end
