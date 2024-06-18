@@ -64,7 +64,7 @@ times =  [get_times(data, i) for i in tau_pos]
 max_t = maximum(reduce(vcat, times))
 
 prob = ODEProblem(NetworkGlobalFKPP, 
-                  inits, 
+                  initial_conditions[1], 
                   (0.,max_t), 
                   [0.1,1.0, min_suvr, max_suvr])
                   
