@@ -9,6 +9,7 @@ using MCMCChains
 using Turing
 using CairoMakie; CairoMakie.activate!()
 using Colors
+using PairPlots
 using HypothesisTests
 #-------------------------------------------------------------------------------
 # Hierarchical Distributions -- ADNI
@@ -18,6 +19,8 @@ pst2 = deserialize(projectdir("adni/new-chains/local-fkpp/length-free/pst-tauneg
 pst3 = deserialize(projectdir("adni/new-chains/local-fkpp/length-free/pst-abneg-4x2000.jls"));
 
 [p[:numerical_error] |> sum for p in [pst, pst2, pst3]]
+
+pairplot(pst[["ρ[10]", "α[10]"]])
 
 function param_test(p1, p2)
         t = ApproximateTwoSampleKSTest(vec(p1), vec(p2))
