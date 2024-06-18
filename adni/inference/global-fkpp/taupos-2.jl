@@ -117,7 +117,7 @@ end
     data ~ MvNormal(vecsol, σ^2 * I)
 end
 
-# setadbackend(:zygote)
+setadbackend(:zygote)
 Random.seed!(1234);
 
 m = globalfkpp(vecsubdata, prob, initial_conditions, min_suvr, max_suvr, times, n_pos);
