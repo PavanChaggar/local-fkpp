@@ -38,7 +38,7 @@ Lv = sparse(inv(diagm(mean_norm_vols)) * L)
 # end
 
 function NetworkGlobalFKPP(du, u, p, t; L = Lv)
-    du .= -p[1] * L * (u .- p[3]) .+ p[2] .* (u .- p[3]) .* ((p[4].- p[3]) .- (u .- p[3]))
+    du .= -p[1] * L * (u .- p[3]) .+ p[2] .* (u .- p[3]) .* ((p[4] .- p[3]) .- (u .- p[3]))
 end
 
 function make_prob_func(initial_conditions, p, a, p_min, p_max, times)
@@ -117,8 +117,7 @@ end
     data ~ MvNormal(vecsol, σ^2 * I)
 end
 
-setadbackend(:zygote)
-Random.seed!(1234);
+Random.seed!(8888);
 
 m = globalfkpp(vecsubdata, prob, initial_conditions, min_suvr, max_suvr, times, n_pos);
 m();
