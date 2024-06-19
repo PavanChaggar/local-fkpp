@@ -62,7 +62,7 @@ moments = filter(x -> x.region == dktnames[node], gmm_moments)
 
 cols = Makie.wong_colors();
 begin
-    f1 = Figure(resolution=(500, 400), fontsize=20, font = "CMU Serif");
+    f1 = Figure(size=(600, 400), fontsize=30, font = "CMU Serif");
     ax = Axis(f1[1, 1], xlabel="SUVR")
     xlims!(minimum(data) - 0.05, maximum(data) + 0.05)
     hist!(vec(data), color=(:grey, 0.7), bins=100, normalization=:pdf, label="Data")
@@ -71,12 +71,12 @@ begin
 
     μ = moments.C0_mean[1]
     Σ = moments.C0_cov[1]
-    plot_density!(μ, Σ, weights[node,1]; color=cols[1], label="Healthy")
+    plot_density!(μ, Σ, weights[node,1]; color=cols[1], label=L"T^{-}")
     vlines!(ax, quantile(Normal(μ, sqrt(Σ)), 0.5), linewidth=3, label=L"p_0", color=cols[1])
 
     μ = moments.C1_mean[1]
     Σ = moments.C1_cov[1]
-    plot_density!(μ, Σ, weights[node,2]; color=cols[6], label="Pathological")
+    plot_density!(μ, Σ, weights[node,2]; color=cols[6], label=L"T^{+}")
     vlines!(ax, quantile(mm[node], 0.99), linewidth=3, label=L"p_\infty", color=cols[6])
     axislegend(; merge = true)
     f1
