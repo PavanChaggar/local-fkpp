@@ -618,6 +618,7 @@ begin
     mean_logistic_error = vec(mean(get_sol_t_end(logistic_sols) .- get_sol_t_end(insample_pos_data), dims=2))
     f = Figure(size=(1000, 400), fontsize=20)
     ax = Axis(f[1, 1:3], yticksize=15, ylabel="Mean Residual", ylabelsize=20)
+    hidexdecorations!(ax, grid=false)
     ylims!(-0.1, 0.1)
     for (i, j) in zip(mean_data, mean_local_error)
         linesegments!([i, i], [0, j], color=(cols[1], 0.5))
