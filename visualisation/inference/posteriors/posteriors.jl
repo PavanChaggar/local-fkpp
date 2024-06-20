@@ -370,6 +370,44 @@ begin
 end
 save(projectdir("visualisation/inference/posteriors/output/bf-posteriors-all.pdf"), f)
 
+begin
+        f = Figure(size=(1200, 500), fontsize=20)
+        _category_label = reverse([L"A^-", L"A^+T^-", L"A^+T^+"])
+        colors = reverse(alphacolor.(Makie.wong_colors(), 0.75)[1:3])
+        prod_bounds = [[0.0, 0.25], [-0.25, 0.25],[-0.25, 0.25]]
+        tran_bounds = [[0.0, 0.0159], [0., 0.08], [0., 0.08]]
+        for (i, p) in enumerate([pst, pst2, pst3])
+                gs = GridLayout(f[1,i])
+                pp = pairplot(gs,
+                p[[:Am, :Pm]] => (
+                    PairPlots.HexBin(colormap=Makie.cgrad([:transparent, colors[i]])),
+                    # PairPlots.Scatter(filtersigma=1, color=(colors[1], 1.0), markersize=2),
+                    PairPlots.Contour(color=(colors[i], 1.0), linewidth=2),
+                    PairPlots.MarginDensity(color=(colors[i], 1.), linewidth=5),
+                    PairPlots.MarginHist(color=(colors[i], 0.5)),
+                ),
+                axis=(;
+                Pm=(;
+                        lims=(;low=tran_bounds[i][1], high=tran_bounds[i][2])
+                ),
+                Am=(;
+                        lims=(;low=prod_bounds[i][1], high=prod_bounds[i][2])
+                )
+                ),
+                        labels=Dict(
+                        # basic string
+                        :Pm => "Transport",
+                        # Makie rich text
+                        :Am => "Production"
+                        ))
+                Label(f[0, i], _category_label[i], tellwidth=false, fontsize=30)
+                rowgap!(gs, 25)
+                colgap!(gs, 25)
+
+        end
+        f
+end
+save(projectdir("visualisation/inference/posteriors/output/bf-bivariate-posteriors.pdf"), f)
 
 begin
         n_samples = 4000
