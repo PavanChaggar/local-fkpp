@@ -80,10 +80,10 @@ begin
                 ax = Axis(g2[i,2:3], 
                 xticklabelsize=30, xlabelsize=30, xlabel="1 / yr", 
                 yticklabelsize=40,
-                titlesize=40, xticks=0.0:0.025:0.125,
-                xminorticks=0.0:0.0125:1, xminorticksvisible=true, 
+                titlesize=40, xticks=0.0:0.03:0.12,
+                xminorticks=0.0:0.015:1, xminorticksvisible=true, 
                 xticksize=20, xminorticksize=15, xgridcolor=RGBAf(0, 0, 0, 0.25))
-                CairoMakie.xlims!(ax, -0.005, 0.105)
+                CairoMakie.xlims!(ax, -0.006, 0.126)
                 hideydecorations!(ax)
                 if i < 3
                         hidexdecorations!(ax, grid=false, minorticks=false, ticks=false)
@@ -142,6 +142,45 @@ begin
         f
 end
 save(projectdir("visualisation/inference/posteriors/output/adni-posteriors-all.pdf"), f)
+
+begin
+        f = Figure(size=(1200, 500), fontsize=20)
+        _category_label = reverse([L"A^-", L"A^+T^-", L"A^+T^+"])
+        colors = reverse(alphacolor.(Makie.wong_colors(), 0.75)[1:3])
+        prod_bounds = [[0.0, 0.25], [-0.25, 0.25],[-0.25, 0.25]]
+        tran_bounds = [[0.0, 0.0159], [0., 0.08], [0., 0.08]]
+        for (i, p) in enumerate([pst, pst2, pst3])
+                gs = GridLayout(f[1,i])
+                pp = pairplot(gs,
+                p[[:Am, :Pm]] => (
+                    PairPlots.HexBin(colormap=Makie.cgrad([:transparent, colors[i]])),
+                    # PairPlots.Scatter(filtersigma=1, color=(colors[1], 1.0), markersize=2),
+                    PairPlots.Contour(color=(colors[i], 1.0), linewidth=2),
+                    PairPlots.MarginDensity(color=(colors[i], 1.), linewidth=5),
+                    PairPlots.MarginHist(color=(colors[i], 0.5)),
+                ),
+                axis=(;
+                Pm=(;
+                        lims=(;low=tran_bounds[i][1], high=tran_bounds[i][2])
+                ),
+                Am=(;
+                        lims=(;low=prod_bounds[i][1], high=prod_bounds[i][2])
+                )
+                ),
+                        labels=Dict(
+                        # basic string
+                        :Pm => "Transport",
+                        # Makie rich text
+                        :Am => "Production"
+                        ))
+                Label(f[0, i], _category_label[i], tellwidth=false, fontsize=30)
+                rowgap!(gs, 25)
+                colgap!(gs, 25)
+
+        end
+        f
+end
+save(projectdir("visualisation/inference/posteriors/output/adni-bivariate-posteriors.pdf"), f)
 
 begin
         n_samples = 8000
