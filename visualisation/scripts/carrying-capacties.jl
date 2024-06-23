@@ -27,7 +27,7 @@ scaled_cc = (cc .- minimum(u0)) ./ (maximum(cc) .- minimum(u0))
 begin
     GLMakie.activate!()
     cmap = ColorSchemes.RdYlBu |> reverse
-    f = Figure(size=(300,400))
+    f = Figure(size=(300,450))
 
     ax = Axis3(f[1,1], 
                aspect = :data, 

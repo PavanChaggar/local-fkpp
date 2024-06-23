@@ -3,8 +3,6 @@ using ADNIDatasets
 using CSV, DataFrames
 using DrWatson: projectdir
 using DifferentialEquations
-using SciMLSensitivity
-using Zygote
 using Turing
 using Distributions
 using Serialization
@@ -32,7 +30,8 @@ insample_inits = [d[:,1] for d in insample_four_subdata]
 
 outsample_subdata = [sd[:, 4:end] for sd in _subdata[outsample_idx]]
 
-max_suvr = maximum(reduce(vcat, reduce(hcat, insample_subdata)))
+min_suvr = minimum(u0)
+max_suvr = maximum(cc)
 
 _times =  [get_times(data, i) for i in tau_pos]
 times = _times[outsample_idx]
@@ -55,9 +54,13 @@ function NetworkLocalFKPP(du, u, p, t; Lv = Lv, u0 = u0, cc = cc)
     du .= -p[1] * Lv * (u .- u0) .+ p[2] .* (u .- u0) .* ((cc .- u0) .- (u .- u0))
 end
 
+# function NetworkGlobalFKPP(du, u, p, t; Lv = Lv)
+#     du .= -p[1] * Lv * u .+ p[2] .* u .* (1 .- ( u ./ p[3]))
+# end
 function NetworkGlobalFKPP(du, u, p, t; Lv = Lv)
-    du .= -p[1] * Lv * u .+ p[2] .* u .* (1 .- ( u ./ p[3]))
+    du .= -p[1] * Lv * (u .- p[3]) .+ p[2] .* (u .- p[3]) .* ((p[4] .- p[3]) .- (u .- p[3]))
 end
+
 
 function NetworkDiffusion(du, u, p, t; Lv = Lv)
     du .= -p[1] * Lv * u
@@ -71,7 +74,7 @@ end
 # Posteriors
 #-------------------------------------------------------------------------------
 local_pst = deserialize(projectdir("adni/new-chains/local-fkpp/length-free/pst-taupos-1x2000-three.jls"));
-global_pst = deserialize(projectdir("adni/new-chains/global-fkpp/length-free/pst-taupos-1x2000-three.jls"));
+global_pst = deserialize(projectdir("adni/new-chains/global-fkpp/scaled/pst-taupos-1x2000-three.jls"));
 diffusion_pst = deserialize(projectdir("adni/new-chains/diffusion/length-free/pst-taupos-1x2000-three.jls"));
 logistic_pst = deserialize(projectdir("adni/new-chains/logistic/pst-taupos-1x2000-three.jls"));
 
@@ -106,7 +109,7 @@ global_meanpst = mean(global_pst);
 
 global_params = [[global_meanpst[Symbol("ρ[$i]"), :mean], global_meanpst[Symbol("α[$i]"), :mean]] for i in outsample_idx];
 
-global_preds = simulate(NetworkGlobalFKPP, insample_inits, vcat.(global_params, max_suvr), times);
+global_preds = simulate(NetworkGlobalFKPP, insample_inits, vcat.(global_params, min_suvr, max_suvr), times);
 
 #-------------------------------------------------------------------------------
 # Diffusion model
@@ -262,15 +265,14 @@ save(projectdir("visualisation/inference/model-selection/output/out-sample-fit-i
 
 
 begin
-
     cols = ColorSchemes.seaborn_colorblind[1:10]
     scan = 4
-    titlesize = 40
-    xlabelsize = 30
-    ylabelsize = 30
-    xticklabelsize = 20 
-    yticklabelsize = 20
-    f = Figure(size = (2000, 1000), fontsize=30)
+    titlesize = 50
+    xlabelsize = 40
+    ylabelsize = 40
+    xticklabelsize = 30 
+    yticklabelsize = 30
+    f = Figure(size = (2000, 1000), fontsize=50)
     gt = f[1,1] = GridLayout()
     gl = f[2, 1] = GridLayout()
     gb = f[3, 1] = GridLayout()
@@ -281,12 +283,12 @@ begin
         mean_final_pred = vec(mean(reduce(hcat, [sd[:, end] for sd in preds]), dims=2))
 
         start = 1.0
-        stop = 2.0
+        stop = 1.75
         ax = Axis(gt[1,i],
                 ylabel="Predicted", 
                 title=title, titlesize=titlesize,
                 xlabelsize=xlabelsize, ylabelsize=ylabelsize, 
-                xticks = 1.0:0.25:2., yticks = 1.0:0.25:2.,
+                xticks = 1.0:0.25:stop, yticks = 1.0:0.25:stop,
                 xticklabelsize=xticklabelsize, yticklabelsize=xticklabelsize,
                 xminorgridvisible=true,yminorgridvisible=true,
                 xminorticksvisible=true, yminorticksvisible=true,
@@ -296,8 +298,8 @@ begin
         if i > 1
             hideydecorations!(ax, ticks=false, grid=false)
         end
-        xlims!(ax, 0.95,2.)
-        ylims!(ax, 0.95,2.)
+        xlims!(ax, 0.95,stop + 0.05)
+        ylims!(ax, 0.95,stop + 0.05)
         lines!(0.9:0.1:2.7, 0.9:0.1:2.7, color=:grey)
 
         ax = Axis(gb[1,i], 
@@ -314,8 +316,8 @@ begin
             hideydecorations!(ax, ticks=false, grid=false)
         end
         
-        xlims!(ax, -0.025,0.3)
-        ylims!(ax, -0.025,0.3)
+        xlims!(ax, -0.025,0.325)
+        ylims!(ax, -0.025,0.325)
         lines!(-0.3:0.01:1.05, -0.3:0.01:1.05, color=:grey)
     end
     Label(gl[1,1:4], "SUVR", tellwidth=false, rotation=0, padding = (0, 0, -10, -20), fontsize=30)

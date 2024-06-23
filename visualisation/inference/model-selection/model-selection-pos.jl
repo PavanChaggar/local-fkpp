@@ -62,7 +62,8 @@ cc = quantile.(upath, .99)
 _insample_subdata = [calc_suvr(insample_data, i) for i in insample_tau_pos]
 insample_pos_data = [normalise(sd, u0, cc) for sd in _insample_subdata]
 
-max_suvr = maximum(reduce(vcat, reduce(hcat, insample_pos_data)))
+min_suvr = minimum(u0)
+max_suvr = maximum(cc)
 
 insample_pos_initial_conditions = [sd[:,1] for sd in insample_pos_data]
 insample_pos_times =  [get_times(insample_data, i) for i in insample_tau_pos]
@@ -104,8 +105,11 @@ function NetworkLocalFKPP(du, u, p, t; Lv = Lv, u0 = u0, cc = cc)
     du .= -p[1] * Lv * (u .- u0) .+ p[2] .* (u .- u0) .* ((cc .- u0) .- (u .- u0))
 end
 
+# function NetworkGlobalFKPP(du, u, p, t; Lv = Lv)
+#     du .= -p[1] * Lv * u .+ p[2] .* u .* (1 .- ( u ./ p[3]))
+# end
 function NetworkGlobalFKPP(du, u, p, t; Lv = Lv)
-    du .= -p[1] * Lv * u .+ p[2] .* u .* (1 .- ( u ./ p[3]))
+    du .= -p[1] * Lv * (u .- p[3]) .+ p[2] .* (u .- p[3]) .* ((p[4] .- p[3]) .- (u .- p[3]))
 end
 
 function NetworkDiffusion(du, u, p, t; Lv = Lv)
@@ -150,7 +154,7 @@ local_sols = simulate(NetworkLocalFKPP, insample_pos_initial_conditions, collect
 
 global_sols = simulate(NetworkGlobalFKPP, 
                        insample_pos_initial_conditions, 
-                       collect(zip(ρs, αs, ones(insample_n_pos) * max_suvr)), 
+                       collect(zip(ρs, αs, ones(insample_n_pos) * min_suvr, ones(insample_n_pos) * max_suvr)), 
                        insample_pos_times);
 #-------------------------------------------------------------------------------
 # Diffusion model
@@ -303,11 +307,11 @@ save(projectdir("visualisation/inference/model-selection/output/model-fits.pdf")
 #-------------------------------------------------------------------------------
 begin 
     cols = ColorSchemes.seaborn_colorblind[1:3]
-    titlesize = 40
-    xlabelsize = 25 
-    ylabelsize = 25
-    xticklabelsize = 20 
-    yticklabelsize = 20
+    titlesize = 50
+    xlabelsize = 40
+    ylabelsize = 40
+    xticklabelsize = 30 
+    yticklabelsize = 30
     f = Figure(resolution=(2000, 1100), fontsize=40);
     g = [f[i, j] = GridLayout() for i in 1:2, j in 1:4]
     gl = f[3,:] = GridLayout()
@@ -346,8 +350,8 @@ begin
         end
         # end
 
-        start = -0.03
-        stop = 0.30
+        start = -0.075
+        stop = 0.265
         border = 0.05
         ax = Axis(g[2, i][1,1], 
                 xlabel="Δ SUVR",
@@ -388,11 +392,11 @@ save(projectdir("visualisation/inference/model-selection/output/model-fits-roi-a
 begin 
     CairoMakie.activate!()
     col = ColorSchemes.seaborn_colorblind[1]
-    titlesize = 40
-    xlabelsize = 25 
-    ylabelsize = 25
-    xticklabelsize = 20 
-    yticklabelsize = 20
+    titlesize = 50
+    xlabelsize = 40
+    ylabelsize = 40
+    xticklabelsize = 30 
+    yticklabelsize = 30
     f = Figure(resolution=(2000, 1000), fontsize=40);
     g = [f[i, j] = GridLayout() for i in 1:2, j in 1:4]
     for (i, _sol) in enumerate([local_sols, global_sols, diffusion_sols, logistic_sols])
@@ -720,7 +724,7 @@ save(projectdir("visualisation/inference/model-selection/output/all_residuals_ta
 #-------------------------------------------------------------------------------
 # Out of Sample Models
 #-------------------------------------------------------------------------------
- L = laplacian_matrix(c)
+L = laplacian_matrix(c)
 
 vols = [get_vol(outsample_data, i) for i in outsample_tau_pos]
 init_vols = [v[:,1] for v in vols]
@@ -732,8 +736,11 @@ function NetworkLocalFKPP(du, u, p, t; Lv = Lv, u0 = u0, cc = cc)
     du .= -p[1] * Lv * (u .- u0) .+ p[2] .* (u .- u0) .* ((cc .- u0) .- (u .- u0))
 end
 
+# function NetworkGlobalFKPP(du, u, p, t; Lv = Lv)
+#     du .= -p[1] * Lv * u .+ p[2] .* u .* (1 .- ( u ./ p[3]))
+# end
 function NetworkGlobalFKPP(du, u, p, t; Lv = Lv)
-    du .= -p[1] * Lv * u .+ p[2] .* u .* (1 .- ( u ./ p[3]))
+    du .= -p[1] * Lv * (u .- p[3]) .+ p[2] .* (u .- p[3]) .* ((p[4] .- p[3]) .- (u .- p[3]))
 end
 
 function NetworkDiffusion(du, u, p, t; Lv = Lv)
@@ -743,6 +750,7 @@ end
 function NetworkLogistic(du, u, p, t; Lv = Lv)
     du .= p[1] .* (u .- u0) .* ((cc .- u0) .- (u .- u0))
 end
+
 
 #-------------------------------------------------------------------------------
 # Out of Sample Predictions
@@ -758,6 +766,7 @@ outsample_global_sols = simulate(NetworkGlobalFKPP,
                                 outsample_initial_conditions, 
                                 collect(zip(ones(outsample_n_pos) .* p, 
                                             ones(outsample_n_pos) .* a, 
+                                            ones(outsample_n_pos) .* min_suvr,
                                             ones(outsample_n_pos) .* max_suvr)), 
                                 outsample_times);
                                 
@@ -866,13 +875,13 @@ begin
         scatter!(obs[:,end], preds[:,end], color=Colors.alphacolor(col, 0.5), markersize=20)
 
         start = -0.025
-        stop = 0.105
+        stop = 0.155
         ax = Axis(g[2, i][1,1], 
                 xlabel="Δ SUVR",
                 ylabel="Δ Prediction",
                 titlesize=titlesize, xlabelsize=xlabelsize, ylabelsize=ylabelsize, 
                 xticklabelsize=xticklabelsize, yticklabelsize=xticklabelsize, 
-                xticks=collect(0:0.05:0.1), yticks=collect(0:0.05:0.1),
+                xticks=collect(0:0.05:0.15), yticks=collect(0:0.05:0.1),
                 xminorgridvisible=true,yminorgridvisible=true,
                 xminorticksvisible=true, yminorticksvisible=true,
                 xminorticks=collect(start:0.025:stop),yminorticks=collect(start:0.025:stop),

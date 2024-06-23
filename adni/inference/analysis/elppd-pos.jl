@@ -29,7 +29,8 @@ insample_inits = [d[:,1] for d in insample_four_subdata]
 
 outsample_subdata = [sd[:, 4:end] for sd in four_subdata]
 
-max_suvr = maximum(reduce(vcat, reduce(hcat, insample_subdata)))
+min_suvr = minimum(u0)
+max_suvr = maximum(cc)
 
 _times =  [get_times(data, i) for i in tau_pos]
 times = _times[outsample_idx]
@@ -51,9 +52,13 @@ function NetworkLocalFKPP(du, u, p, t; Lv = Lv, u0 = u0, cc = cc)
     du .= -p[1] * Lv * (u .- u0) .+ p[2] .* (u .- u0) .* ((cc .- u0) .- (u .- u0))
 end
 
+# function NetworkGlobalFKPP(du, u, p, t; Lv = Lv)
+#     du .= -p[1] * Lv * u .+ p[2] .* u .* (1 .- ( u ./ p[3]))
+# end
 function NetworkGlobalFKPP(du, u, p, t; Lv = Lv)
-    du .= -p[1] * Lv * u .+ p[2] .* u .* (1 .- ( u ./ p[3]))
+    du .= -p[1] * Lv * (u .- p[3]) .+ p[2] .* (u .- p[3]) .* ((p[4] .- p[3]) .- (u .- p[3]))
 end
+
 
 function NetworkDiffusion(du, u, p, t; Lv = Lv)
     du .= -p[1] * Lv * u
@@ -91,18 +96,18 @@ local_elppd = elppd_local(local_pst, local_ps, local_as, insample_inits, outsamp
 #-------------------------------------------------------------------------------
 # Global FKPP
 #-------------------------------------------------------------------------------
-global_pst = deserialize(projectdir("adni/new-chains/global-fkpp/length-free/pst-taupos-1x2000-three.jls"));
+global_pst = deserialize(projectdir("adni/new-chains/global-fkpp/scaled/pst-taupos-1x2000-three.jls"));
 global_ps = [Array(global_pst[Symbol("ρ[$i]")]) for i in outsample_idx];
 global_as = [Array(global_pst[Symbol("α[$i]")]) for i in outsample_idx];
 
-function elppd_global(pst, ps, as, max_suvr, initial_conditions, subdata, out_times)
+function elppd_global(pst, ps, as, min_suvr, max_suvr, initial_conditions, subdata, out_times)
     σ = vec(pst[:σ])
 
     slls = Vector{Float64}()
     for (_p, _a, inits, y, t) in zip(ps, as, initial_conditions, subdata, out_times)
         lls = Vector{Float64}()
         for (i, (p, a, s)) in enumerate(zip(_p, _a, σ))
-            _prob = ODEProblem(NetworkGlobalFKPP, inits, (0.,7.), [p , a, max_suvr])
+            _prob = ODEProblem(NetworkGlobalFKPP, inits, (0.,7.), [p , a, min_suvr, max_suvr])
             _sol = solve(_prob, Tsit5(), saveat=t[4:end])
             push!(lls, pdf(MvNormal(vec(_sol), s^2 * I), vec(y)))
         end
@@ -111,8 +116,7 @@ function elppd_global(pst, ps, as, max_suvr, initial_conditions, subdata, out_ti
     sum(log.(slls))
 end
 
-global_elppd = elppd_global(global_pst, global_ps, global_as, max_suvr, insample_inits, outsample_subdata, times)
-
+global_elppd = elppd_global(global_pst, global_ps, global_as, min_suvr, max_suvr, insample_inits, outsample_subdata, times)
 #-------------------------------------------------------------------------------
 # Diffusion
 #-------------------------------------------------------------------------------
@@ -168,7 +172,7 @@ elppd_df = DataFrame("Local" => local_elppd,
                      "Logistic" => logistic_elppd)
 
 local_ll = deserialize(projectdir("adni/new-chains/local-fkpp/length-free/ll-taupos-4x2000.jls"));
-global_ll = deserialize(projectdir("adni/new-chains/global-fkpp/length-free/ll-taupos-4x2000.jls"));
+global_ll = deserialize(projectdir("adni/new-chains/global-fkpp/scaled/ll-taupos-4x2000.jls"));
 diffusion_ll = deserialize(projectdir("adni/new-chains/diffusion/length-free/ll-taupos-4x2000.jls"));
 logistic_ll = deserialize(projectdir("adni/new-chains/logistic/ll-taupos-4x2000.jls"));
 
@@ -177,4 +181,4 @@ nparams = [length(names(MCMCChains.get_sections(pst, :parameters))) for pst in [
 max_lls= [maximum(dict["data"]) for dict in [local_ll, global_ll, diffusion_ll, logistic_ll]]
 bic = [(n * log(13536) - (2 * maximum(dict["data"]))) for (dict, n) in zip([local_ll, global_ll, diffusion_ll, logistic_ll], nparams)]
 
-ll_df = DataFrame(zip(["Local", "Global", "Diffusion", "Logistic"], max_lls))
+ll_df = DataFrame(zip(["Local", "Global", "Diffusion", "Logistic"], bic))

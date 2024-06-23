@@ -9,14 +9,13 @@ CairoMakie.activate!()
 include(projectdir("functions.jl"))
 
 parc = Parcellation(Connectomes.connectome_path())
-cortex = filter(x -> get_lobe(x) != "subcortex", parc);
 
 # sub_data_path = projectdir("adni/data/new_data/UCBERKELEYAV1451_8mm_02_17_23_AB_Status.csv")
 sub_data_path = projectdir("adni/data/new_new_data/UCBERKELEY_TAU_6MM_18Dec2023_AB_STATUS.csv")
 alldf = CSV.read(sub_data_path, DataFrame)
 
 dktdict = Connectomes.node2FS()
-dktnames = [dktdict[i] for i in get_node_id.(cortex)]
+dktnames = [dktdict[i] for i in get_node_id.(parc)]
 
 data = ADNIDataset(alldf, dktnames; min_scans=1)
 
@@ -33,17 +32,18 @@ function get_dkt_weights(weights::DataFrame, dktnames)
     _weights = dropmissing(weights)
     w = Vector{Vector{Float64}}()
     for (i, name) in enumerate(dktnames)
+        println(name)
         _df = filter(x -> x.Column1 == name, _weights)
         _w = [_df.Comp_0[1], _df.Comp_1[1]]
-        @assert _w[1] > _w[2]
+        # @assert _w[1] > _w[2]
         push!(w, _w)
     end
     w
 end
 
-weights = get_dkt_weights(dktweights, dktnames)
+weights = get_dkt_weights(dktweights, dktnames[1:82])
 
-ubase, upath = get_dkt_moments(gmm_moments, dktnames)
+ubase, upath = get_dkt_moments(gmm_moments, dktnames[1:82])
 mm = [MixtureModel([u0, ui], [w...]) for (u0, ui, w) in zip(ubase, upath, weights)]
 u0 = mean.(ubase)
 cc = quantile.(mm, .99)
@@ -91,7 +91,7 @@ begin
     data = alldata[node, :]
     moments = filter(x -> x.region == dktnames[node], gmm_moments)
 
-    ax = Axis(f1[1, 1], xlabel="SUVR", title="Right Amygdala")
+    ax = Axis(f1[1, 1], xlabel="SUVR", title="Left Caudate")
     CairoMakie.xlims!(minimum(data) - 0.05, maximum(data) + 0.05)
     hist!(vec(data), color=(:grey, 0.7), bins=50, normalization=:pdf, label="Data")
     hideydecorations!(ax)
@@ -99,19 +99,18 @@ begin
 
     μ = moments.C0_mean[1]
     Σ = moments.C0_cov[1]
-    plot_density!(μ, Σ, weights[node][1]; color=cols[1], label="Healthy")
-    vlines!(ax, quantile(Normal(μ, sqrt(Σ)), 0.5), linestyle=:dash, linewidth=3, label=L"s_0", color=cols[1])
+    plot_density!(μ, Σ, weights[node][1]; color=cols[1], label=L"T^{-}")
+
 
     μ = moments.C1_mean[1]
     Σ = moments.C1_cov[1]
-    plot_density!(μ, Σ, weights[node][2]; color=cols[6], label="Pathological")
-    vlines!(ax, quantile(mm[node], 0.99), linestyle=:dash, linewidth=3, label=L"s_\infty", color=cols[6])
+    plot_density!(μ, Σ, weights[node][2]; color=cols[6], label=L"T^{+}")
 
-    node = 29
+    node = 41
     data = alldata[node, :]
     moments = filter(x -> x.region == dktnames[node], gmm_moments)
     
-    ax = Axis(f1[1, 2], xlabel="SUVR", title="Right Inferior Temporal")
+    ax = Axis(f1[1, 2], xlabel="SUVR", title="Left Amygdala")
     CairoMakie.xlims!(minimum(data) - 0.05, maximum(data) + 0.05)
     hist!(vec(data), color=(:grey, 0.7), bins=50, normalization=:pdf, label="Data")
     hideydecorations!(ax)
@@ -119,48 +118,66 @@ begin
 
     μ = moments.C0_mean[1]
     Σ = moments.C0_cov[1]
-    plot_density!(μ, Σ, weights[node][1]; color=cols[1], label="Healthy")
-    vlines!(ax, quantile(Normal(μ, sqrt(Σ)), 0.5), linestyle=:dash, linewidth=3, label=L"s_0", color=cols[1])
+    plot_density!(μ, Σ, weights[node][1]; color=cols[1], label=L"T^{-}")
 
     μ = moments.C1_mean[1]
     Σ = moments.C1_cov[1]
-    plot_density!(μ, Σ, weights[node][2]; color=cols[6], label="Pathological")
-    vlines!(ax, quantile(mm[node], 0.99), linestyle=:dash, linewidth=3, label=L"s_\infty", color=cols[6])
+    plot_density!(μ, Σ, weights[node][2]; color=cols[6], label=L"T^{+}")
+
+    
+    node = 40
+    data = alldata[node, :]
+    moments = filter(x -> x.region == dktnames[node], gmm_moments)
+
+    ax = Axis(f1[1, 3], xlabel="SUVR", title="Left1 Hippocampus")
+    CairoMakie.xlims!(minimum(data) - 0.05, maximum(data) + 0.05)
+    hist!(vec(data), color=(:grey, 0.7), bins=50, normalization=:pdf, label="Data")
+    hideydecorations!(ax)
+    hidespines!(ax, :t, :r, :l)
+
+    μ = moments.C0_mean[1]
+    Σ = moments.C0_cov[1]
+    plot_density!(μ, Σ, weights[node][1]; color=cols[1], label=L"T^{-}")
+
+    μ = moments.C1_mean[1]
+    Σ = moments.C1_cov[1]
+    plot_density!(μ, Σ, weights[node][2]; color=cols[6], label=L"T^{+}")
+
 
     axislegend(ax; merge = true, patchsize=(30, 30), labelsize=22)
     f1
 end
-save(projectdir("visualisation/models/output/gmm-amygdala-rIT.pdf"), f1)
+save(projectdir("visualisation/models/output/gmm-caudate-amygdala-hc.pdf"), f1)
 
 cols = Makie.wong_colors();
 begin
-    f1 = Figure(size=(250, 400), fontsize=15, font = "CMU Serif");
-    node = 35
-    data = alldata[node, :]
-    moments = filter(x -> x.region == dktnames[node], gmm_moments)
+    f1 = Figure(size=(250, 350), fontsize=20, font = "CMU Serif");
+    # node = 35
+    # data = alldata[node, :]
+    # moments = filter(x -> x.region == dktnames[node], gmm_moments)
 
-    ax = Axis(f1[1, 1], xlabel="SUVR", title="Left Hippocampus", titlesize=15)
-    CairoMakie.xlims!(minimum(data) - 0.05, quantile(upath[node], 0.99) .+ 0.05)
-    hist!(vec(data), color=(:grey, 0.7), bins=40, normalization=:pdf)
-    hideydecorations!(ax)
-    hidexdecorations!(ax, grid=false, ticks=false, ticklabels=false)
-    hidespines!(ax, :t, :r, :l)
+    # ax = Axis(f1[1, 1], xlabel="SUVR", title="Left Hippocampus", titlesize=15)
+    # CairoMakie.xlims!(minimum(data) - 0.05, quantile(upath[node], 0.99) .+ 0.05)
+    # hist!(vec(data), color=(:grey, 0.7), bins=40, normalization=:pdf)
+    # hideydecorations!(ax)
+    # hidexdecorations!(ax, grid=false, ticks=false, ticklabels=false)
+    # hidespines!(ax, :t, :r, :l)
 
-    μ = moments.C0_mean[1]
-    Σ = moments.C0_cov[1]
-    plot_density!(μ, Σ, weights[node][1]; color=cols[1], label="Healthy")
-    vlines!(ax, quantile(ubase[node], 0.5), linestyle=:dash, linewidth=3, label=L"s_0", color=cols[1])
+    # μ = moments.C0_mean[1]
+    # Σ = moments.C0_cov[1]
+    # plot_density!(μ, Σ, weights[node][1]; color=cols[1], label="Healthy")
+    # vlines!(ax, quantile(ubase[node], 0.5), linestyle=:dash, linewidth=3, label=L"s_0", color=cols[1])
 
-    μ = moments.C1_mean[1]
-    Σ = moments.C1_cov[1]
-    plot_density!(μ, Σ, weights[node][2]; color=cols[6], label="Pathological")
-    vlines!(ax, quantile(upath[node], 0.99), linestyle=:dash, linewidth=3, label=L"s_\infty", color=cols[6])
+    # μ = moments.C1_mean[1]
+    # Σ = moments.C1_cov[1]
+    # plot_density!(μ, Σ, weights[node][2]; color=cols[6], label="Pathological")
+    # vlines!(ax, quantile(upath[node], 0.99), linestyle=:dash, linewidth=3, label=L"s_\infty", color=cols[6])
 
     node = 29
     data = alldata[node, :]
     moments = filter(x -> x.region == dktnames[node], gmm_moments)
     
-    ax = Axis(f1[2, 1], xlabel="SUVR", title="Left Inferior Temporal", titlesize=15)
+    ax = Axis(f1[1:2, 1], xlabel="SUVR", title="Left Inferior Temporal", titlesize=15)
     CairoMakie.xlims!(minimum(data) - 0.05, quantile(upath[node], 0.99) .+ 0.05)
     hist!(vec(data), color=(:grey, 0.7), bins=40, normalization=:pdf)
     hideydecorations!(ax)
@@ -168,16 +185,17 @@ begin
 
     μ = moments.C0_mean[1]
     Σ = moments.C0_cov[1]
-    plot_density!(μ, Σ, weights[node][1]; color=cols[1], label="Healthy")
+    plot_density!(μ, Σ, weights[node][1]; color=cols[1], label=L"T^{-}")
     vlines!(ax, quantile(ubase[node], 0.5), linestyle=:dash, linewidth=3, label=L"s_0", color=cols[1])
 
     μ = moments.C1_mean[1]
     Σ = moments.C1_cov[1]
-    plot_density!(μ, Σ, weights[node][2]; color=cols[6], label="Pathological")
+    plot_density!(μ, Σ, weights[node][2]; color=cols[6], label=L"T^{+}")
     vlines!(ax, quantile(upath[node], 0.99), linestyle=:dash, linewidth=3, label=L"s_\infty", color=cols[6])
 
-    Legend(f1[3, 1], ax, framevisible=false, patchsize=(10, 10), labelsize=20, nbanks=2, rowgap = 0, tellheight=true, tellwidth=false)
+    Legend(f1[3, 1], ax, framevisible=false, patchsize=(30, 10), labelsize=25, nbanks=2, rowgap = 0, tellheight=true, tellwidth=false)
     rowgap!(f1.layout, 1)
     f1
 end
+save(projectdir("visualisation/models/output/gmm-rIT-vertical.pdf"), f1)
 save(projectdir("visualisation/models/output/gmm-hc-lIT-vertical.pdf"), f1)
