@@ -15,7 +15,7 @@ pst2 = deserialize(projectdir("adni/chains-revisions/local-fkpp/wm/pst-tauneg-1x
 pst3 = deserialize(projectdir("adni/chains-revisions/local-fkpp/wm/pst-abneg-1x2000.jls"));
 
 function param_test(p1, p2)
-        t = ApproximateTwoSampleKSTest(vec(p1), vec(p2))
+        t = MannWhitneyUTest(vec(p1), vec(p2))
         if pvalue(t) < 0.01
                 return true
         else
@@ -30,7 +30,6 @@ for p in [:Am, :Pm]
 end
 
 [p[:numerical_error] |> sum for p in [pst, pst2, pst3]]
-
 
 using CairoMakie; CairoMakie.activate!()
 using Colors
@@ -175,7 +174,7 @@ begin
                                                 cloud_width=0.5, clouds=hist, hist_bins=25,
                                                 color = colors[3])
 
-        bracket!(ax, median(a1), 1.25, median(a2), 1.25, text = "*", orientation = :down, textoffset = 20, linewidth = 2, color=(:grey, 0.75))
+        # bracket!(ax, median(a1), 1.25, median(a2), 1.25, text = "*", orientation = :down, textoffset = 20, linewidth = 2, color=(:grey, 0.75))
         bracket!(ax, median(a2), 1.25, median(a3), 1.25, text = "*", orientation = :down, textoffset = 20, linewidth = 2, color=(:grey, 0.75))
         bracket!(ax, median(a3), 1.05, median(a1), 1.05, text = "*", orientation = :down, textoffset = 20, linewidth = 2, color=(:grey, 0.75))
 
