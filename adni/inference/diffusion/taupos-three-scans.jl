@@ -109,7 +109,7 @@ end
     data ~ MvNormal(vecsol, σ^2 * I)
 end
 
-setadbackend(:zygote)
+# setadbackend(:zygote)
 Random.seed!(1234);
 
 m = diffusion(vecsubdata, prob, initial_conditions, times, n_pos);
@@ -119,7 +119,7 @@ println("starting inference")
 n_chains = 1
 n_samples = 2_000
 pst = sample(m, 
-             Turing.NUTS(0.8;  adtype=AutoZygote()),
+             Turing.NUTS(0.8),
              n_samples, 
              progress=true)
 serialize(projectdir("adni/new-chains/diffusion/length-free/pst-taupos-$(n_chains)x$(n_samples)-three.jls"), pst)
