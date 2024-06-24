@@ -119,7 +119,7 @@ println("starting inference")
 n_chains = 1
 n_samples = 2_000
 pst = sample(m, 
-             Turing.NUTS(0.8),
+             Turing.NUTS(0.8;  adtype=AutoZygote()),
              n_samples, 
              progress=true)
 serialize(projectdir("adni/new-chains/diffusion/length-free/pst-taupos-$(n_chains)x$(n_samples)-three.jls"), pst)
