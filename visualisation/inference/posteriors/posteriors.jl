@@ -23,7 +23,7 @@ pst3 = deserialize(projectdir("adni/new-chains/local-fkpp/length-free/pst-abneg-
 pairplot(pst[["ρ[10]", "α[10]"]])
 
 function param_test(p1, p2)
-        t = ApproximateTwoSampleKSTest(vec(p1), vec(p2))
+        t = MannWhitneyUTest(vec(p1), vec(p2))
         if pvalue(t) < 0.01
                 return true
         else
