@@ -88,13 +88,13 @@ end
 # Inference 
 #-------------------------------------------------------------------------------
 @model function localfkpp(data, prob, initial_conditions, times, n)
-    σ ~ LogNormal(0.0, 1.0)
+    σ ~ InverseGamma(2,3)
     
     Pm ~ LogNormal(0.0, 1.0) # LogNormal(0.0,1.0)
-    Ps ~ LogNormal(0.0, 1.0)
+    Ps ~ truncated(Normal(), lower=0)
 
     Am ~ Normal(0.0, 1.0) # Normal(0.0,1.0)
-    As ~ LogNormal(0.0, 1.0)
+    As ~ truncated(Normal(), lower=0)
 
     ρ ~ filldist(truncated(Normal(Pm, Ps), lower=0), n)
     α ~ filldist(Normal(Am, As), n)
@@ -133,8 +133,8 @@ pst = sample(m,
              MCMCSerial(), 
              n_samples, 
              n_chains)
-serialize(projectdir("adni/new-chains/local-fkpp/length-free/pst-tauneg-$(n_chains)x$(n_samples).jls"), pst)
+serialize(projectdir("adni/new-chains/local-fkpp/length-free/pst-tauneg-$(n_chains)x$(n_samples)-normal.jls"), pst)
 
 #calc log likelihood 
 log_likelihood = pointwise_loglikelihoods(m, MCMCChains.get_sections(pst, :parameters));
-serialize(projectdir("adni/new-chains/local-fkpp/length-free/ll-tauneg-$(n_chains)x$(n_samples).jls"), log_likelihood)
+serialize(projectdir("adni/new-chains/local-fkpp/length-free/ll-tauneg-$(n_chains)x$(n_samples)-normal.jls"), log_likelihood)
