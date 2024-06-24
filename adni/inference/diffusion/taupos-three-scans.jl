@@ -33,8 +33,8 @@ max_norm_vols = reduce(hcat, [v ./ maximum(v) for v in init_vols])
 mean_norm_vols = vec(mean(max_norm_vols, dims=2))
 Lv = sparse(inv(diagm(mean_norm_vols)) * L)
 
-function NetworkDiffusion(du, u, p, t; Lv = Lv)
-    du .= -p[1] * Lv * u
+function NetworkDiffusion(du, u, p, t; Lv = Lv, u0=u0)
+    du .= -p[1] * L * (u .- u0)
 end
 
 function make_prob_func(initial_conditions, p, times)
