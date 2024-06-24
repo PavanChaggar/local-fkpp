@@ -16,6 +16,7 @@ pst3 = deserialize(projectdir("adni/chains-revisions/local-fkpp/wm/pst-abneg-1x2
 
 function param_test(p1, p2)
         t = MannWhitneyUTest(vec(p1), vec(p2))
+        println(pvalue(t))
         if pvalue(t) < 0.01
                 return true
         else
