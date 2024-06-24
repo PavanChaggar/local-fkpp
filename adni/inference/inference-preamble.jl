@@ -16,6 +16,45 @@ neo = findall(x -> x ∈ neo_regions, get_label.(cortex))
 #-------------------------------------------------------------------------------
 # Data 
 #-----------------------------------------------------------------------------
+# sub_data_path = projectdir("adni/data/new_new_data/UCBERKELEY_TAU_6MM_18Dec2023_AB_STATUS.csv")
+# alldf = CSV.read(sub_data_path, DataFrame)
+
+# #posdf = filter(x -> x.STATUS == "POS", alldf)
+# posdf = filter(x -> x.AB_Status == 1, alldf)
+# negdf = filter(x -> x.AB_Status == 0, alldf)
+
+# dktdict = Connectomes.node2FS()
+# dktnames = [dktdict[i] for i in get_node_id.(cortex)]
+
+# data = ADNIDataset(posdf, dktnames; min_scans=3, reference_region="INFERIORCEREBELLUM")
+
+# n_data = length(data)
+
+# # Ask Jake where we got these cutoffs from? 
+# mtl_cutoff = 1.375
+# neo_cutoff = 1.395
+
+# mtl_pos = filter(x -> regional_mean(data, mtl, x) >= mtl_cutoff, 1:n_data)
+# neo_pos = filter(x -> regional_mean(data, neo, x) >= neo_cutoff, 1:n_data)
+
+# tau_pos = findall(x -> x ∈ unique([mtl_pos; neo_pos]), 1:n_data)
+# tau_neg = findall(x -> x ∉ tau_pos, 1:n_data)
+
+# pos_data = data[tau_pos]
+# neg_data = data[tau_neg]
+
+# n_pos = length(pos_data)
+# n_neg = length(neg_data)
+
+# # Regional parameters
+# gmm_moments = CSV.read(projectdir("adni/data/component_moments.csv"), DataFrame)
+# ubase, upath = get_dkt_moments(gmm_moments, dktnames)
+# u0 = mean.(ubase)
+# cc = quantile.(upath, .99)
+
+#-------------------------------------------------------------------------------
+# White matter reference 
+#-------------------------------------------------------------------------------
 sub_data_path = projectdir("adni/data/new_new_data/UCBERKELEY_TAU_6MM_18Dec2023_AB_STATUS.csv")
 alldf = CSV.read(sub_data_path, DataFrame)
 
@@ -26,13 +65,14 @@ negdf = filter(x -> x.AB_Status == 0, alldf)
 dktdict = Connectomes.node2FS()
 dktnames = [dktdict[i] for i in get_node_id.(cortex)]
 
-data = ADNIDataset(posdf, dktnames; min_scans=3, reference_region="INFERIORCEREBELLUM")
+data = ADNIDataset(posdf, dktnames; min_scans=3, reference_region="ERODED_SUBCORTICALWM")
 
 n_data = length(data)
 
-# Ask Jake where we got these cutoffs from? 
-mtl_cutoff = 1.375
-neo_cutoff = 1.395
+gmm_moments = CSV.read(projectdir("py-analysis/wm-nopvc-moments-prob.csv"), DataFrame)
+
+mtl_cutoff = mean(gmm_moments.cutoff[mtl])
+neo_cutoff = mean(gmm_moments.cutoff[neo])
 
 mtl_pos = filter(x -> regional_mean(data, mtl, x) >= mtl_cutoff, 1:n_data)
 neo_pos = filter(x -> regional_mean(data, neo, x) >= neo_cutoff, 1:n_data)
@@ -40,49 +80,10 @@ neo_pos = filter(x -> regional_mean(data, neo, x) >= neo_cutoff, 1:n_data)
 tau_pos = findall(x -> x ∈ unique([mtl_pos; neo_pos]), 1:n_data)
 tau_neg = findall(x -> x ∉ tau_pos, 1:n_data)
 
-pos_data = data[tau_pos]
-neg_data = data[tau_neg]
-
-n_pos = length(pos_data)
-n_neg = length(neg_data)
+n_pos = length(tau_pos)
+n_neg = length(tau_neg)
 
 # Regional parameters
-gmm_moments = CSV.read(projectdir("adni/data/component_moments.csv"), DataFrame)
-ubase, upath = get_dkt_moments(gmm_moments, dktnames)
+ubase, upath = get_dkt_moments(gmm_moments)
 u0 = mean.(ubase)
 cc = quantile.(upath, .99)
-
-#-------------------------------------------------------------------------------
-# White matter reference 
-#-------------------------------------------------------------------------------
-# sub_data_path = projectdir("adni/data/new_new_data/UCBERKELEY_TAU_6MM_18Dec2023_AB_STATUS.csv")
-# alldf = CSV.read(sub_data_path, DataFrame)
-
-# #posdf = filter(x -> x.STATUS == "POS", alldf)
-# posdf = filter(x -> x.AB_Status == 1, alldf)
-
-# dktdict = Connectomes.node2FS()
-# dktnames = [dktdict[i] for i in get_node_id.(cortex)]
-
-# data = ADNIDataset(posdf, dktnames; min_scans=3, reference_region="ERODED_SUBCORTICALWM")
-
-# n_data = length(data)
-
-# gmm_moments = CSV.read(projectdir("py-analysis/wm-nopvc-moments-prob.csv"), DataFrame)
-
-# mtl_cutoff = mean(gmm_moments.cutoff[mtl])
-# neo_cutoff = mean(gmm_moments.cutoff[neo])
-
-# mtl_pos = filter(x -> regional_mean(data, mtl, x) >= mtl_cutoff, 1:n_data)
-# neo_pos = filter(x -> regional_mean(data, neo, x) >= neo_cutoff, 1:n_data)
-
-# tau_pos = findall(x -> x ∈ unique([mtl_pos; neo_pos]), 1:n_data)
-# tau_neg = findall(x -> x ∉ tau_pos, 1:n_data)
-
-# n_pos = length(tau_pos)
-# n_neg = length(tau_neg)
-
-# # Regional parameters
-# ubase, upath = get_dkt_moments(gmm_moments)
-# u0 = mean.(ubase)
-# cc = quantile.(upath, .99)
