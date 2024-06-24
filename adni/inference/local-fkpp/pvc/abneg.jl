@@ -29,15 +29,26 @@ include(projectdir("adni/inference/local-fkpp/pvc/inference-preamble-pvc.jl"))
 data = ADNIDataset(negdf, dktnames; min_scans=3, reference_region="INFERIORCEREBELLUM", qc=true)
 n_subjects = length(data)
 
-subsuvr = [calc_suvr(data, i) for i in 1:n_subjects]
+mtl_cutoff = mean(gmm_moments.cutoff[mtl])
+neo_cutoff = mean(gmm_moments.cutoff[neo])
+
+mtl_pos = filter(x -> regional_mean(data, mtl, x) >= mtl_cutoff, 1:n_subjects)
+neo_pos = filter(x -> regional_mean(data, neo, x) >= neo_cutoff, 1:n_subjects)
+
+tau_pos = findall(x -> x ∈ unique([mtl_pos; neo_pos]), 1:n_subjects)
+tau_neg = findall(x -> x ∉ tau_pos, 1:n_subjects)
+
+neg_data = data[tau_neg]
+
+subsuvr = calc_suvr.(neg_data)
 _subdata = [normalise(sd, u0, cc) for sd in subsuvr]
 
 blsd = [sd .- u0 for sd in _subdata]
 nonzerosubs = findall(x -> sum(x) < 2, [sum(sd, dims=1) .== 0 for sd in blsd])
 
-badsubs = [56] # abnormal tau pathology likely due to other reasons
-goodsubs = filter(x -> x ∉ badsubs, nonzerosubs)
-subdata = _subdata[goodsubs]
+# badsubs = [56] # abnormal tau pathology likely due to other reasons
+# goodsubs = filter(x -> x ∉ badsubs, nonzerosubs)
+subdata = _subdata[nonzerosubs]
 vecsubdata = reduce(vcat, reduce(hcat, subdata))
 #-------------------------------------------------------------------------------
 # Connectome + ODEE
@@ -65,7 +76,7 @@ function output_func(sol,i)
 end
 
 initial_conditions = [sd[:,1] for sd in subdata]
-_times =  [get_times(data, i) for i in 1:n_subjects]
+_times =  get_times.(neg_data)
 times = _times[nonzerosubs]
 
 n_subjects = length(subdata)
