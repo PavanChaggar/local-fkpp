@@ -112,8 +112,8 @@ function NetworkGlobalFKPP(du, u, p, t; Lv = Lv)
     du .= -p[1] * Lv * (u .- p[3]) .+ p[2] .* (u .- p[3]) .* ((p[4] .- p[3]) .- (u .- p[3]))
 end
 
-function NetworkDiffusion(du, u, p, t; Lv = Lv)
-    du .= -p[1] * Lv * u
+function NetworkDiffusion(du, u, p, t; Lv = Lv, u0=u0)
+    du .= -p[1] * L * (u .- u0)
 end
 
 function NetworkLogistic(du, u, p, t; Lv = Lv)
@@ -350,7 +350,7 @@ begin
         end
         # end
 
-        start = -0.075
+        start = -0.025
         stop = 0.265
         border = 0.05
         ax = Axis(g[2, i][1,1], 
@@ -619,11 +619,12 @@ begin
     cols = Makie.wong_colors();
     mean_data = vec(mean(get_sol_t_end(insample_pos_data), dims=2))
     mean_local_error = vec(mean(get_sol_t_end(local_sols) .- get_sol_t_end(insample_pos_data), dims=2))
+    mean_global_error = vec(mean(get_sol_t_end(global_sols) .- get_sol_t_end(insample_pos_data), dims=2))
     mean_logistic_error = vec(mean(get_sol_t_end(logistic_sols) .- get_sol_t_end(insample_pos_data), dims=2))
-    f = Figure(size=(1000, 400), fontsize=20)
+    f = Figure(size=(1000, 600), fontsize=20)
     ax = Axis(f[1, 1:3], yticksize=15, ylabel="Mean Residual", ylabelsize=20)
     hidexdecorations!(ax, grid=false)
-    ylims!(-0.1, 0.1)
+    ylims!(-0.15, 0.15)
     for (i, j) in zip(mean_data, mean_local_error)
         linesegments!([i, i], [0, j], color=(cols[1], 0.5))
     end
@@ -637,13 +638,35 @@ begin
     hideydecorations!(ax, ticks=false)
     hidexdecorations!(ax)
     hidespines!(ax, :b, :t, :r)
-    ylims!(-0.1, 0.1)
+    ylims!(-0.15, 0.15)
     density!(mean_local_error, direction=:y)
     hlines!(ax, 0, color=cols[1])
     hlines!(ax, mean(mean_local_error),  color=:black, linestyle=:dash)
 
     ax = Axis(f[2, 1:3], yticksize=15, ylabel="Mean Residual", xlabel="SUVR", ylabelsize=20, xlabelsize=20)
-    ylims!(-0.1, 0.1)
+    hidexdecorations!(ax)
+    ylims!(-0.15, 0.15)
+    for (i, j) in zip(mean_data, mean_global_error)
+        linesegments!([i, i], [0, j], color=(cols[1], 0.5))
+    end
+    scatter!(mean_data, 
+            mean_global_error, 
+            markersize=15, color=(cols[1], 0.8))
+    hlines!(ax, 0, color=cols[1])
+    hlines!(ax, mean(mean_global_error),  color=:black, linestyle=:dash)
+
+    ax = Axis(f[2, 4])
+    hideydecorations!(ax, ticks=false)
+    hidexdecorations!(ax)
+    hidespines!(ax, :b, :t, :r)
+    ylims!(-0.15, 0.15)
+    density!(mean_global_error, direction=:y)
+    hlines!(ax, 0, color=cols[1])
+    hlines!(ax, mean(mean_global_error),  color=:black, linestyle=:dash)
+
+
+    ax = Axis(f[3, 1:3], yticksize=15, ylabel="Mean Residual", xlabel="SUVR", ylabelsize=20, xlabelsize=20)
+    ylims!(-0.15, 0.15)
     for (i, j) in zip(mean_data, mean_logistic_error)
         linesegments!([i, i], [0, j], color=(cols[1], 0.5))
     end
@@ -653,18 +676,19 @@ begin
     hlines!(ax, 0, color=cols[1])
     hlines!(ax, mean(mean_logistic_error),  color=:black, linestyle=:dash)
 
-    ax = Axis(f[2, 4])
+    ax = Axis(f[3, 4])
     hideydecorations!(ax, ticks=false)
     hidexdecorations!(ax)
     hidespines!(ax, :b, :t, :r)
-    ylims!(-0.1, 0.1)
+    ylims!(-0.15, 0.15)
     density!(mean_logistic_error, direction=:y)
     hlines!(ax, 0, color=cols[1])
     hlines!(ax, mean(mean_logistic_error),  color=:black, linestyle=:dash)
 
     colgap!(f.layout, 10)
     Label(f[1, 0], "Local FKPP", rotation=pi/2, tellheight=false, fontsize=20, font=:bold)
-    Label(f[2, 0], "Logistic", rotation=pi/2, tellheight=false, fontsize=20, font=:bold)
+    Label(f[2, 0], "Global FKPP", rotation=pi/2, tellheight=false, fontsize=20, font=:bold)
+    Label(f[3, 0], "Logistic", rotation=pi/2, tellheight=false, fontsize=20, font=:bold)
     f
 end
 save(projectdir("visualisation/inference/model-selection/output/regional_residuals_tau_pos.pdf"), f)
