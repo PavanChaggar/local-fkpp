@@ -63,7 +63,7 @@ end
 
 
 function NetworkDiffusion(du, u, p, t; Lv = Lv)
-    du .= -p[1] * Lv * u
+    du .= -p[1] * Lv * (u .- u0)
 end
 
 function NetworkLogistic(du, u, p, t; Lv = Lv)
