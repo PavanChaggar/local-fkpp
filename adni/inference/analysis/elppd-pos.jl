@@ -8,6 +8,7 @@ using Serialization, MCMCChains
 using DelimitedFiles, LinearAlgebra
 using Random
 using LinearAlgebra, SparseArrays
+using Turing
 include(projectdir("functions.jl"))
 #-------------------------------------------------------------------------------
 # Load connectome, regional parameters and sort data
@@ -61,7 +62,7 @@ end
 
 
 function NetworkDiffusion(du, u, p, t; Lv = Lv)
-    du .= -p[1] * Lv * u
+    du .= -p[1] * Lv * (u .- u0)
 end
 
 function NetworkLogistic(du, u, p, t; Lv = Lv)
