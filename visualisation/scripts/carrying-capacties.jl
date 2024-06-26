@@ -54,7 +54,7 @@ scaled_cc = (cc .- minimum(u0)) ./ (maximum(cc) .- minimum(u0))
 
 begin
     GLMakie.activate!()
-    cmap = ColorSchemes.RdYlBu |> reverse
+    cmap = ColorSchemes.viridis
     f = Figure(size=(1000,400))
 
     ax = Axis3(f[1,1], 
@@ -81,5 +81,35 @@ begin
     ticksize=18, ticklabelsize=20, labelpadding=3)
     f
 end
-
 save(projectdir("visualisation/models/output/carrying-capacities-mm.jpeg"), f)
+
+begin
+    GLMakie.activate!()
+    cmap = ColorSchemes.viridis
+    f = Figure(size=(300,450))
+
+    ax = Axis3(f[1,1], 
+               aspect = :data, 
+               azimuth = 0.0pi, 
+               elevation=0.0pi,
+               protrusions=(0.0,0.0,0.0,0.0))
+    hidedecorations!(ax)
+    hidespines!(ax)
+    plot_roi!(right_nodes, scaled_cc, cmap)
+    
+    ax = Axis3(f[2,1], 
+               aspect = :data, 
+               azimuth = 1.0pi, 
+               elevation=0.0pi,
+               protrusions=(0.0,0.0,0.0,0.0))
+               
+    hidedecorations!(ax)
+    hidespines!(ax)
+    plot_roi!(right_nodes, scaled_cc, cmap)
+
+    Colorbar(f[3, 1], limits = (0.98, maximum(cc)), colormap = cmap,
+    vertical = false, label = "SUVR", labelsize=25, flipaxis=false,
+    ticksize=10, ticklabelsize=15, labelpadding=3, ticks=[0.98, 3.81])
+    f
+end
+save(projectdir("visualisation/models/output/carrying-capacities-mm-vertical.jpeg"), f)
