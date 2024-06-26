@@ -76,7 +76,7 @@ end
     
     Am ~ Normal(0.0, 1.0)
     As ~ truncated(Normal(), lower=0)
-    
+
     α ~ filldist(Normal(Am, As), n)
 
     ensemble_prob = EnsembleProblem(prob, 
@@ -115,7 +115,7 @@ pst = sample(m,
              n_samples, 
              n_chains,
              progress=true)
-serialize(projectdir("adni/new-chains/logistic/pst-taupos-$(n_chains)x$(n_samples)-three.jls"), pst)
+serialize(projectdir("adni/new-chains/logistic/pst-taupos-$(n_chains)x$(n_samples)-three-normal.jls"), pst)
 
 # calc log likelihood 
 # pst = deserialize(projectdir("adni/new-chains/logistic/pst-taupos-$(n_chains)x$(n_samples)-three.jls"));

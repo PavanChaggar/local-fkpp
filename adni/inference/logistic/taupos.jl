@@ -71,7 +71,7 @@ end
 #-------------------------------------------------------------------------------
 @model function logistic(data, prob, initial_conditions, times, n)
     σ ~ InverseGamma(2, 3)
-    
+
     Am ~ Normal(0.0, 1.0)
     As ~ truncated(Normal(), lower=0)
 
@@ -113,9 +113,9 @@ pst = sample(m,
              n_samples, 
              n_chains,
              progress=true)
-serialize(projectdir("adni/new-chains/logistic/pst-taupos-$(n_chains)x$(n_samples).jls"), pst)
+serialize(projectdir("adni/new-chains/logistic/pst-taupos-$(n_chains)x$(n_samples)-normal.jls"), pst)
 
 # calc log likelihood 
-pst = deserialize(projectdir("adni/new-chains/logistic/pst-taupos-$(n_chains)x$(n_samples).jls"));
+pst = deserialize(projectdir("adni/new-chains/logistic/pst-taupos-$(n_chains)x$(n_samples)-normal.jls"));
 log_likelihood = pointwise_loglikelihoods(m, MCMCChains.get_sections(pst, :parameters));
-serialize(projectdir("adni/new-chains/logistic/ll-taupos-$(n_chains)x$(n_samples).jls"), log_likelihood)
+serialize(projectdir("adni/new-chains/logistic/ll-taupos-$(n_chains)x$(n_samples)-normal.jls"), log_likelihood)
