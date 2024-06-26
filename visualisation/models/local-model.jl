@@ -1,5 +1,5 @@
 using Connectomes
-using OrdinaryDiffEq
+using DifferentialEquations
 using DrWatson
 using Distributions
 include(projectdir("functions.jl"))
@@ -49,19 +49,19 @@ braak_stages = map(getbraak, braak)
 
 right_braak_stages = [filter(x -> x ∈ nodes, br) for br in braak_stages]
 
-using Plots
-Plots.plot(sol, vars=(1:36), labels=false)
+# using Plots
+# Plots.plot(sol, vars=(1:36), labels=false)
 
 using GLMakie; GLMakie.activate!()
 using ColorSchemes
 
 begin
-    cmap = reverse(ColorSchemes.RdYlBu); 
+    cmap = ColorSchemes.viridis; 
     braak_colors = Makie.wong_colors()
     endsol = sol[end]
     solcol = [(sol[i] .- minimum(u0)) ./ (maximum(cc) .- minimum(u0)) for i in 1:n]
     braak_sol = reduce(hcat, [(allsol[i] .- u0) ./ (endsol .- u0) for i in 1:length(allsol)])
-    f = Figure(resolution=(1200, 1200))
+    f = Figure(size=(1200, 1200))
     g1 = f[1, 1] = GridLayout()
     g2 = f[2:3, 1] = GridLayout()
     for k in 1:n

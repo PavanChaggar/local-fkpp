@@ -41,12 +41,12 @@ Plots.plot(allsol, vars=(1:36), labels=false)
 
 using GLMakie, ColorSchemes
 
-cmap = reverse(ColorSchemes.RdYlBu);
+cmap = ColorSchemes.viridis;
 cols = [get(cmap, sol[i]) for i in 1:n]
 nodes = get_node_id.(right_cortical_nodes);
 line_cols = Makie.wong_colors()[1]
 begin
-    f = Figure(resolution=(1200, 800))
+    f = Figure(size=(1200, 800))
     g1 = f[1, 1] = GridLayout()
     g2 = f[2, 1] = GridLayout()
     for k in 1:n

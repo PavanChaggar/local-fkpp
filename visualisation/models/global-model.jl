@@ -42,7 +42,7 @@ Plots.plot(allsol, vars=(1:36), labels=false)
 
 using GLMakie, ColorSchemes
 
-cmap = reverse(ColorSchemes.RdYlBu);
+cmap = ColorSchemes.viridis
 cols = [get(cmap, sol[i]) for i in 1:n]
 nodes = rIDs
 
