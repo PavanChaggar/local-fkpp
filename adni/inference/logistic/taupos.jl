@@ -70,10 +70,10 @@ end
 # Inference 
 #-------------------------------------------------------------------------------
 @model function logistic(data, prob, initial_conditions, times, n)
-    σ ~ LogNormal(0.0, 1.0)
-
+    σ ~ InverseGamma(2, 3)
+    
     Am ~ Normal(0.0, 1.0)
-    As ~ LogNormal(0.0, 1.0)
+    As ~ truncated(Normal(), lower=0)
 
     α ~ filldist(Normal(Am, As), n)
 
