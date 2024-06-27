@@ -34,10 +34,6 @@ mean_norm_vols = vec(mean(max_norm_vols, dims=2))
 Lv = sparse(inv(diagm(mean_norm_vols)) * L)
 
 
-# function NetworkGlobalFKPP(du, u, p, t; Lv = Lv)
-#     du .= -p[1] * Lv * u .+ p[2] .* u .* (1 .- ( u ./ p[3]))
-# end
-
 function NetworkGlobalFKPP(du, u, p, t; L = Lv)
     du .= -p[1] * L * (u .- p[3]) .+ p[2] .* (u .- p[3]) .* ((p[4] .- p[3]) .- (u .- p[3]))
 end
@@ -86,13 +82,13 @@ end
 # Inference 
 #-------------------------------------------------------------------------------
 @model function globalfkpp(data, prob, initial_conditions, min_suvr, max_suvr, times, n)
-    σ ~ LogNormal(0.0, 1.0)
+    σ ~ InverseGamma(2, 3)
     
     Pm ~ LogNormal(0.0, 1.0)
-    Ps ~ LogNormal(0.0, 1.0)
+    Ps ~ truncated(Normal(), lower=0)
 
     Am ~ Normal(0.0, 1.0)
-    As ~ LogNormal(0.0, 1.0)
+    As ~ truncated(Normal(), lower=0)
 
     ρ ~ filldist(truncated(Normal(Pm, Ps), lower=0), n)
     α ~ filldist(Normal(Am, As), n)
@@ -132,8 +128,8 @@ pst = sample(m,
              n_samples, 
              n_chains,
              progress=true)
-serialize(projectdir("adni/new-chains/global-fkpp/scaled/pst-taupos-$(n_chains)x$(n_samples).jls"), pst)
+serialize(projectdir("adni/new-chains/global-fkpp/scaled/pst-taupos-$(n_chains)x$(n_samples)-normal.jls"), pst)
 
 # calc log likelihood 
 log_likelihood = pointwise_loglikelihoods(m, MCMCChains.get_sections(pst, :parameters));
-serialize(projectdir("adni/new-chains/global-fkpp/scaled/ll-taupos-$(n_chains)x$(n_samples).jls"), log_likelihood)
+serialize(projectdir("adni/new-chains/global-fkpp/scaled/ll-taupos-$(n_chains)x$(n_samples)-normal.jls"), log_likelihood)

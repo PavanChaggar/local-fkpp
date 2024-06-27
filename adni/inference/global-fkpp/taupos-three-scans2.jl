@@ -82,13 +82,13 @@ end
 # Inference 
 #-------------------------------------------------------------------------------
 @model function globalfkpp(data, prob, initial_conditions, min_suvr, max_suvr, times, n)
-    σ ~ LogNormal(0.0, 1.0)
+    σ ~ InverseGamma(2, 3)
     
     Pm ~ LogNormal(0.0, 1.0)
-    Ps ~ LogNormal(0.0, 1.0)
+    Ps ~ truncated(Normal(), lower=0)
 
     Am ~ Normal(0.0, 1.0)
-    As ~ LogNormal(0.0, 1.0)
+    As ~ truncated(Normal(), lower=0)
 
     ρ ~ filldist(truncated(Normal(Pm, Ps), lower=0), n)
     α ~ filldist(Normal(Am, As), n)
@@ -127,7 +127,7 @@ pst = sample(m,
              Turing.NUTS(0.8),
              n_samples, 
              progress=true)
-serialize(projectdir("adni/new-chains/global-fkpp/scaled/pst-taupos-$(n_chains)x$(n_samples)-three.jls"), pst)
+serialize(projectdir("adni/new-chains/global-fkpp/scaled/pst-taupos-$(n_chains)x$(n_samples)-three-normal.jls"), pst)
 
 # # calc log likelihood 
 # pst = deserialize(projectdir("adni/chains/global-fkpp/pst-taupos-4x2000.jls"));

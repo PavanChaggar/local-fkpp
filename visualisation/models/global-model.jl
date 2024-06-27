@@ -85,11 +85,11 @@ begin
     ax = Axis(g2[1:2,1:4],
     xautolimitmargin = (0, 0), xgridcolor = (:grey, 0.05), xgridwidth = 2,
     xticklabelsize = 25, xticks = LinearTicks(5), xticksize=18,
-    xlabel="Time", xlabelsize = 36,
+    xlabel="Time / yrs", xlabelsize = 36,
     yautolimitmargin = (0, 0), ygridcolor = (:grey, 0.5), ygridwidth = 2,
     yticklabelsize = 25, yticks = collect(0:0.2:1.0), yticksize=18
 )
-    Label(g2[1:2, 0], "SUVR", fontsize=35, rotation = pi/2)
+    Label(g2[1:2, 0], "Conc.", fontsize=35, rotation = pi/2)
     GLMakie.ylims!(ax, 0, 1)
     GLMakie.xlims!(ax, 0.0, 10.05)
     hidexdecorations!(ax, grid=false, ticks=false)
@@ -100,7 +100,7 @@ begin
     ax = Axis(g2[3:4,1:4],
     xautolimitmargin = (0, 0), xgridcolor = (:grey, 0.05), xgridwidth = 2,
     xticklabelsize = 25, xticks = LinearTicks(5), xticksize=18,
-    xlabel="Time", xlabelsize = 30,
+    xlabel="Time / yrs", xlabelsize = 30,
     yautolimitmargin = (0, 0), ygridcolor = (:grey, 0.5), ygridwidth = 2,
     yticklabelsize = 25, yticks = collect(0:0.2:1.), yticksize=18
     )
@@ -122,33 +122,6 @@ begin
     braak_labels,
     ["Braak 1", "Braak 2/3", "Braak 4", "Braak 5", "Braak 6"],
     patchsize = (100, 30), colgap = 10, orientation = :horizontal, fontsize=30)
-
-    f
-
-    
-    # ax = Axis(g2[1:3,1:6],
-    #         xautolimitmargin = (0, 0), xgridcolor = (:grey, 0.05), xgridwidth = 2,
-    #         xticklabelsize = 25, xticks = LinearTicks(5), xticksize=18,
-    #         xlabel="Time", xlabelsize = 36,
-    #         yautolimitmargin = (0, 0), ygridcolor = (:grey, 0.5), ygridwidth = 2,
-    #         yticklabelsize = 25, yticks = collect(0:0.2:1.0), yticksize=18,
-    #         ylabel="Concentration", ylabelsize = 36
-    # )
-    # GLMakie.ylims!(ax, 0.0, 1.0)
-    # GLMakie.xlims!(ax, 0.0, 10.05)
-    # # hideydecorations!(ax, label=false, ticks=false, ticklabels=false)
-    # hidespines!(ax, :t, :r)
-    # for i in 1:36
-    #     lines!(allsol.t, allsol[i, :], linewidth=2)
-    # end
-
-    # for (label, layout) in zip(["A", "B"], [g1, g2])
-    #     Label(layout[1, 1, TopLeft()], label,
-    #         textsize = 50,
-    #         font = "TeX Gyre Heros Bold",
-    #         padding = (0, 25, 25, 0),
-    #         halign = :right)
-    # end
     f
 end
 save(projectdir("visualisation/models/output/global-fkpp-braak.jpeg"), f)

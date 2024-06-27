@@ -78,10 +78,10 @@ end
 # Inference 
 #-------------------------------------------------------------------------------
 @model function diffusion(data, prob, initial_conditions, times, n)
-    σ ~ LogNormal(0, 1)
+    σ ~ InverseGamma(2, 3)
     
     Pm ~ LogNormal(0, 1.0)
-    Ps ~ LogNormal(0, 1.0)
+    Ps ~ truncated(Normal(), lower=0)
 
     ρ ~ filldist(truncated(Normal(Pm, Ps), lower=0), n)
 
@@ -121,8 +121,8 @@ pst = sample(m,
              n_samples, 
              n_chains,
              progress=false)
-serialize(projectdir("adni/new-chains/diffusion/length-free/pst-taupos-$(n_chains)x$(n_samples)-new.jls"), pst)
+serialize(projectdir("adni/new-chains/diffusion/length-free/pst-taupos-$(n_chains)x$(n_samples)-normal.jls"), pst)
 
 # calc log likelihood 
 log_likelihood = pointwise_loglikelihoods(m, MCMCChains.get_sections(pst, :parameters));
-serialize(projectdir("adni/new-chains/diffusion/length-free/ll-taupos-$(n_chains)x$(n_samples)-new.jls"), log_likelihood)
+serialize(projectdir("adni/new-chains/diffusion/length-free/ll-taupos-$(n_chains)x$(n_samples)-normal.jls"), log_likelihood)
