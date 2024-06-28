@@ -177,7 +177,7 @@ begin
     data = alldata[node, :]
     moments = filter(x -> x.region == dktnames[node], gmm_moments)
     
-    ax = Axis(f1[1:2, 1], xlabel="SUVR", title="Left Inferior Temporal", titlesize=15)
+    ax = Axis(f1[1:2, 1], xlabel="SUVR", title="Right Inferior Temporal", titlesize=15)
     CairoMakie.xlims!(minimum(data) - 0.05, quantile(upath[node], 0.99) .+ 0.05)
     hist!(vec(data), color=(:grey, 0.7), bins=40, normalization=:pdf)
     hideydecorations!(ax)
