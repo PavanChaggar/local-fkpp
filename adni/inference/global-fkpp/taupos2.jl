@@ -126,7 +126,11 @@ end
             saveat=times[i],
             sensealg=InterpolatingAdjoint(autojacvec=ReverseDiffVJP(true))
         )
-
+        if !SciMLBase.successful_retcode(sol) 
+            Turing.@addlogprob! -Inf
+            println("failed")
+            return nothing
+        end
         Turing.@addlogprob! loglikelihood(MvNormal(vec(predicted), σ), data[i])
     end
 end
@@ -136,24 +140,16 @@ Random.seed!(1234);
 m = globalfkpp(vec.(subdata), prob, initial_conditions, times, n_pos);
 m();
 
-using TuringBenchmarking
-suite = TuringBenchmarking.make_turing_suite(
-            m;
-                adbackends=[:zygote]
-            );
-results = run(suite)
-
 println("starting inference")
 n_chains = 4
 n_samples = 2000
 pst = sample(m,
              Turing.NUTS(0.8; adtype=AutoZygote()),
-             MCMCSerial(),
+             MCMCThreads(),
              n_samples, 
-             n_chains,
-             progress=true)
-serialize(projectdir("adni/new-chains/global-fkpp/scaled/pst-taupos-$(n_chains)x$(n_samples)-normal.jls"), pst)
+             n_chains)
+serialize(projectdir("adni/new-chains/global-fkpp/scaled/pst-taupos-$(n_chains)x$(n_samples)-normal-2.jls"), pst)
 
 # calc log likelihood 
 log_likelihood = pointwise_loglikelihoods(m, MCMCChains.get_sections(pst, :parameters));
-serialize(projectdir("adni/new-chains/global-fkpp/scaled/ll-taupos-$(n_chains)x$(n_samples)-normal.jls"), log_likelihood)
+serialize(projectdir("adni/new-chains/global-fkpp/scaled/ll-taupos-$(n_chains)x$(n_samples)-normal-2.jls"), log_likelihood)

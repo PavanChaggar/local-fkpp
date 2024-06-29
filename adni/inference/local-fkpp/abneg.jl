@@ -153,13 +153,6 @@ Random.seed!(1234);
 m = localfkpp(vec.(subdata), prob, initial_conditions, times, n_subjects)
 m();
 
-using TuringBenchmarking
-suite = TuringBenchmarking.make_turing_suite(
-            m;
-                adbackends=[:zygote]
-            );
-results = run(suite)
-
 n_chains = 4
 n_samples = 2_000
 println("starting inference")
