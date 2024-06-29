@@ -252,9 +252,9 @@ save(projectdir("visualisation/inference/posteriors/output/adni-posteriors-with-
 #-------------------------------------------------------------------------------
 # Hierarchical Distributions -- BF2
 #-------------------------------------------------------------------------------
-pst = deserialize(projectdir("biofinder/chains/local-fkpp/03-06-24/pst-taupos-4x1000-vc.jls"));
-pst2 = deserialize(projectdir("biofinder/chains/local-fkpp/03-06-24/pst-tauneg-4x1000-vc.jls"));
-pst3 = deserialize(projectdir("biofinder/chains/local-fkpp/03-06-24/pst-abneg-4x1000-vc.jls"));
+pst = deserialize(projectdir("biofinder/chains/local-fkpp/26-06-24/pst-taupos-4x1000-vc-normal.jls"));
+pst2 = deserialize(projectdir("biofinder/chains/local-fkpp/26-06-24/pst-tauneg-4x1000-vc-normal.jls"));
+pst3 = chainscat([deserialize(projectdir("biofinder/chains/local-fkpp/26-06-24/pst-abneg-6x1000-vc-$i-normal.jls")) for i in [1,2,4,5]]...);
 
 [p[:numerical_error] |> sum for p in [pst, pst2, pst3]]
 

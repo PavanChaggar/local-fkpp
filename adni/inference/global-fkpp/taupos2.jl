@@ -114,7 +114,7 @@ end
     data ~ MvNormal(vecsol, σ^2 * I)
 end
 
-Random.seed!(8888);
+Random.seed!(1234);
 
 m = globalfkpp(vecsubdata, prob, initial_conditions, min_suvr, max_suvr, times, n_pos);
 m();
@@ -124,7 +124,6 @@ n_chains = 4
 n_samples = 2000
 pst = sample(m,
              Turing.NUTS(0.8),
-             MCMCSerial(),
              n_samples, 
              n_chains,
              progress=true)
