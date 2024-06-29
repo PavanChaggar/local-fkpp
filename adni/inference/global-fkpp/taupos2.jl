@@ -34,13 +34,16 @@ mean_norm_vols = vec(mean(max_norm_vols, dims=2))
 Lv = sparse(inv(diagm(mean_norm_vols)) * L)
 
 
-function NetworkGlobalFKPP(du, u, p, t; L = Lv)
-    du .= -p[1] * L * (u .- p[3]) .+ p[2] .* (u .- p[3]) .* ((p[4] .- p[3]) .- (u .- p[3]))
+min_suvr = minimum(u0) .* ones(72)
+max_suvr = maximum(cc) .* ones(72)
+
+function NetworkGlobalFKPP(du, u, p, t; L = Lv, u0=min_suvr, cc = max_suvr)
+    du .= -p[1] * L * (u .- u0) .+ p[2] .* (u .- u0) .* ((cc .- u0) .- (u .- u0))
 end
 
-function make_prob_func(initial_conditions, p, a, p_min, p_max, times)
+function make_prob_func(initial_conditions, p, a, times)
     function prob_func(prob,i,repeat)
-        remake(prob, u0=initial_conditions[i], p=[p[i], a[i], p_min, p_max], saveat=times[i])
+        remake(prob, u0=initial_conditions[i], p=[p[i], a[i]], saveat=times[i])
     end
 end
 
@@ -57,17 +60,15 @@ initial_conditions = [sd[:,1] for sd in subdata]
 times =  get_times.(pos_data)
 max_t = maximum(reduce(vcat, times))
 
-min_suvr = minimum(u0)
-max_suvr = maximum(cc)
 
 prob = ODEProblem(NetworkGlobalFKPP, 
                   initial_conditions[1], 
                   (0.,max_t), 
-                  [1.0,1.0, min_suvr, max_suvr])
+                  [1.0,1.0])
                   
 sol = solve(prob, Tsit5())
 
-ensemble_prob = EnsembleProblem(prob, prob_func=make_prob_func(initial_conditions, ones(n_pos), ones(n_pos), min_suvr, max_suvr, times), output_func=output_func)
+ensemble_prob = EnsembleProblem(prob, prob_func=make_prob_func(initial_conditions, ones(n_pos), ones(n_pos), times), output_func=output_func)
 ensemble_sol = solve(ensemble_prob, Tsit5(), EnsembleSerial(), trajectories=n_pos)
 
 function get_retcodes(es)
@@ -81,7 +82,7 @@ end
 #-------------------------------------------------------------------------------
 # Inference 
 #-------------------------------------------------------------------------------
-@model function globalfkpp(data, prob, initial_conditions, min_suvr, max_suvr, times, n)
+@model function globalfkpp(data, prob, initial_conditions, times, n)
     σ ~ InverseGamma(2, 3)
     
     Pm ~ LogNormal(0.0, 1.0)
@@ -93,38 +94,60 @@ end
     ρ ~ filldist(truncated(Normal(Pm, Ps), lower=0), n)
     α ~ filldist(Normal(Am, As), n)
 
-    ensemble_prob = EnsembleProblem(prob, 
-                                    prob_func=make_prob_func(initial_conditions, ρ, α, min_suvr, max_suvr, times), 
-                                    output_func=output_func)
+    # ensemble_prob = EnsembleProblem(prob, 
+    #                                 prob_func=make_prob_func(initial_conditions, ρ, α, times), 
+    #                                 output_func=output_func)
 
-    ensemble_sol = solve(ensemble_prob, 
-                         Tsit5(),
-                         EnsembleSerial(),
-                         abstol = 1e-9, 
-                         reltol = 1e-9, 
-                         trajectories=n, 
-                         sensealg=InterpolatingAdjoint(autojacvec=ReverseDiffVJP(true)))
+    # ensemble_sol = solve(ensemble_prob, 
+    #                      Tsit5(),
+    #                      EnsembleSerial(),
+    #                      abstol = 1e-9, 
+    #                      reltol = 1e-9, 
+    #                      trajectories=n, 
+    #                      sensealg=InterpolatingAdjoint(autojacvec=ReverseDiffVJP(true)))
 
-    if !allequal(get_retcodes(ensemble_sol)) 
-        Turing.@addlogprob! -Inf
-        println("failed")
-        return nothing
+    # if !allequal(get_retcodes(ensemble_sol)) 
+    #     Turing.@addlogprob! -Inf
+    #     println("failed")
+    #     return nothing
+    # end
+    # vecsol = vec_sol(ensemble_sol)
+
+    # data ~ MvNormal(vecsol, σ^2 * I)
+
+    for i in 1:n
+        prob_n = remake(prob, u0 = initial_conditions[i], p = [ρ[i], α[i]])
+        # solve ode at time points specific to each subject
+        predicted = solve(
+            prob_n,
+            Tsit5(),
+            abstol=1e-6, 
+            reltol=1e-6,
+            saveat=times[i],
+            sensealg=InterpolatingAdjoint(autojacvec=ReverseDiffVJP(true))
+        )
+
+        Turing.@addlogprob! loglikelihood(MvNormal(vec(predicted), σ), data[i])
     end
-    vecsol = vec_sol(ensemble_sol)
-
-    data ~ MvNormal(vecsol, σ^2 * I)
 end
 
 Random.seed!(1234);
 
-m = globalfkpp(vecsubdata, prob, initial_conditions, min_suvr, max_suvr, times, n_pos);
+m = globalfkpp(vec.(subdata), prob, initial_conditions, times, n_pos);
 m();
+
+using TuringBenchmarking
+suite = TuringBenchmarking.make_turing_suite(
+            m;
+                adbackends=[:zygote]
+            );
+results = run(suite)
 
 println("starting inference")
 n_chains = 4
 n_samples = 2000
 pst = sample(m,
-             Turing.NUTS(0.8),
+             Turing.NUTS(0.8; adtype=AutoZygote()),
              MCMCSerial(),
              n_samples, 
              n_chains,
