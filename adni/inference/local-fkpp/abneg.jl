@@ -162,9 +162,10 @@ results = run(suite)
 
 n_chains = 4
 n_samples = 2_000
+println("starting inference")
 pst = sample(m, 
              Turing.NUTS(0.8; adtype=AutoZygote()),
              MCMCThreads(), 
              n_samples, 
-             n_chains)
+             n_chains, progress=false)
 serialize(projectdir("adni/new-chains/local-fkpp/length-free/pst-abneg-$(n_chains)x$(n_samples)-normal.jls"), pst)
