@@ -115,13 +115,13 @@ end
     data ~ MvNormal(vecsol, σ^2 * I)
 end
 
-Random.seed!(1234);
+Random.seed!(8953);
 
 m = globalfkpp(vecsubdata, prob, initial_conditions, min_suvr, max_suvr, times, n_pos);
 m();
 
 println("starting inference")
-n_chains = 4
+n_chains = 1
 n_samples = 2000
 pst = sample(m,
              Turing.NUTS(0.8),
@@ -129,8 +129,8 @@ pst = sample(m,
              n_samples, 
              n_chains,
              progress=true)
-serialize(projectdir("adni/new-chains/global-fkpp/scaled/pst-taupos-$(n_chains)x$(n_samples)-normal.jls"), pst)
+serialize(projectdir("adni/new-chains/global-fkpp/scaled/pst-taupos-$(n_chains)x$(n_samples)-normal-6.jls"), pst)
 
 # calc log likelihood 
 log_likelihood = pointwise_loglikelihoods(m, MCMCChains.get_sections(pst, :parameters));
-serialize(projectdir("adni/new-chains/global-fkpp/scaled/ll-taupos-$(n_chains)x$(n_samples)-normal.jls"), log_likelihood)
+serialize(projectdir("adni/new-chains/global-fkpp/scaled/ll-taupos-$(n_chains)x$(n_samples)-normal-6.jls"), log_likelihood)
