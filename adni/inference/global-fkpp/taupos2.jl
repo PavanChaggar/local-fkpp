@@ -99,6 +99,7 @@ end
 
     ensemble_sol = solve(ensemble_prob, 
                          Tsit5(),
+                         EnsembleSerial(),
                          abstol = 1e-9, 
                          reltol = 1e-9, 
                          trajectories=n, 
