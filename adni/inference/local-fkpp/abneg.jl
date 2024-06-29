@@ -100,46 +100,71 @@ end
 @model function localfkpp(data, prob, initial_conditions, times, n)
     σ ~ InverseGamma(2,3)
     
-    Pm ~ LogNormal(0.0, 1.0) # LogNormal(0.0,1.0)
+    Pm ~ LogNormal(0.0, 1.0) #LogNormal(0.0,1.0)
     Ps ~ truncated(Normal(), lower=0)
 
-    Am ~ Normal(0.0, 1.0) # Normal(0.0,1.0)
+    Am ~ Normal(0.0, 1.0) #Normal(0.0,1.0)
     As ~ truncated(Normal(), lower=0)
 
     ρ ~ filldist(truncated(Normal(Pm, Ps), lower=0), n)
     α ~ filldist(Normal(Am, As), n)
 
-    ensemble_prob = EnsembleProblem(prob, 
-                                    prob_func=make_prob_func(initial_conditions, ρ, α, times), 
-                                    output_func=output_func)
+    # ensemble_prob = EnsembleProblem(prob, 
+    #                                 prob_func=make_prob_func(initial_conditions, ρ, α, times), 
+    #                                 output_func=output_func)
 
-    ensemble_sol = solve(ensemble_prob, 
-                         Tsit5(),
-                         abstol = 1e-9, 
-                         reltol = 1e-9, 
-                         trajectories=n, 
-                         sensealg=InterpolatingAdjoint(autojacvec=ReverseDiffVJP(true)))
-    if !allequal(get_retcodes(ensemble_sol)) 
-        Turing.@addlogprob! -Inf
-        println("failed")
-        return nothing
+    # ensemble_sol = solve(ensemble_prob, 
+    #                      Tsit5(),
+    #                      abstol = 1e-9, 
+    #                      reltol = 1e-9, 
+    #                      trajectories=n, 
+    #                      sensealg=InterpolatingAdjoint(autojacvec=ReverseDiffVJP(true)))
+    # if !allequal(get_retcodes(ensemble_sol)) 
+    #     Turing.@addlogprob! -Inf
+    #     println("failed")
+    #     return nothing
+    # end
+    # vecsol = vec_sol(ensemble_sol)
+
+    # data ~ MvNormal(vecsol, σ^2 * I)
+    for i in 1:n
+        prob_n = remake(prob, u0 = initial_conditions[i], p = [ρ[i], α[i]])
+        # solve ode at time points specific to each subject
+        predicted = solve(
+            prob_n,
+            Tsit5(),
+            abstol=1e-6, 
+            reltol=1e-6,
+            saveat=times[i],
+            sensealg=InterpolatingAdjoint(autojacvec=ReverseDiffVJP(true))
+        )
+        if !SciMLBase.successful_retcode(sol) 
+            Turing.@addlogprob! -Inf
+            println("failed")
+            return nothing
+        end
+        Turing.@addlogprob! loglikelihood(MvNormal(vec(predicted), σ), data[i])
     end
-    vecsol = vec_sol(ensemble_sol)
-
-    data ~ MvNormal(vecsol, σ^2 * I)
 end
 
 # Turing.setadbackend(:zygote)
 Random.seed!(1234); 
 
-m = localfkpp(vecsubdata, prob, initial_conditions, times, n_subjects)
+m = localfkpp(vec.(subdata), prob, initial_conditions, times, n_subjects)
 m();
+
+using TuringBenchmarking
+suite = TuringBenchmarking.make_turing_suite(
+            m;
+                adbackends=[:zygote]
+            );
+results = run(suite)
 
 n_chains = 4
 n_samples = 2_000
 pst = sample(m, 
-             Turing.NUTS(0.8),
-             MCMCSerial(), 
+             Turing.NUTS(0.8; adtype=AutoZygote()),
+             MCMCThreads(), 
              n_samples, 
              n_chains)
 serialize(projectdir("adni/new-chains/local-fkpp/length-free/pst-abneg-$(n_chains)x$(n_samples)-normal.jls"), pst)
