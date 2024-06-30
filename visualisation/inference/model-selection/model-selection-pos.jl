@@ -698,11 +698,12 @@ begin
     cols = Makie.wong_colors();
     mean_data = vec(get_sol_t_end(insample_pos_data))
     mean_local_error = vec(get_sol_t_end(local_sols) .- get_sol_t_end(insample_pos_data))
+    mean_global_error = vec(get_sol_t_end(global_sols) .- get_sol_t_end(insample_pos_data))
     mean_logistic_error = vec(get_sol_t_end(logistic_sols) .- get_sol_t_end(insample_pos_data))
-    f = Figure(size=(1000, 400), fontsize=20)
+    f = Figure(size=(1000, 600), fontsize=20)
     ax = Axis(f[1, 1:3], yticksize=15, ylabel="Residual", ylabelsize=20)
     hidexdecorations!(ax, grid=false)
-    ylims!(-0.6, 0.6)
+    ylims!(-1., 1.)
     scatter!(mean_local_error, 
             markersize=15, color=(cols[1], 0.8))
     hlines!(ax, 0, color=cols[1])
@@ -712,7 +713,7 @@ begin
     hideydecorations!(ax, ticks=false)
     hidexdecorations!(ax)
     hidespines!(ax, :b, :t, :r)
-    ylims!(-0.6, 0.6)
+    ylims!(-1., 1.)
     xlims!(0, 10)
     hist!(mean_local_error,  direction=:x, bins=100, normalization=:pdf)
     lines!([pdf(Normal(0, local_pst[:σ, :mean]), x) for x in -0.5:0.001:0.5], -0.5:0.001:0.5, linewidth=5, color=:orange)
@@ -721,17 +722,36 @@ begin
 
     ax = Axis(f[2, 1:3], yticksize=15, ylabel="Residual", ylabelsize=20, xlabelsize=20)
     hidexdecorations!(ax, grid=false)
-    ylims!(-0.6, 0.6)
-    scatter!(mean_logistic_error, 
+    ylims!(-1., 1.)
+    scatter!(mean_global_error, 
             markersize=15, color=(cols[1], 0.8))
     hlines!(ax, 0, color=cols[1])
-    hlines!(ax, mean(mean_logistic_error),  color=:black, linestyle=:dash)
+    hlines!(ax, mean(mean_global_error),  color=:black, linestyle=:dash)
 
     ax = Axis(f[2, 4])
     hideydecorations!(ax, ticks=false)
     hidexdecorations!(ax)
     hidespines!(ax, :b, :t, :r)
-    ylims!(-0.6, 0.6)
+    ylims!(-1., 1.)
+    xlims!(0, 10)
+    hist!(mean_global_error,  direction=:x, bins=100, normalization=:pdf)
+    lines!([pdf(Normal(0, global_pst[:σ, :mean]), x) for x in -0.5:0.001:0.5], -0.5:0.001:0.5, linewidth=5, color=:orange)
+    hlines!(ax, 0, color=cols[1])
+    hlines!(ax, mean(mean_global_error),  color=:black, linestyle=:dash)
+
+    ax = Axis(f[3, 1:3], yticksize=15, ylabel="Residual", ylabelsize=20, xlabelsize=20)
+    hidexdecorations!(ax, grid=false)
+    ylims!(-1., 1.)
+    scatter!(mean_logistic_error, 
+            markersize=15, color=(cols[1], 0.8))
+    hlines!(ax, 0, color=cols[1])
+    hlines!(ax, mean(mean_logistic_error),  color=:black, linestyle=:dash)
+
+    ax = Axis(f[3, 4])
+    hideydecorations!(ax, ticks=false)
+    hidexdecorations!(ax)
+    hidespines!(ax, :b, :t, :r)
+    ylims!(-1., 1.)
     xlims!(0, 10)
     hist!(mean_logistic_error,  direction=:x, bins=100, normalization=:pdf)
     lines!([pdf(Normal(0, logistic_pst[:σ, :mean]), x) for x in -0.5:0.001:0.5], -0.5:0.001:0.5, linewidth=5, color=:orange)
@@ -740,7 +760,8 @@ begin
 
     colgap!(f.layout, 10)
     Label(f[1, 0], "Local FKPP", rotation=pi/2, tellheight=false, fontsize=20, font=:bold)
-    Label(f[2, 0], "Logistic", rotation=pi/2, tellheight=false, fontsize=20, font=:bold)
+    Label(f[2, 0], "Global FKPP", rotation=pi/2, tellheight=false, fontsize=20, font=:bold)
+    Label(f[3, 0], "Logistic", rotation=pi/2, tellheight=false, fontsize=20, font=:bold)
     f
 end
 save(projectdir("visualisation/inference/model-selection/output/all_residuals_tau_pos.pdf"), f)
