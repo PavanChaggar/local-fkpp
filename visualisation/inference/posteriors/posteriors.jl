@@ -256,6 +256,10 @@ pst = deserialize(projectdir("biofinder/chains/local-fkpp/26-06-24/pst-taupos-4x
 pst2 = deserialize(projectdir("biofinder/chains/local-fkpp/26-06-24/pst-tauneg-4x1000-vc-normal.jls"));
 pst3 = chainscat([deserialize(projectdir("biofinder/chains/local-fkpp/26-06-24/pst-abneg-6x1000-vc-$i-normal.jls")) for i in [1,2,4,5]]...);
 
+pst = deserialize(projectdir("biofinder/chains/local-fkpp/03-06-24/pst-taupos-4x1000-vc.jls"));
+pst2 = deserialize(projectdir("biofinder/chains/local-fkpp/03-06-24/pst-tauneg-4x1000-vc.jls"));
+pst3 = deserialize(projectdir("biofinder/chains/local-fkpp/03-06-24/pst-abneg-4x1000-vc.jls"));
+
 [p[:numerical_error] |> sum for p in [pst, pst2, pst3]]
 
 for p in [:Am, :Pm]
@@ -264,9 +268,7 @@ for p in [:Am, :Pm]
         param_test(pst2[p], pst3[p]) |> println
 end
 
-
 using CairoMakie
-
 begin
         n_samples = 4000
         f = Figure(size=(2000, 2000), fontsize=50, font=:bold)
@@ -368,7 +370,7 @@ begin
         colgap!(g4, 2, 50.0)
         f
 end
-save(projectdir("visualisation/inference/posteriors/output/bf-posteriors-all.pdf"), f)
+save(projectdir("visualisation/inference/posteriors/output/bf-posteriors-all-ln.pdf"), f)
 
 begin
         f = Figure(size=(1200, 500), fontsize=20)
