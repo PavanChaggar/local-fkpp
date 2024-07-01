@@ -1,5 +1,5 @@
 using Connectomes
-using DifferentialEquations
+using OrdinaryDiffEq
 using DrWatson
 using Distributions
 include(projectdir("functions.jl"))
@@ -41,7 +41,7 @@ weights = get_dkt_weights(dktweights, dktnames)
 ubase, upath = get_dkt_moments(gmm_moments, dktnames)
 mm = [MixtureModel([u0, ui], w) for (u0, ui, w) in zip(ubase, upath, weights)]
 u0 = mean.(ubase)
-cc = quantile.(mm, .99)
+cc = quantile.(upath, .99)
 
 function NetworkExFKPP(du, u, p, t; L = L, u0 = u0, cc = cc)
     du .= -p[1] * L * (u .- u0) .+ p[2] .* (u .- u0) .* ((cc .- u0) .- (u .- u0))
@@ -54,7 +54,7 @@ seed_value = mean([cc[seed] p0[seed]], dims=2)
 p0[seed] .= seed_value 
 
 r = 0.025
-a = 0.25
+a = 0.20
 prob = ODEProblem(NetworkExFKPP, p0, (0.0,45.0), [r,a])
 
 ts = range(0.0, 45.0, 4)
@@ -80,7 +80,7 @@ begin
     endsol = sol[end]
     solcol = [(sol[i] .- minimum(u0)) ./ (maximum(cc) .- minimum(u0)) for i in 1:n]
     braak_sol = reduce(hcat, [(allsol[i] .- u0) ./ (endsol .- u0) for i in 1:length(allsol)])
-    f = Figure(size=(600, 800))
+    f = Figure(size=(700, 900))
     g1 = f[1, 1] = GridLayout()
     g2 = f[2:4, 1] = GridLayout()
     for k in 1:n
@@ -116,7 +116,7 @@ begin
             yticklabelsize = 20, yticks = collect(1:1:3.0), yticksize=18
     )
     Label(g2[1:2, 0], "SUVR", fontsize=25, rotation = pi/2)
-    GLMakie.ylims!(ax, minimum(u0) - 0.1, 3.5)
+    GLMakie.ylims!(ax, minimum(u0) - 0.1, 4.0)
     GLMakie.xlims!(ax, 0.0, 45.05)
     hidexdecorations!(ax, grid=false, ticks=false)
     hidespines!(ax, :t, :r)
@@ -148,10 +148,9 @@ begin
         braak_labels,
         ["Braak 1", "Braak 2/3", "Braak 4", "Braak 5", "Braak 6"],
         patchsize = (20, 40), colgap = 10, orientation = :horizontal, fontsize=30)
-        
-    f
+    
 end
-save(projectdir("visualisation/models/output/local-fkpp-small.jpeg"), f)
+save(projectdir("visualisation/models/output/local-fkpp-small.jpeg"), f, px_per_unit = 3)
 
 prob = ODEProblem(NetworkExFKPP, p0, (0.0,8.0), [r,a])
 ts = LinRange(0.0, 8., 480)

@@ -27,7 +27,7 @@ scaled_cc = (cc .- minimum(u0)) ./ (maximum(cc) .- minimum(u0))
 begin
     GLMakie.activate!()
     cmap = ColorSchemes.RdYlBu |> reverse
-    f = Figure(size=(300,450))
+    f = Figure(size=(700, 1150),font = "CMU Serif", fontsize=50)
 
     ax = Axis3(f[1,1], 
                aspect = :data, 
@@ -48,9 +48,8 @@ begin
     hidespines!(ax)
     plot_roi!(right_nodes, scaled_cc, cmap)
 
-    Colorbar(f[3, 1], limits = (0.98, maximum(cc)), colormap = cmap,
-    vertical = false, label = "SUVR", labelsize=25, flipaxis=false,
-    ticksize=10, ticklabelsize=15, labelpadding=3, ticks=[0.98, 3.81])
-    f
+    Colorbar(f[3, 1], limits = (0.90, maximum(cc)), colormap = cmap,
+    vertical = false, label = "SUVR", labelsize=50, flipaxis=false,
+    ticksize=20, ticklabelsize=45, labelpadding=3, ticks=1:0.5:3.5)
 end
-save(projectdir("visualisation/models/output/carrying-capacities-mm-vertical.jpeg"), f)
+save(projectdir("visualisation/models/output/carrying-capacities-mm-vertical.jpeg"), f, px_per_unit = 5)

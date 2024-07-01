@@ -46,7 +46,7 @@ weights = get_dkt_weights(dktweights, dktnames[1:82])
 ubase, upath = get_dkt_moments(gmm_moments, dktnames[1:82])
 mm = [MixtureModel([u0, ui], [w...]) for (u0, ui, w) in zip(ubase, upath, weights)]
 u0 = mean.(ubase)
-cc = quantile.(mm, .99)
+cc = quantile.(upath, .99)
 
 fg(x, μ, σ) = exp.(.-(x .- μ) .^ 2 ./ (2σ^2)) ./ (σ * √(2π))
 function plot_density!(μ, Σ, weight; color=:blue, label="")
@@ -151,7 +151,8 @@ save(projectdir("visualisation/models/output/gmm-caudate-amygdala-hc.pdf"), f1)
 
 cols = Makie.wong_colors();
 begin
-    f1 = Figure(size=(250, 350), fontsize=20, font = "CMU Serif");
+    CairoMakie.activate!()
+    f1 = Figure(size=(700, 850), fontsize=50, font = "CMU Serif");
     # node = 35
     # data = alldata[node, :]
     # moments = filter(x -> x.region == dktnames[node], gmm_moments)
@@ -177,7 +178,7 @@ begin
     data = alldata[node, :]
     moments = filter(x -> x.region == dktnames[node], gmm_moments)
     
-    ax = Axis(f1[1:2, 1], xlabel="SUVR", title="Right Inferior Temporal", titlesize=15)
+    ax = Axis(f1[1:2, 1], xlabel="SUVR", title="Right Inferior Temporal", titlesize=45, titlegap=50)
     CairoMakie.xlims!(minimum(data) - 0.05, quantile(upath[node], 0.99) .+ 0.05)
     hist!(vec(data), color=(:grey, 0.7), bins=40, normalization=:pdf)
     hideydecorations!(ax)
@@ -193,7 +194,7 @@ begin
     plot_density!(μ, Σ, weights[node][2]; color=cols[6], label=L"T^{+}")
     vlines!(ax, quantile(upath[node], 0.99), linestyle=:dash, linewidth=3, label=L"s_\infty", color=cols[6])
 
-    Legend(f1[3, 1], ax, framevisible=false, patchsize=(30, 10), labelsize=25, nbanks=2, rowgap = 0, tellheight=true, tellwidth=false)
+    Legend(f1[3, 1], ax, framevisible=false, patchsize=(50, 20), labelsize=55, nbanks=4, rowgap = 0, tellheight=true, tellwidth=false)
     rowgap!(f1.layout, 1)
     f1
 end
