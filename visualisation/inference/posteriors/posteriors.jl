@@ -14,9 +14,9 @@ using HypothesisTests
 #-------------------------------------------------------------------------------
 # Hierarchical Distributions -- ADNI
 #-------------------------------------------------------------------------------
-pst = deserialize(projectdir("adni/new-chains/local-fkpp/length-free/pst-taupos-4x2000-normal.jls"));
-pst2 = deserialize(projectdir("adni/new-chains/local-fkpp/length-free/pst-tauneg-4x2000-normal.jls"));
-pst3 = deserialize(projectdir("adni/new-chains/local-fkpp/length-free/pst-abneg-4x2000-normal.jls"));
+pst = deserialize(projectdir("adni/new-chains/local-fkpp/length-free/pst-taupos-4x2000.jls"));
+pst2 = deserialize(projectdir("adni/new-chains/local-fkpp/length-free/pst-tauneg-4x2000.jls"));
+pst3 = deserialize(projectdir("adni/new-chains/local-fkpp/length-free/pst-abneg-4x2000.jls"));
 
 [p[:numerical_error] |> sum for p in [pst, pst2, pst3]]
 
@@ -193,7 +193,7 @@ begin
         a3, a2, a1 = vec(pst3[:Am]), vec(pst2[:Am]), vec(pst[:Am])
         ax = Axis(g1[1,1], 
                 xticklabelsize=30, xlabelsize=30, xlabel="1 / yr", 
-                yticklabelsize=40, ylabelsize=30, ylabel="Density", yticks=(1.5:1:3.5, [L"A^-", L"A^+T^-", L"A^+T^+"]),
+                yticklabelsize=40, ylabelsize=30, ylabel="Density", yticks=(1.5:1:3.5, [L"A^-T^-", L"A^+T^-", L"A^+T^+"]),
                 titlesize=40, title="Production", xticks=-0.2:0.1:0.2, 
                 xminorticks=-0.2:0.05:0.2, xminorticksvisible=true, 
                 xticksize=20, xminorticksize=15, xgridcolor=RGBAf(0, 0, 0, 0.25))
@@ -220,7 +220,7 @@ begin
         p3, p2, p1 = vec(pst3[:Pm]), vec(pst2[:Pm]), vec(pst[:Pm])
 
         ax = Axis(g2[1,1], 
-                xticklabelsize=30, xlabelsize=30, xlabel="1 / yr", yticks=(1.5:1:3.5, [L"A^-", L"A^+T^-", L"A^+T^+"]),
+                xticklabelsize=30, xlabelsize=30, xlabel="1 / yr", yticks=(1.5:1:3.5, [L"A^-T^-", L"A^+T^-", L"A^+T^+"]),
                 yticklabelsize=40,
                 titlesize=40, title="Transport", xticks=0.0:0.025:0.075,
                 xminorticks=0.0:0.0125:1, xminorticksvisible=true, 
@@ -374,7 +374,7 @@ save(projectdir("visualisation/inference/posteriors/output/bf-posteriors-all-ln.
 
 begin
         f = Figure(size=(1200, 500), fontsize=20)
-        _category_label = reverse([L"A^-", L"A^+T^-", L"A^+T^+"])
+        _category_label = reverse([L"A^-T^-", L"A^+T^-", L"A^+T^+"])
         colors = reverse(alphacolor.(Makie.wong_colors(), 0.75)[1:3])
         prod_bounds = [[0.0, 0.25], [-0.25, 0.25],[-0.25, 0.25]]
         tran_bounds = [[0.0, 0.0159], [0., 0.08], [0., 0.08]]
@@ -449,7 +449,7 @@ begin
         a3, a2, a1 = vec(pst3[:Am]), vec(pst2[:Am]), vec(pst[:Am])
 
         ax = Axis(g1[1,1], 
-                xticklabelsize=30, xlabelsize=30, xlabel="1 / yr", yticks=(1.5:1:3.5, [L"A^-", L"A^+T^-", L"A^+T^+"]),
+                xticklabelsize=30, xlabelsize=30, xlabel="1 / yr", yticks=(1.5:1:3.5, [L"A^-T^-", L"A^+T^-", L"A^+T^+"]),
                 yticklabelsize=40, ylabelsize=30, ylabel="Density",
                 titlesize=40, title="Production", xticks=-0.2:0.1:0.2, 
                 xminorticks=-0.2:0.05:0.2, xminorticksvisible=true, 
@@ -566,7 +566,7 @@ pst = deserialize(projectdir("adni/new-chains/local-fkpp/length-free/pst-taupos-
 pst2 = deserialize(projectdir("adni/new-chains/local-fkpp/length-free/pst-tauneg-4x2000.jls"));
 pst3 = deserialize(projectdir("adni/new-chains/local-fkpp/length-free/pst-abneg-4x2000.jls"));
 
-_pos_shuffled = [deserialize(projectdir("adni/new-chains/local-fkpp/shuffled/pos/length-free/pst-taupos-1000-shuffled-$i.jls")) for i in 1:10];
+_pos_shuffled = [deserialize(projectdir("adni/new-chains/old/local-fkpp/shuffled/pos/length-free/pst-taupos-1000-shuffled-$i.jls")) for i in 1:10];
 sh_idx = findall( x -> sum(x[:numerical_error]) == 0, _pos_shuffled)
 pos_shuffled = chainscat(_pos_shuffled[sh_idx]...);
 begin
@@ -593,7 +593,7 @@ begin
         hidespines!(ax, :t, :r, :l)
 
         hist!(pos_shuffled[:Pm] |> vec, bins=25, normalization=:pdf, color=(:black, 0.8), label="Shuffled")
-        hist!(pst[:Pm] |> vec, bins=50, normalization=:pdf, color=(colors[3], 0.75), label=L"A\beta^+ \tau P^+")
+        hist!(pst[:Pm] |> vec, bins=50, normalization=:pdf, color=(colors[3], 0.75), label=L"A^+T^+")
         bracket!(ax, median(pos_shuffled[:Pm]), -5, median(pst[:Pm]), -5, text = "*", orientation = :down, fontsize=50, textoffset = 20, linewidth = 3, color=(:grey, 0.75))
         axislegend()
 
@@ -603,7 +603,7 @@ end
 save(projectdir("visualisation/inference/posteriors/output/adni-pos-shuffled-with-sig.pdf"), f)
 
 
-_neg_shuffled = [deserialize(projectdir("adni/new-chains/local-fkpp/shuffled/neg/length-free/pst-tauneg-1000-shuffled-$i.jls")) for i in 1:10];
+_neg_shuffled = [deserialize(projectdir("adni/new-chains/old/local-fkpp/shuffled/neg/length-free/pst-tauneg-1000-shuffled-$i.jls")) for i in 1:10];
 sh_idx = findall( x -> sum(x[:numerical_error]) == 0, _neg_shuffled)
 neg_shuffled = chainscat(_neg_shuffled[sh_idx]...);
 begin
@@ -629,7 +629,7 @@ begin
         hidespines!(ax, :t, :r, :l)
         
         hist!(neg_shuffled[:Pm] |> vec, bins=50, normalization=:pdf, color=(:black, 0.8), label="Shuffled")
-        hist!(pst2[:Pm] |> vec, bins=50, normalization=:pdf, color=(colors[2], 0.75), label=L"A\beta^+ \tau P^-")
+        hist!(pst2[:Pm] |> vec, bins=50, normalization=:pdf, color=(colors[2], 0.75), label=L"A^+T^-")
         bracket!(ax, median(neg_shuffled[:Pm]), -1.0, median(pst2[:Pm]), -1., text = "*", orientation = :down, fontsize=50, textoffset = 20, linewidth = 3, color=(:grey, 0.75))
         axislegend()
         colgap!(g1, 50)
