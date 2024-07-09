@@ -44,7 +44,7 @@ begin
         Label(g1[1,1:3], "Transport", fontsize=50, tellwidth=false, tellheight=true)
         Label(g3[1,1:3], "Production", fontsize=50, tellwidth=false)
         colors = reverse(alphacolor.(Makie.wong_colors(), 0.75)[1:3])
-        _category_label = reverse([L"A^-", L"A^+T^-", L"A^+T^+"])
+        _category_label = reverse([L"A^-T^-", L"A^+T^-", L"A^+T^+"])
         psts = [pst, pst2, pst3]
         for (i, (_label, pst, col)) in enumerate(zip(_category_label, psts, colors))
                 category_labels = fill(_label, n_samples)
@@ -155,7 +155,7 @@ begin
         a3, a2, a1 = vec(pst3[:Am]), vec(pst2[:Am]), vec(pst[:Am])
         ax = Axis(g1[1,1], 
                 xticklabelsize=30, xlabelsize=30, xlabel="1 / yr", 
-                yticklabelsize=40, ylabelsize=30, ylabel="Density", yticks=(1.5:1:3.5, [L"A^-", L"A^+T^-", L"A^+T^+"]),
+                yticklabelsize=40, ylabelsize=30, ylabel="Density", yticks=(1.5:1:3.5, [L"A^-T^-", L"A^+T^-", L"A^+T^+"]),
                 titlesize=40, title="Production", xticks=-0.5:0.25:0.5, 
                 xminorticks=-0.25:0.125:0.25, xminorticksvisible=true, 
                 xticksize=20, xminorticksize=15, xgridcolor=RGBAf(0, 0, 0, 0.25))
@@ -290,7 +290,7 @@ begin
         a3, a2, a1 = vec(pst3[:Am]), vec(pst2[:Am]), vec(pst[:Am])
         ax = Axis(g1[1,1], 
                 xticklabelsize=30, xlabelsize=30, xlabel="1 / yr", 
-                yticklabelsize=40, ylabelsize=30, ylabel="Density", yticks=(1.5:1:3.5, [L"A^-", L"A^+T^-", L"A^+T^+"]),
+                yticklabelsize=40, ylabelsize=30, ylabel="Density", yticks=(1.5:1:3.5, [L"A^-T^-", L"A^+T^-", L"A^+T^+"]),
                 titlesize=40, title="Production", xticks=-0.15:0.075:0.15, 
                 xminorticks=-0.15:0.0375:0.15, xminorticksvisible=true, 
                 xticksize=20, xminorticksize=15, xgridcolor=RGBAf(0, 0, 0, 0.25))

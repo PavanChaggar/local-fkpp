@@ -13,6 +13,7 @@ cortex = filter(x -> get_lobe(x) != "subcortex", all_c.parc)
 c = slice(all_c, cortex) |> filter
 
 right_cortical_nodes = filter(x -> get_hemisphere(x) == "right", c.parc)
+right_subcortical_nodes = filter(x -> get_hemisphere(x) == "right", subcortex)
 rIDs =  get_node_id.(right_cortical_nodes)
 L = laplacian_matrix(c);
 
@@ -66,9 +67,8 @@ using Plots
 Plots.plot(sol, vars=(1:36), labels=false)
 
 nodes = get_node_id.(right_cortical_nodes);
-
+subcortical_nodes = get_node_id.(right_subcortical_nodes);
 braak_stages = map(getbraak, braak)
-
 right_braak_stages = [filter(x -> x ∈ nodes, br) for br in braak_stages]
 
 using GLMakie; GLMakie.activate!()
@@ -152,13 +152,16 @@ begin
 end
 save(projectdir("visualisation/models/output/local-fkpp-small.jpeg"), f, px_per_unit = 3)
 
-prob = ODEProblem(NetworkExFKPP, p0, (0.0,8.0), [r,a])
-ts = LinRange(0.0, 8., 480)
+r = 0.02
+a = 0.4
+prob = ODEProblem(NetworkExFKPP, p0, (0.0,30.0), [r,a])
+ts = LinRange(0.0, 30., 480)
 sol = solve(prob, Rodas4(), reltol=1e-12, saveat=ts)
+Plots.plot(sol, labels=false)
 n = length(sol)
 
-solcol = [(sol[i] .- minimum(u0)) ./ (maximum(cc) .- minimum(u0)) for i in 1:n]
-cmap = reverse(ColorSchemes.RdYlBu);
+solcol = [(sol[i] .- 1.0) ./ (maximum(cc) .- 1.0) for i in 1:n]
+cmap = ColorSchemes.viridis;
 cols = [get(cmap, solcol[i]) for i in 1:n]
 nodes = get_node_id.(right_cortical_nodes)
 
@@ -166,40 +169,41 @@ begin
     p1 = Vector{Mesh}(undef, length(nodes))
     p2 = Vector{Mesh}(undef, length(nodes))
 
-    f = Figure(resolution=(2560, 1200))
-    ax = Axis3(f[1:2,1], aspect = :data, azimuth = 1.0pi, elevation=0.0pi)
+    f = Figure(size=(1200, 600), figure_padding = 20)
+    ax = Axis3(f[2:3,1], aspect = :data, azimuth = 1.0pi, elevation=0.0pi, protrusions=(0.0,0.0,0.0,0.0))
     hidedecorations!(ax)
     hidespines!(ax)
     p1 .= plot_roi!(nodes, solcol[1], cmap)
+    plot_roi!(subcortical_nodes, ones(5) .* 0.75, ColorSchemes.Greys)
 
-    ax = Axis3(f[3:4,1], aspect = :data, azimuth = 0.0pi, elevation=0.0pi)
+    ax = Axis3(f[4:5,1], aspect = :data, azimuth = 0.0pi, elevation=0.0pi,  protrusions=(0.0,0.0,0.0,0.0))
     hidedecorations!(ax)
     hidespines!(ax)
     p2 .= plot_roi!(nodes, solcol[1], cmap)
+    plot_roi!(subcortical_nodes, ones(5) .* 0.75, ColorSchemes.Greys)
 
-    c = Colorbar(f[5, 1], limits = (minimum(u0), maximum(cc)), colormap = cmap,
-        vertical = false, label = "SUVR", labelsize=36, flipaxis=false,
-        ticksize=18, ticklabelsize=36, labelpadding=3)
+    c = Colorbar(f[2:5, 0], limits = (1.0, maximum(cc)), colormap = cmap,
+        vertical = true, label = "SUVR", labelsize=36, flipaxis=false,
+        ticksize=18, ticklabelsize=36, labelpadding=3, ticks = 1:0.5:maximum(cc))
 
-    ax = Axis(f[1,2])
+    ax = Axis(f[1,2:4])
     hidedecorations!(ax)
     hidespines!(ax)
-    text!(L"\frac{ds_i}{dt} = - \rho \sum_j^{R} L_{ij} (s_{j} - s_{0, j}) + \alpha (s_i - s_{0, i}) [(s_{\infty,i} - s_{0,i}) - (s_i - s_{0,i})]", 
-        fontsize=40, 
+    text!(L"\frac{\mathrm{d}s_i}{\mathrm{d}t} = - \rho \sum_{j=1}^{R} L_{ij} (s_{j} - s_{0, j}) + \alpha (s_i - s_{0, i}) [(s_{\infty,i} - s_{0,i}) - (s_i - s_{0,i})]", 
+        fontsize=20, 
         align = (:center, :center))
     #rowsize!(f.layout, 1, Auto(0.15))
 
-    ax = Axis(f[2:5,2],
+    ax = Axis(f[2:5,2:4],
             xautolimitmargin = (0, 0), xgridcolor = (:grey, 0.5), xgridwidth = 2,
-            xticklabelsize = 36, xticks = LinearTicks(4), xticksize=18,
+            xticklabelsize = 36, xticks = LinearTicks(5), xticksize=18,
             xlabel="Time / years", xlabelsize = 36,
             yautolimitmargin = (0, 0), ygridcolor = (:grey, 0.5), ygridwidth = 2,
-            yticklabelsize = 36, yticks = LinearTicks(4), yticksize=18,
-            ylabel="SUVR", ylabelsize = 36
-    )
-
-    GLMakie.ylims!(ax, minimum(u0)-0.1, maximum(cc)+0.1)
-    GLMakie.xlims!(ax, 0, 8)
+            yticklabelsize = 36, yticks = 1:0.5:3.5, yticksize=18)
+    hidespines!(ax, :t, :r)
+    hideydecorations!(ax, ticks=false, grid=false)
+    GLMakie.ylims!(ax, 1.0, maximum(cc))
+    GLMakie.xlims!(ax, 0, 30)
 
     for i in 1:36
         lines!(sol.t, sol[i, :], color=Makie.wong_colors()[1])
@@ -208,11 +212,11 @@ begin
     x = Observable(0.0)
     vlines!(ax, x, color=(:red, 0.5), linewidth=5)
 
-    sublayout = GridLayout(width = 75)
-    f[1,3] = sublayout
+    # sublayout = GridLayout(width = 75)
+    # f[1,3] = sublayout
 
-    sublayout = GridLayout(height = 50)
-    f[6, 1:2] = sublayout
+    # sublayout = GridLayout(height = 50)
+    # f[6, 1:2] = sublayout
     f
 end
 
