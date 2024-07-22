@@ -2,7 +2,7 @@ using Connectomes
 using ADNIDatasets
 using CSV, DataFrames
 using DrWatson: projectdir
-using DifferentialEquations
+using OrdinaryDiffEq
 using Distributions
 using Turing
 using Serialization
@@ -305,19 +305,19 @@ save(projectdir("visualisation/inference/model-selection/output/model-fits.pdf")
 #-------------------------------------------------------------------------------
 # Regional average
 #-------------------------------------------------------------------------------
-begin 
+begin
     cols = ColorSchemes.seaborn_colorblind[1:3]
     titlesize = 50
     xlabelsize = 40
     ylabelsize = 40
     xticklabelsize = 30 
     yticklabelsize = 30
-    f = Figure(resolution=(2000, 1100), fontsize=40);
+    f = Figure(size=(2000, 1100), fontsize=40);
     g = [f[i, j] = GridLayout() for i in 1:2, j in 1:4]
     gl = f[3,:] = GridLayout()
     for (i, _sol) in enumerate([local_sols, global_sols, diffusion_sols, logistic_sols])
         start = 1.0
-        stop = 1.70
+        stop = 1.915
         border = 0.025
         ax = Axis(g[1, i][1, 1],  
                 xlabel="SUVR", 
@@ -388,6 +388,90 @@ begin
     f
 end
 save(projectdir("visualisation/inference/model-selection/output/model-fits-roi-average.pdf"), f)
+
+begin
+    cols = Makie.wong_colors()[1:3]
+    titlesize = 30
+    xlabelsize = 30
+    ylabelsize = 30
+    xticklabelsize = 25
+    yticklabelsize = 25
+    f = Figure(size=(600, 1000), fontsize=40);
+    g = f[1, 1] = GridLayout()
+    # gl = f[2,1] = GridLayout()
+    g2 = f[2,1] = GridLayout()
+    for (i, _sol) in enumerate([local_sols])
+       
+        preds = reduce(hcat, [get_sol_mean_t(_sol, j) for j in 1:4])
+        obs = reduce(hcat, [get_sol_mean_t(insample_pos_data, j) for j in 1:4])
+        fidx = findall(x -> length(x) > 3, insample_pos_times)
+        fpreds = reduce(hcat, [get_sol_mean_t(_sol[fidx], j) for j in 1:4])
+        fobs = reduce(hcat, [get_sol_mean_t(insample_pos_data[fidx], j) for j in 1:4])
+
+        start = -0.025
+        stop = 0.265
+        border = 0.05
+        ax = Axis(g[1, i][1,1], 
+                xlabel="Δ SUVR",
+                ylabel="Δ Prediction",
+                titlesize=titlesize, xlabelsize=xlabelsize, ylabelsize=ylabelsize, 
+                xticklabelsize=xticklabelsize, yticklabelsize=xticklabelsize, 
+                xticks=0:0.1:stop+border, yticks=0:0.1:stop+border, 
+                xminorticks=0:0.05:stop+border, xminorticksvisible=true, xminorgridvisible=true,
+                xminorgridcolor=RGBAf(0, 0, 0, 0.15), xgridcolor=RGBAf(0, 0, 0, 0.15),
+                yminorticks=0:0.05:stop+border, yminorticksvisible=true, yminorgridvisible=true,
+                yminorgridcolor=RGBAf(0, 0, 0, 0.15), ygridcolor=RGBAf(0, 0, 0, 0.15),
+                xtickformat = "{:.2f}", ytickformat = "{:.2f}", xticksize=10,  yticksize=10)
+        if i > 1
+            hideydecorations!(ax, minorgrid=false, minorticks=false, ticks=false, grid=false)
+        end
+        xlims!(ax, start, stop + border)
+        ylims!(ax, start, stop + border)
+        lines!(start:0.01:stop + border, start:0.01:stop + border, color=(:grey, 0.75), linewidth=5, linestyle=:dash)
+
+        for (scan, col) in zip(2:3, alphacolor.(cols, [1.0,0.5,0.5]))
+            diffs = getdiff(obs, scan)
+            soldiff = getdiff(preds, scan)
+            scatter!(diffs, soldiff, color=col, markersize=20, marker='●', label="Scan $(scan)")
+        end
+        fdiff = getdiff(fobs, 4)
+        fsoldiff = getdiff(fpreds, 4)
+        scatter!(fdiff, fsoldiff, color=(cols[3], 0.5), markersize=20, marker='●', label="Scan 4")
+    end
+    Legend(g[2, 1],
+    [MarkerElement(color = col, marker= '●', markersize=20) for col in cols],
+    ["Scan 2", "Scan 3", "Scan 4"], labelsize=30, tellheight=true, tellwidth=false,
+    patchsize = (35, 35), rowgap = 10, orientation = :horizontal, framevisible=false)
+
+    start = -0.025
+    stop = 0.265
+    border = 0.05
+    ax = Axis(g2[1, 1], 
+            xlabel="Δ SUVR",
+            ylabel="Δ Prediction",
+            titlesize=titlesize, xlabelsize=xlabelsize, ylabelsize=ylabelsize, 
+            xticklabelsize=xticklabelsize, yticklabelsize=xticklabelsize, 
+            xticks=0:0.1:stop+border, yticks=0:0.1:stop+border, 
+            xminorticks=0:0.05:stop+border, xminorticksvisible=true, xminorgridvisible=true,
+            xminorgridcolor=RGBAf(0, 0, 0, 0.15), xgridcolor=RGBAf(0, 0, 0, 0.15),
+            yminorticks=0:0.05:stop+border, yminorticksvisible=true, yminorgridvisible=true,
+            yminorgridcolor=RGBAf(0, 0, 0, 0.15), ygridcolor=RGBAf(0, 0, 0, 0.15),
+            xtickformat = "{:.2f}", ytickformat = "{:.2f}", xticksize=10,  yticksize=10)
+
+    scatter!(mean_final_scan .- mean_first_scan, mean_final_pred .- mean_first_scan, 
+    markersize=20, color=(Makie.wong_colors()[4], 0.75));
+    xlims!(ax, start, stop + border)
+    ylims!(ax, start, stop + border)
+    lines!(start:0.01:stop + border, start:0.01:stop + border, color=(:grey, 0.75), linewidth=5, linestyle=:dash)
+
+    Legend(g2[2, 1],
+    [MarkerElement(color = Makie.wong_colors()[4], marker= '●', markersize=20)],
+    ["Out of Sample"], labelsize=30, tellheight=true, tellwidth=false,
+    patchsize = (35, 35), rowgap = 10, orientation = :horizontal, framevisible=false)
+
+    f
+end
+save(projectdir("visualisation/inference/model-selection/output/model-fits-roi-average-local-fkpp.pdf"), f)
 
 begin 
     CairoMakie.activate!()

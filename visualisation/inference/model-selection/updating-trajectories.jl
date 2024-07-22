@@ -2,15 +2,12 @@ using Connectomes
 using ADNIDatasets
 using CSV, DataFrames
 using DrWatson: projectdir
-using DifferentialEquations
-using SciMLSensitivity
-using Zygote
+using OrdinaryDiffEq
 using Turing
 using Distributions
 using Serialization
 using DelimitedFiles, LinearAlgebra
-using Random
-using LinearAlgebra, SparseArrays
+using Random, SparseArrays
 using CairoMakie, ColorSchemes
 using Colors
 include(projectdir("functions.jl"))
@@ -78,7 +75,6 @@ function simulate(f, inits, p, tspan, t)
     )
 
 end
-
 
 function NetworkLocalFKPP(du, u, p, t; L = Lv, u0 = u0, cc = cc)
     du .= -p[1] * L * (u .- u0) .+ p[2] .* (u .- u0) .* ((cc .- u0) .- (u .- u0))
@@ -148,38 +144,123 @@ end
 node = 65
 cols = ColorSchemes.seaborn_bright;
 
-# begin
-#     f = Figure(size=(1200, 1000))
-#     idx = 2
-#     for (i, node) in enumerate([61, 63, 65])
-#         ax = Axis(f[i, 1])
-#         ylims!(ax, 1.0,3.25)
-#         q1, q2, q3 = get_quantiles(reduce(hcat, [sols[1][idx][j][node, :] for j in 1:2000]))
-#         band!(0.0:0.5:15.0, q1, q2, color=alphacolor(get(ColorSchemes.Greys, 0.5), 0.75))
-#         scatter!(times[idx][1], four_subdata[idx][node,1], color=:black, markersize=25)
-#         scatter!(times[idx][2:end], four_subdata[idx][node,2:end], color=:white, markersize=25, strokewidth = 3, strokcolor=:black)
-#         f
-#     end
-#     for (i, node) in enumerate([61, 63, 65])
-#         ax = Axis(f[i, 2])
-#         ylims!(ax, 1.0,3.25)
-#         q1, q2, q3 = get_quantiles(reduce(hcat, [sols[3][idx][j][node, :] for j in 1:2000]))
-#         band!(0.0:0.5:15.0, q1, q2, color=alphacolor(get(ColorSchemes.Greys, 0.5), 0.75))
-#         scatter!(times[idx][1:2], four_subdata[idx][node,1:2], color=:black, markersize=25)
-#         scatter!(times[idx][3:end], four_subdata[idx][node,3:end], color=:white, markersize=25, strokewidth = 3, strokcolor=:black)
-#         f
-#     end
-#     for (i, node) in enumerate([61, 63, 65])
-#         ax = Axis(f[i, 3])
-#         ylims!(ax, 1.0,3.25)
-#         q1, q2, q3 = get_quantiles(reduce(hcat, [sols[4][idx][j][node, :] for j in 1:2000]))
-#         band!(0.0:0.5:15.0, q1, q2, color=alphacolor(get(ColorSchemes.Greys, 0.5), 0.75))
-#         scatter!(times[idx][1:3], four_subdata[idx][node,1:3], color=:black, markersize=25)
-#         scatter!(times[idx][4:end], four_subdata[idx][node,4:end], color=:white, markersize=25, strokewidth = 3, strokcolor=:black)
-#         f
-#     end
-#     f
-# end
+begin
+    cols = Makie.wong_colors()
+    f = Figure(size=(600, 500))
+    idx = 2
+    for (i, node) in enumerate([61, 63, 65])
+        ax = Axis(f[i, 1:3], yticks=1:0.5:3.5, xticks=0:2.5:10, xlabel="Time / years", 
+                  ylabel="SUVR")
+        if i < 3 
+            hidexdecorations!(ax, grid=false, ticks=false)
+            hideydecorations!(ax, ticks=false, ticklabels=false, grid=false)
+        end
+        hidespines!(ax, :t, :r)
+        xlims!(ax, -1.0,10.)
+        ylims!(ax, 1.0,4.0)
+        for (col, sol, alpha) in zip(cols[1:3], noise_sols[2:4], [0.25, 0.5, 0.75])
+            q1, q2, q3 = get_quantiles(reduce(hcat, [sol[idx][j][node, :] for j in 1:2000]))
+            band!(0.0:0.5:10.0, q1, q2, color=alphacolor(col, alpha))
+            # scatter!(times[idx][1], four_subdata[idx][node,1], color=:black, markersize=25)
+            # scatter!(times[idx][2:end], four_subdata[idx][node,2:end], color=:white, markersize=25, strokewidth = 3, strokcolor=:black)
+        end
+        for _t in 1:3
+            scatter!(times[idx][_t], four_subdata[idx][node,_t], markersize=20, color=(cols[_t], 0.75), strokewidth=1, strokecolor=:black)
+        end
+        scatter!(times[idx][4:end], four_subdata[idx][node,4:end], markersize=20, color=(cols[4], 0.75), strokewidth=1, strokecolor=:black)
+        Label(f[i, 1:3],
+            "Left " * titlecase(get_label.(cortex)[node]),
+            fontsize=15,
+            justification = :right, halign=:right, valign=:top, 
+            padding = (5.0f0, 0.0f0, 0.0f0, 5.0f0),
+            color = :black, tellheight=false, tellwidth=false)
+    end
+
+    markersizes = [10, 10, 10, 10]
+    colors = cols[1:4]
+    polynames = ["1 Training Scan", "2 Training Scans", "3 Training Scans", "Out-of-Sample"]
+    
+    group_size = [MarkerElement(color = col, marker= '●', markersize=20) for col in cols[[1,2,3,4]]]
+    
+    Legend(f[:,4],
+        [group_size],
+        [string.(polynames)],
+        [""], 
+        patchsize=(10, 10), tellheight = true, tellwidth=false, orientation=:horizontal, 
+        titleposition=:top, nbanks=4, framevisible=false, colgap=25, 
+        titlegap=10, patchlabelgap=10)
+
+    rowgap!(f.layout, 10)
+    colgap!(f.layout, 20)
+    f
+end
+save(projectdir("visualisation/inference/model-selection/output/out-of-sample-updates-five-subs.pdf"), f)
+
+begin
+    cols = Makie.wong_colors()
+    alphas = [0.25, 0.5, 0.75]
+    for k in 1:3
+        f = Figure(size=(600, 500))
+        idx = 2
+        for (i, node) in enumerate([61, 63, 65])
+            ax = Axis(f[i, 1:3], yticks=1:0.5:3.5, xticks=0:2.5:10, xlabel="Time / years", 
+                    ylabel="SUVR")
+            if i < 3 
+                hidexdecorations!(ax, grid=false, ticks=false)
+                hideydecorations!(ax, ticks=false, ticklabels=false, grid=false)
+            end
+            hidespines!(ax, :t, :r)
+            xlims!(ax, -1.0,10.)
+            ylims!(ax, 1.0,4.0)
+
+            if k == 1
+                q1, q2, q3 = get_quantiles(reduce(hcat, [noise_sols[k+1][idx][j][node, :] for j in 1:2000]))
+                band!(0.0:0.5:10.0, q1, q2, color=alphacolor(cols[1], 0.25))
+
+                scatter!(times[idx][1], four_subdata[idx][node,1], markersize=20, color=(cols[1], 0.75), strokewidth=1, strokecolor=:black)
+                scatter!(times[idx][2:end], four_subdata[idx][node,2:end], markersize=20, color=(cols[4], 0.75), strokewidth=1, strokecolor=:black)
+            else
+                for _t in 1:k
+                    q1, q2, q3 = get_quantiles(reduce(hcat, [noise_sols[_t+1][idx][j][node, :] for j in 1:2000]))
+                    band!(0.0:0.5:10.0, q1, q2, color=alphacolor(cols[_t], alphas[_t]))
+
+                    scatter!(times[idx][_t], four_subdata[idx][node,_t], markersize=20, color=(cols[_t], 0.75), strokewidth=1, strokecolor=:black)
+                end
+                scatter!(times[idx][k+1:end], four_subdata[idx][node,k+1:end], markersize=20, color=(cols[4], 0.75), strokewidth=1, strokecolor=:black)
+            end
+            Label(f[i, 1:3],
+                "Left " * titlecase(get_label.(cortex)[node]),
+                fontsize=15,
+                justification = :right, halign=:right, valign=:top, 
+                padding = (5.0f0, 0.0f0, 0.0f0, 5.0f0),
+                color = :black, tellheight=false, tellwidth=false)
+        end
+
+        markersizes = [10,10]
+        colors = cols[[1,4]]
+        insample_colors = cols[1:k]
+        outsample_colors = cols[4]
+        colors = [insample_colors; outsample_colors]
+
+        insample_names = reduce(vcat, ["$(scan) Training Scans" for scan in 1:k])
+        polynames = [insample_names; "Out-of-Sample"]
+        
+        group_size = [MarkerElement(color = col, marker= '●', markersize=20) for col in colors]
+        
+        Legend(f[:,4],
+            [group_size],
+            [string.(polynames)],
+            [""], 
+            patchsize=(10, 10), tellheight = true, tellwidth=false, orientation=:horizontal, 
+            titleposition=:top, nbanks=4, framevisible=false, colgap=25, 
+            titlegap=10, patchlabelgap=10)
+
+        rowgap!(f.layout, 10)
+        colgap!(f.layout, 20)
+        display(f)
+        save(projectdir("visualisation/inference/model-selection/output/out-of-sample-updates-five-subs-$(k).pdf"), f)
+    end
+end
 
 for node in [61, 63, 65]
     dktnames[node]
