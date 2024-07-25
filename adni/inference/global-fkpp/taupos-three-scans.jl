@@ -33,13 +33,13 @@ max_norm_vols = reduce(hcat, [v ./ maximum(v) for v in init_vols])
 mean_norm_vols = vec(mean(max_norm_vols, dims=2))
 Lv = sparse(inv(diagm(mean_norm_vols)) * L)
 
-function NetworkGlobalFKPP(du, u, p, t; Lv = Lv)
-    du .= -p[1] * Lv * u .+ p[2] .* u .* (1 .- ( u ./ p[3]))
+function NetworkGlobalFKPP(du, u, p, t; L = Lv)
+    du .= -p[1] * L * (u .- p[3]) .+ p[2] .* (u .- p[3]) .* ((p[4] .- p[3]) .- (u .- p[3]))
 end
 
-function make_prob_func(initial_conditions, p, a, p_max, times)
+function make_prob_func(initial_conditions, p, a, p_min, p_max, times)
     function prob_func(prob,i,repeat)
-        remake(prob, u0=initial_conditions[i], p=[p[i], a[i], p_max], saveat=times[i])
+        remake(prob, u0=initial_conditions[i], p=[p[i], a[i], p_min, p_max], saveat=times[i])
     end
 end
 
@@ -53,21 +53,22 @@ _subdata = calc_suvr.(pos_data)
 subdata = [sd[:, 1:3] for sd in _subdata]
 vecsubdata = reduce(vcat, reduce(hcat, subdata))
 
-max_suvr = maximum(cc)
-
 initial_conditions = [sd[:,1] for sd in subdata]
 _times =  get_times.(pos_data)
 times = [t[1:3] for t in _times]
 max_t = maximum(reduce(vcat, times))
 
+min_suvr = minimum(u0)
+max_suvr = maximum(cc)
+
 prob = ODEProblem(NetworkGlobalFKPP, 
                   initial_conditions[1], 
                   (0.,max_t), 
-                  [1.0,1.0, max_suvr])
+                  [1.0,1.0, min_suvr, max_suvr])
                   
 sol = solve(prob, Tsit5())
 
-ensemble_prob = EnsembleProblem(prob, prob_func=make_prob_func(initial_conditions, ones(n_pos), ones(n_pos), max_suvr, times), output_func=output_func)
+ensemble_prob = EnsembleProblem(prob, prob_func=make_prob_func(initial_conditions, ones(n_pos), ones(n_pos), min_suvr, max_suvr, times), output_func=output_func)
 ensemble_sol = solve(ensemble_prob, Tsit5(), EnsembleSerial(), trajectories=n_pos)
 
 function get_retcodes(es)
@@ -80,20 +81,20 @@ end
 #-------------------------------------------------------------------------------
 # Inference 
 #-------------------------------------------------------------------------------
-@model function globalfkpp(data, prob, initial_conditions, max_suvr, times, n)
-    σ ~ LogNormal(0.0, 1.0)
+@model function globalfkpp(data, prob, initial_conditions, min_suvr, max_suvr, times, n)
+    σ ~ InverseGamma(2, 3)
     
     Pm ~ LogNormal(0.0, 1.0)
-    Ps ~ LogNormal(0.0, 1.0)
+    Ps ~ truncated(Normal(), lower=0)
 
     Am ~ Normal(0.0, 1.0)
-    As ~ LogNormal(0.0, 1.0)
+    As ~ truncated(Normal(), lower=0)
 
     ρ ~ filldist(truncated(Normal(Pm, Ps), lower=0), n)
     α ~ filldist(Normal(Am, As), n)
 
     ensemble_prob = EnsembleProblem(prob, 
-                                    prob_func=make_prob_func(initial_conditions, ρ, α, max_suvr, times), 
+                                    prob_func=make_prob_func(initial_conditions, ρ, α, min_suvr, max_suvr, times), 
                                     output_func=output_func)
 
     ensemble_sol = solve(ensemble_prob, 
@@ -116,7 +117,7 @@ end
 # setadbackend(:zygote)
 Random.seed!(1234);
 
-m = globalfkpp(vecsubdata, prob, initial_conditions, max_suvr, times, n_pos);
+m = globalfkpp(vecsubdata, prob, initial_conditions, min_suvr, max_suvr, times, n_pos);
 m();
 
 println("starting inference")
@@ -126,7 +127,7 @@ pst = sample(m,
              Turing.NUTS(0.8),
              n_samples, 
              progress=true)
-serialize(projectdir("adni/new-chains/global-fkpp/length-free/pst-taupos-$(n_chains)x$(n_samples)-three.jls"), pst)
+serialize(projectdir("adni/new-chains/global-fkpp/scaled/pst-taupos-$(n_chains)x$(n_samples)-three-normal.jls"), pst)
 
 # # calc log likelihood 
 # pst = deserialize(projectdir("adni/chains/global-fkpp/pst-taupos-4x2000.jls"));
