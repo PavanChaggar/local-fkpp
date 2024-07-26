@@ -39,3 +39,5 @@ adni/chains
 py-analysis/env
 
 adni/old-scripts
+adni/old-data
+adni/adni-data
