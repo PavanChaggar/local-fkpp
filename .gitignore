@@ -37,3 +37,7 @@ adni/chains
 *.tif
 
 py-analysis/env
+
+adni/old-scripts
+adni/old-data
+adni/data/*.csv
