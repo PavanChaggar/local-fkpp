@@ -183,6 +183,23 @@ end
 save(projectdir("visualisation/inference/posteriors/output/adni-bivariate-posteriors.pdf"), f)
 
 begin
+        f = Figure(size=(500, 400), fontsize=20)
+        ax = Axis(f[1,1], xlabel="Transport / year", ylabel="Production / year")
+        xlims!(ax, 0.0, 0.6)
+        ylims!(ax, -1, 1.0)
+        _category_label = [L"A^-", L"A^+T^-", L"A^+T^+"]
+        colors = alphacolor.(Makie.wong_colors(), 0.6)[1:3]
+        for (i, (p, n)) in enumerate(zip(reverse([pst, pst2, pst3]), reverse([57, 37, 53])))
+                for _n in 1:n
+                        scatter!(mean(p["ρ[$_n]"]), mean(p["α[$_n]"]), markersize=25, color=colors[i], label=_category_label[i])
+                end
+        end
+        axislegend(ax, position=:rb, unique=true)
+        f
+end
+save(projectdir("visualisation/inference/posteriors/output/adni-parameter-correlation.pdf"), f)
+
+begin
         n_samples = 8000
         f = Figure(size=(2000, 750), fontsize=50)
         g1 = f[1, 1] = GridLayout()
@@ -559,6 +576,22 @@ begin
         f
 end
 
+begin
+        f = Figure(size=(500, 400), fontsize=20)
+        ax = Axis(f[1,1], xlabel="Transport / year", ylabel="Production / year")
+        xlims!(ax, 0.0, 0.4)
+        ylims!(ax, -1, 1)
+        _category_label = [L"A^-", L"A^+T^-", L"A^+T^+"]
+        colors = alphacolor.(Makie.wong_colors(), 0.65)[1:3]
+        for (i, (p, n)) in enumerate(zip(reverse([pst, pst2, pst3]), reverse([54, 18, 50])))        
+                for _n in 1:n
+                        scatter!(mean(p["ρ[$_n]"]), mean(p["α[$_n]"]), markersize=25, color=colors[i], label=_category_label[i])
+                end
+        end
+        axislegend(ax, position=:rb, unique=true)
+        f
+end
+save(projectdir("visualisation/inference/posteriors/output/bf-parameter-correlation.pdf"), f)
 #-------------------------------------------------------------------------------
 # Hierarchical Distributions -- shuffled
 #-------------------------------------------------------------------------------
