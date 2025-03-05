@@ -109,42 +109,42 @@ end
     ρ ~ filldist(truncated(Normal(Pm, Ps), lower=0), n)
     α ~ filldist(truncated(Normal(Am, As), lower = 0), n)
 
-    ensemble_prob = EnsembleProblem(prob, 
-                                    prob_func=make_prob_func(initial_conditions, ρ, α, times), 
-                                    output_func=output_func)
+    # ensemble_prob = EnsembleProblem(prob, 
+    #                                 prob_func=make_prob_func(initial_conditions, ρ, α, times), 
+    #                                 output_func=output_func)
 
-    ensemble_sol = solve(ensemble_prob, 
-                         Tsit5(),
-                         abstol = 1e-9, 
-                         reltol = 1e-9, 
-                         trajectories=n, 
-                         sensealg=InterpolatingAdjoint(autojacvec=ReverseDiffVJP(true)))
-    if !allequal(get_retcodes(ensemble_sol)) 
-        Turing.@addlogprob! -Inf
-        println("failed")
-        return nothing
-    end
-    vecsol = vec_sol(ensemble_sol)
-
-    data ~ MvNormal(vecsol, σ^2 * I)
-    # for i in 1:n
-    #     prob_n = remake(prob, u0 = initial_conditions[i], p = [ρ[i], α[i]])
-    #     # solve ode at time points specific to each subject
-    #     predicted = solve(
-    #         prob_n,
-    #         Tsit5(),
-    #         abstol=1e-6, 
-    #         reltol=1e-6,
-    #         saveat=times[i],
-    #         sensealg=InterpolatingAdjoint(autojacvec=ReverseDiffVJP(true))
-    #     )
-    #     if !SciMLBase.successful_retcode(sol) 
-    #         Turing.@addlogprob! -Inf
-    #         println("failed")
-    #         return nothing
-    #     end
-    #     Turing.@addlogprob! loglikelihood(MvNormal(vec(predicted), σ), data[i])
+    # ensemble_sol = solve(ensemble_prob, 
+    #                      Tsit5(),
+    #                      abstol = 1e-9, 
+    #                      reltol = 1e-9, 
+    #                      trajectories=n, 
+    #                      sensealg=InterpolatingAdjoint(autojacvec=ReverseDiffVJP(true)))
+    # if !allequal(get_retcodes(ensemble_sol)) 
+    #     Turing.@addlogprob! -Inf
+    #     println("failed")
+    #     return nothing
     # end
+    # vecsol = vec_sol(ensemble_sol)
+
+    # data ~ MvNormal(vecsol, σ^2 * I)
+    for i in 1:n
+        prob_n = remake(prob, u0 = initial_conditions[i], p = [ρ[i], α[i]])
+        # solve ode at time points specific to each subject
+        predicted = solve(
+            prob_n,
+            Tsit5(),
+            abstol=1e-6, 
+            reltol=1e-6,
+            saveat=times[i],
+            sensealg=InterpolatingAdjoint(autojacvec=ReverseDiffVJP(true))
+        )
+        if !SciMLBase.successful_retcode(sol) 
+            Turing.@addlogprob! -Inf
+            println("failed")
+            return nothing
+        end
+        Turing.@addlogprob! loglikelihood(MvNormal(vec(predicted), σ), data[i])
+    end
 end
 
 # Turing.setadbackend(:zygote)
@@ -157,7 +157,7 @@ n_chains = 1
 n_samples = 2_000
 println("starting inference")
 pst = sample(m, 
-             Turing.NUTS(0.8), # adtype=AutoZygote()),
+             Turing.NUTS(0.8, adtype=AutoZygote()),
              MCMCSerial(), 
              n_samples, 
              n_chains, progress=false)
