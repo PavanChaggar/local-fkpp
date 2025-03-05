@@ -40,4 +40,6 @@ py-analysis/env
 
 adni/old-scripts
 adni/old-data
-adni/data/*.csv
+adni/data/UC*.csv
+adni/data/demographics.csv
+adni/data/ADNI*.csv
