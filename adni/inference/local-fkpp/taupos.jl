@@ -82,11 +82,11 @@ end
     Pm ~ LogNormal(0.0, 1.0) # LogNormal(0.0,1.0)
     Ps ~ truncated(Normal(), lower=0)
 
-    Am ~ Normal(0.0, 1.0) # Normal(0.0,1.0)
+    Am ~ truncated(Normal(0.0, 1.0), lower=0) #Normal(0.0,1.0)
     As ~ truncated(Normal(), lower=0)
 
     ρ ~ filldist(truncated(Normal(Pm, Ps), lower=0), n)
-    α ~ filldist(Normal(Am, As), n)
+    α ~ filldist(truncated(Normal(Am, As), lower = 0), n)
 
     ensemble_prob = EnsembleProblem(prob, 
                                     prob_func=make_prob_func(initial_conditions, ρ, α, times), 
@@ -115,15 +115,15 @@ m = localfkpp(vecsubdata, prob, initial_conditions, times, n_pos);
 m();
 
 println("starting inference")
-n_chains = 4
+n_chains = 1
 n_samples = 2000
 pst = sample(m,
              Turing.NUTS(0.8), #, metricT=AdvancedHMC.DenseEuclideanMetric), 
              MCMCSerial(), 
              n_samples, 
              n_chains)
-serialize(projectdir("adni/new-chains/local-fkpp/length-free/pst-taupos-$(n_chains)x$(n_samples)-normal.jls"), pst)
+serialize(projectdir("adni/new-chains/local-fkpp/length-free/pst-taupos-$(n_chains)x$(n_samples)-truncated-normal.jls"), pst)
 
 #calc log likelihood 
 log_likelihood = pointwise_loglikelihoods(m, MCMCChains.get_sections(pst, :parameters));
-serialize(projectdir("adni/new-chains/local-fkpp/length-free/ll-taupos-$(n_chains)x$(n_samples)-normal.jls"), log_likelihood)
+serialize(projectdir("adni/new-chains/local-fkpp/length-free/ll-taupos-$(n_chains)x$(n_samples)-truncated-normal.jls"), log_likelihood)
