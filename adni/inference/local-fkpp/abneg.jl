@@ -150,7 +150,7 @@ end
 # Turing.setadbackend(:zygote)
 Random.seed!(1234); 
 
-m = localfkpp(vec.(subdata), prob, initial_conditions, times, n_subjects)
+m = localfkpp(vecsubdata, prob, initial_conditions, times, n_subjects)
 m();
 
 n_chains = 1
