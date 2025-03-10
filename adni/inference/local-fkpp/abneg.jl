@@ -101,10 +101,10 @@ end
     σ ~ InverseGamma(2,3)
     
     Pm ~ LogNormal(0.0, 1.0) #LogNormal(0.0,1.0)
-    Ps ~ truncated(Normal(), lower=0)
+    Ps ~ LogNormal(0.0, 1.0) 
 
-    Am ~ truncated(Normal(0.0, 1.0), lower=0) #Normal(0.0,1.0)
-    As ~ truncated(Normal(), lower=0)
+    Am ~ Normal(0.0,1.0)
+    As ~ LogNormal(0.0, 1.0) 
 
     ρ ~ filldist(truncated(Normal(Pm, Ps), lower=0), n)
     α ~ filldist(truncated(Normal(Am, As), lower = 0), n)
@@ -161,4 +161,4 @@ pst = sample(m,
              MCMCSerial(), 
              n_samples, 
              n_chains)
-serialize(projectdir("adni/new-chains/local-fkpp/length-free/pst-abneg-$(n_chains)x$(n_samples)-truncated-normal.jls"), pst)
+serialize(projectdir("adni/new-chains/local-fkpp/length-free/pst-abneg-$(n_chains)x$(n_samples)-lognormal.jls"), pst)
