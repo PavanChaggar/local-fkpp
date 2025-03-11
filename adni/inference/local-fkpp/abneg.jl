@@ -107,7 +107,7 @@ end
     As ~ LogNormal(0.0, 1.0)
 
     ρ ~ filldist(truncated(Normal(Pm, Ps), lower=0), n)
-    α ~ filldist(Normal(Am, As), n)
+    α ~ filldist(Normal(Am, As), n) 
 
     # ensemble_prob = EnsembleProblem(prob, 
     #                                 prob_func=make_prob_func(initial_conditions, ρ, α, times), 
@@ -115,8 +115,8 @@ end
 
     ensemble_sol = solve(ensemble_prob, 
                          Tsit5(),
-                         abstol = 1e-6, 
-                         reltol = 1e-6, 
+                         abstol = 1e-9, 
+                         reltol = 1e-9, 
                          trajectories=n, 
                          sensealg=InterpolatingAdjoint(autojacvec=ReverseDiffVJP(true)))
     if !allequal(get_retcodes(ensemble_sol)) 
