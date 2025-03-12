@@ -35,13 +35,13 @@ push!(dktnames, "icv")
 
 ucsf_dkt_dict = Dict(zip(ucsf_dkt_names, dktnames))
 
-roi_df = filter(x -> contains(lowercase(x.TEXT), ucsf_dkt_names[end]), ucsf_fldn_dict)
+roi_df = filter(x -> contains(lowercase(x.TEXT), ucsf_dkt_names[end]), ucsf_fldn_dict_df)
 
 function make_ucsf_name(rois)
     fldnames = Vector{String}()
     labels = Vector{String}()
     for roi in rois
-        roi_df = filter(x -> contains(lowercase(x.TEXT), roi), ucsf_fldn_dict)
+        roi_df = filter(x -> contains(lowercase(x.TEXT), roi), ucsf_fldn_dict_df)
     
         for _df in eachrow(roi_df)
             push!(fldnames, _df.FLDNAME)
@@ -52,10 +52,11 @@ function make_ucsf_name(rois)
 end
 
 fldnames, labels = make_ucsf_name(ucsf_dkt_names)
+
 labels
 
 newdf = deepcopy(df)
 [rename!(newdf, f => l) for (f, l) in zip(fldnames, labels)];
 
-
+testdf = newdf[:, [names(df)[1:20]; labels]]
 CSV.write(projectdir("adni/data/ucsf-FS-smri.csv"), newdf[:, [names(df)[1:20]; labels]])
