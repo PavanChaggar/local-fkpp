@@ -58,7 +58,7 @@ n_subjects = length(subdata)
 #-------------------------------------------------------------------------------
 L = laplacian_matrix(c)
 
-vols = [get_vol(neg_data, i) for i in bagoodsubsdsubs]
+vols = [get_vol(neg_data, i) for i in goodsubs]
 init_vols = [v[:,1] for v in vols]
 max_norm_vols = reduce(hcat, [v ./ maximum(v) for v in init_vols])
 mean_norm_vols = vec(mean(max_norm_vols, dims=2))
