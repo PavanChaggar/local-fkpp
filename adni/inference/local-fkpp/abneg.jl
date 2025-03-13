@@ -109,9 +109,9 @@ end
     ρ ~ filldist(truncated(Normal(Pm, Ps), lower=0), n)
     α ~ filldist(Normal(Am, As), n) 
 
-    # ensemble_prob = EnsembleProblem(prob, 
-    #                                 prob_func=make_prob_func(initial_conditions, ρ, α, times), 
-    #                                 output_func=output_func)
+    ensemble_prob = EnsembleProblem(prob, 
+                                    prob_func=make_prob_func(initial_conditions, ρ, α, times), 
+                                    output_func=output_func)
 
     ensemble_sol = solve(ensemble_prob, 
                          Tsit5(),
