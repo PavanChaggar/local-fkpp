@@ -161,4 +161,4 @@ pst = sample(m,
              MCMCSerial(), 
              n_samples, 
              n_chains)
-serialize(projectdir("adni/new-chains/local-fkpp/length-free/pst-abneg-$(n_chains)x$(n_samples)-lognormal.jls"), pst)
+serialize(projectdir("adni/new-chains/local-fkpp/length-free/pst-abneg-$(n_chains)x$(n_samples).jls"), pst)
