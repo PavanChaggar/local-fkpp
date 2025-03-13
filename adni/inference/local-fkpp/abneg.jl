@@ -45,12 +45,12 @@ _subdata = [normalise(sd, u0, cc) for sd in subsuvr]
 
 blsd = [sd .- u0 for sd in _subdata]
 nonzerosubs = findall(x -> sum(x) < 2, [sum(sd, dims=1) .== 0 for sd in blsd])
-
-subdata = _subdata[nonzerosubs]
+goodsubs = setdiff(nonzerosubs, [15])
+subdata = _subdata[goodsubs]
 vecsubdata = reduce(vcat, reduce(hcat, subdata))
 
 initial_conditions = [sd[:,1] for sd in subdata]
-times =  [get_times(neg_data, i) for i in nonzerosubs]
+times =  [get_times(neg_data, i) for i in goodsubs]
 
 n_subjects = length(subdata)
 #-------------------------------------------------------------------------------
@@ -58,7 +58,7 @@ n_subjects = length(subdata)
 #-------------------------------------------------------------------------------
 L = laplacian_matrix(c)
 
-vols = [get_vol(neg_data, i) for i in nonzerosubs]
+vols = [get_vol(neg_data, i) for i in bagoodsubsdsubs]
 init_vols = [v[:,1] for v in vols]
 max_norm_vols = reduce(hcat, [v ./ maximum(v) for v in init_vols])
 mean_norm_vols = vec(mean(max_norm_vols, dims=2))
@@ -101,10 +101,10 @@ end
     σ ~ InverseGamma(2,3)
     
     Pm ~ LogNormal(0.0, 1.0)
-    Ps ~ LogNormal(0.0, 1.0)
+    Ps ~ truncated(Normal(), lower=0), # LogNormal(0.0, 1.0)
 
     Am ~ Normal(0.0, 1.0)
-    As ~ LogNormal(0.0, 1.0)
+    As ~ truncated(Normal(), lower=0), # LogNormal(0.0, 1.0)
 
     ρ ~ filldist(truncated(Normal(Pm, Ps), lower=0), n)
     α ~ filldist(Normal(Am, As), n) 
