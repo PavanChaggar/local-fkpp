@@ -101,10 +101,10 @@ end
     σ ~ InverseGamma(2,3)
     
     Pm ~ LogNormal(0.0, 1.0)
-    Ps ~ truncated(Normal(), lower=0), # LogNormal(0.0, 1.0)
+    Ps ~ truncated(Normal(), lower=0) # LogNormal(0.0, 1.0)
 
     Am ~ Normal(0.0, 1.0)
-    As ~ truncated(Normal(), lower=0), # LogNormal(0.0, 1.0)
+    As ~ truncated(Normal(), lower=0) # LogNormal(0.0, 1.0)
 
     ρ ~ filldist(truncated(Normal(Pm, Ps), lower=0), n)
     α ~ filldist(Normal(Am, As), n) 
