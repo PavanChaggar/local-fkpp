@@ -45,7 +45,8 @@ _subdata = [normalise(sd, u0, cc) for sd in subsuvr]
 
 blsd = [sd .- u0 for sd in _subdata]
 nonzerosubs = findall(x -> sum(x) < 2, [sum(sd, dims=1) .== 0 for sd in blsd])
-goodsubs = setdiff(nonzerosubs, [15])
+nonzerosubdata = _subdata[nonzerosubs]
+goodsubs = setdiff(nonzerosubs, nonzerosubs[15])
 subdata = _subdata[goodsubs]
 vecsubdata = reduce(vcat, reduce(hcat, subdata))
 
