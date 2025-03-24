@@ -49,7 +49,7 @@ blsd = [sd .- u0 for sd in _subdata]
 nonzerosubs = findall(x -> sum(x) < 2, [sum(sd, dims=1) .== 0 for sd in blsd])
 nonzerosubdata = _subdata[nonzerosubs]
 goodsubs = setdiff(nonzerosubs, nonzerosubs[15])
-subdata = _subdata[nonzerosubdata]
+subdata = _subdata[goodsubs]
 vecsubdata = reduce(vcat, reduce(hcat, subdata))
 
 initial_conditions = [sd[:,1] for sd in subdata]
