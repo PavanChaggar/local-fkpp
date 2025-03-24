@@ -18,6 +18,8 @@ using LinearAlgebra
 using SparseArrays
 include(projectdir("functions.jl"))
 
+# n_samples = parse(Int, ARGS[1])
+n_chains = parse(Int, ARGS[1])
 #-------------------------------------------------------------------------------
 # Connectome and ROIs
 #-------------------------------------------------------------------------------
@@ -47,7 +49,7 @@ blsd = [sd .- u0 for sd in _subdata]
 nonzerosubs = findall(x -> sum(x) < 2, [sum(sd, dims=1) .== 0 for sd in blsd])
 nonzerosubdata = _subdata[nonzerosubs]
 goodsubs = setdiff(nonzerosubs, nonzerosubs[15])
-subdata = _subdata[goodsubs]
+subdata = _subdata[nonzerosubdata]
 vecsubdata = reduce(vcat, reduce(hcat, subdata))
 
 initial_conditions = [sd[:,1] for sd in subdata]
@@ -149,17 +151,20 @@ end
 end
 
 # Turing.setadbackend(:zygote)
-Random.seed!(1234); 
 
 m = localfkpp(vecsubdata, prob, initial_conditions, times, n_subjects)
 m();
 
-n_chains = 1
+Random.seed!(1234 * n_chains); 
+# n_chains = 4
 n_samples = 2_000
 println("starting inference")
+# pst = sample(m, 
+#              Turing.NUTS(0.8), #, adtype=AutoZygote()),
+#              MCMCSerial(), 
+#              n_samples, 
+#              n_chains)
 pst = sample(m, 
-             Turing.NUTS(0.8), #, adtype=AutoZygote()),
-             MCMCSerial(), 
-             n_samples, 
-             n_chains)
-serialize(projectdir("adni/new-chains/local-fkpp/length-free/pst-abneg-$(n_chains)x$(n_samples).jls"), pst)
+             Turing.NUTS(0.8), #, adtype=AutoZygote()), 
+             n_samples)
+serialize(projectdir("adni/new-chains/local-fkpp/length-free/pst-abneg-$(n_chains)-$(n_samples).jls"), pst)
