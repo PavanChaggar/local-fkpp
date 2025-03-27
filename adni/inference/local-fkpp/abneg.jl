@@ -110,7 +110,7 @@ end
     As ~ truncated(Normal(), lower=0) # LogNormal(0.0, 1.0)
 
     ρ ~ filldist(truncated(Normal(Pm, Ps), lower=0), n)
-    α ~ filldist(Normal(Am, As), n) 
+    α ~ filldist(truncated(Normal(), lower=0), n) 
 
     ensemble_prob = EnsembleProblem(prob, 
                                     prob_func=make_prob_func(initial_conditions, ρ, α, times), 
