@@ -106,7 +106,7 @@ end
     Pm ~ LogNormal(0.0, 1.0)
     Ps ~ truncated(Normal(), lower=0) # LogNormal(0.0, 1.0)
 
-    Am ~ Normal(0.0, 1.0)
+    Am ~ truncated(Normal(), lower=0)
     As ~ truncated(Normal(), lower=0) # LogNormal(0.0, 1.0)
 
     ρ ~ filldist(truncated(Normal(Pm, Ps), lower=0), n)
@@ -167,4 +167,4 @@ println("starting inference")
 pst = sample(m, 
              Turing.NUTS(0.8), #, adtype=AutoZygote()), 
              n_samples)
-serialize(projectdir("adni/new-chains/local-fkpp/length-free/pst-abneg-$(n_chains)-$(n_samples).jls"), pst)
+serialize(projectdir("adni/new-chains/local-fkpp/length-free/pst-abneg-$(n_chains)-$(n_samples)-truncated.jls"), pst)
