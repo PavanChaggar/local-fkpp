@@ -4,6 +4,7 @@ using Connectomes
 using ADNIDatasets
 using Dates
 include(projectdir("functions.jl"))
+include(projectdir("adni/inference/inference-preamble.jl"))
 
 connectome_path = Connectomes.connectome_path()
 parc = Parcellation(connectome_path)
@@ -12,16 +13,16 @@ cortex = filter(x -> x.Lobe != "subcortex", parc);
 dktdict = Connectomes.node2FS()
 dktnames = [dktdict[i] for i in get_node_id.(cortex)]
 
-amyloid_data =  CSV.read(projectdir("adni/data/new_new_data/UCBERKELEY_AMY_6MM_18Dec2023.csv"), DataFrame)
+amyloid_data =  CSV.read(projectdir("adni/data/UCBERKELEY_AMY_6MM_18Dec2023.csv"), DataFrame)
 
-sub_data_path = projectdir("adni/data/new_new_data/UCBERKELEY_TAU_6MM_18Dec2023_AB_STATUS.csv")
+sub_data_path = projectdir("adni/data/UCBERKELEY_TAU_6MM_18Dec2023_AB_STATUS.csv")
 alldf = CSV.read(sub_data_path, DataFrame)
 posdf = filter(x -> x.AB_Status == 1, alldf)
 
 data = ADNIDataset(posdf, dktnames; min_scans=3, qc=true)
 
-demo = CSV.read(projectdir("adni/data/new_new_data/demographics.csv"), DataFrame)
-diagnostics = CSV.read(projectdir("adni/data/new_new_data/ADNIMERGE_15Jan2024.csv"), DataFrame);
+demo = CSV.read(projectdir("adni/data/demographics.csv"), DataFrame)
+diagnostics = CSV.read(projectdir("adni/data/ADNIMERGE_15Jan2024.csv"), DataFrame);
 
 #-------------------------------------------------------------------------------
 # AB pos 
@@ -110,7 +111,29 @@ push!(df, (Group, age, Gender, Education, sum(percent_pdx_tauneg[1:2]), sum(perc
 #-------------------------------------------------------------------------------
 negdf = filter(x -> x.AB_Status == 0, alldf)
 
-negdata = ADNIDataset(negdf, dktnames; min_scans=3, qc=true)
+data = ADNIDataset(negdf, dktnames; min_scans=3, qc=true)
+n_data = length(data)
+
+mtl_cutoff = 1.375
+neo_cutoff = 1.395
+
+mtl_pos = filter(x -> regional_mean(data, mtl, x) >= mtl_cutoff, 1:n_data)
+neo_pos = filter(x -> regional_mean(data, neo, x) >= neo_cutoff, 1:n_data)
+
+tau_pos = findall(x -> x ∈ unique([mtl_pos; neo_pos]), 1:n_data)
+tau_neg = findall(x -> x ∉ tau_pos, 1:n_data)
+
+neg_data = data[tau_neg]
+
+subsuvr = calc_suvr.(neg_data)
+_subdata = [normalise(sd, u0, cc) for sd in subsuvr]
+
+blsd = [sd .- u0 for sd in _subdata]
+nonzerosubs = findall(x -> sum(x) < 2, [sum(sd, dims=1) .== 0 for sd in blsd])
+nonzerosubdata = _subdata[nonzerosubs]
+goodsubs = setdiff(nonzerosubs, nonzerosubs[15])
+
+negdata = neg_data[goodsubs]
 negIDs = get_id(negdata)
 
 _dmdfneg = reduce(vcat, [filter(x -> x.RID == id, demo) for id in negIDs])
@@ -119,7 +142,7 @@ idxneg = [findfirst(isequal(id), _dmdfneg.RID) for id in negIDs]
 dmdfneg = _dmdfneg[idxneg,:]
 
 Group = "Ab -"
-age = mean(year.([negdata.SubjectData[i].scan_dates[1] for i in 1:66]) .- (dmdfneg.PTDOBYY))
+age = mean(year.([negdata.SubjectData[i].scan_dates[1] for i in 1:52]) .- (dmdfneg.PTDOBYY))
 Gender = count(==(2), dmdfneg.PTGENDER) ./ length(dmdfneg.PTGENDER)
 Education = mean(dmdfneg.PTEDUCAT)
 
@@ -130,7 +153,7 @@ abnegdfinit = negdf3[idx, :]
 ab_diag_idx = [findfirst(isequal(id), diagnostics.RID) for id in abnegdfinit.RID]
 ab_diag_df = diagnostics[ab_diag_idx, :]
 pdx_ab = [count(==(pdx), ab_diag_df.DX_bl) for pdx in ["CN",  "SMC", "EMCI", "LMCI", "AD"]]
-percent_pdx_ab = pdx_ab ./ 65
+percent_pdx_ab = pdx_ab ./ 52
 
 amy_neg = filter(x -> x.RID ∈ negIDs, amyloid_data)
 amy_neg_init_idx = [findfirst(isequal(id), amy_neg.RID) for id in negIDs]
