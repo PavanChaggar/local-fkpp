@@ -55,8 +55,9 @@ The panels in Figure 4 of the manscripts are generated using ['visualisation/inf
 
 ## Revisions 
 
-Code used for analysis stemming from the peer-review 
-process is currently in the [`revisions`](https://github.com/PavanChaggar/local-fkpp/tree/revisions) branch and will be merged upon acceptance.
+Code used for analysis stemming from the peer-review process is in the [`revisions`](https://github.com/PavanChaggar/local-fkpp/tree/revisions) branch. The posterior distributions stemming from this analysis are in the directors `adni/chains-revisions/local-fkpp` for `pvc-ic` and `wm`, corresponding to analysis on PVC data with inferior cerebllar reference reigion and non-PVC data with eroded white matter reference region, respecitvely.
+
+Code for the reference region analysis is documented in the notebook [`reference_region_analysis`](https://github.com/PavanChaggar/local-fkpp/blob/revisions/adni/inference/analysis/notebooks/reference_region_analysis.ipynb).
 
 ## Citation
 
