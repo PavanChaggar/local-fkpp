@@ -271,10 +271,6 @@ save(projectdir("visualisation/inference/posteriors/output/adni-posteriors-with-
 #-------------------------------------------------------------------------------
 # Hierarchical Distributions -- BF2
 #-------------------------------------------------------------------------------
-pst = deserialize(projectdir("biofinder/chains/local-fkpp/26-06-24/pst-taupos-4x1000-vc-normal.jls"));
-pst2 = deserialize(projectdir("biofinder/chains/local-fkpp/26-06-24/pst-tauneg-4x1000-vc-normal.jls"));
-pst3 = chainscat([deserialize(projectdir("biofinder/chains/local-fkpp/26-06-24/pst-abneg-6x1000-vc-$i-normal.jls")) for i in [1,2,4,5]]...);
-
 pst = deserialize(projectdir("biofinder/chains/local-fkpp/03-06-24/pst-taupos-4x1000-vc.jls"));
 pst2 = deserialize(projectdir("biofinder/chains/local-fkpp/03-06-24/pst-tauneg-4x1000-vc.jls"));
 pst3 = deserialize(projectdir("biofinder/chains/local-fkpp/03-06-24/pst-abneg-4x1000-vc.jls"));
@@ -601,7 +597,7 @@ save(projectdir("visualisation/inference/posteriors/output/bf-parameter-correlat
 #-------------------------------------------------------------------------------
 pst = deserialize(projectdir("adni/new-chains/local-fkpp/length-free/pst-taupos-4x2000.jls"));
 pst2 = deserialize(projectdir("adni/new-chains/local-fkpp/length-free/pst-tauneg-4x2000.jls"));
-pst3 = chainscat([deserialize(projectdir("adni/new-chains/local-fkpp/length-free/pst-abneg-$(i)-2000.jls")) for i in 1:4]...)
+pst3 = deserialize(projectdir("adni/new-chains/local-fkpp/length-free/pst-abneg-4x2000.jls"))
 
 _pos_shuffled = [deserialize(projectdir("adni/new-chains/old/local-fkpp/shuffled/pos/length-free/pst-taupos-1000-shuffled-$i.jls")) for i in 1:10];
 sh_idx = findall( x -> sum(x[:numerical_error]) == 0, _pos_shuffled)
@@ -674,33 +670,6 @@ begin
         f
 end     
 save(projectdir("visualisation/inference/posteriors/output/adni-neg-shuffled-with-sig.pdf"), f)
-
-# ab_shuffled = deserialize(projectdir("adni/chains/local-fkpp/shuffled/ab/pst-abneg-1000-shuffled-1.jls"))
-
-# begin
-#         colors = Makie.wong_colors()
-
-#         f = Figure(size=(1000, 500), fontsize=35)
-#         ax = Axis(f[1,1], title="Production", titlesize=30, xticklabelsize=30,
-#         xlabel="1 / yr", xlabelsize=30, ylabel="Density", ylabelsize=30)
-#         hideydecorations!(ax, label=false)
-#         hidespines!(ax, :t, :r, :l)
-
-#         am = vec(Array(ab_shuffled[:Am]))
-#         hist!(am, bins=50, normalization=:pdf, color=:grey)
-#         hist!(pst3[:Am] |> vec, bins=50, normalization=:pdf, color=(colors[2], 0.75))
-
-#         ax = Axis(f[1,2], title="Transport", titlesize=30, xticklabelsize=30,
-#         xlabel="1 / yr", xlabelsize=30, ylabel="Density", ylabelsize=30)
-#         hideydecorations!(ax)
-#         hidespines!(ax, :t, :r, :l)
-
-#         pm = vec(Array(ab_shuffled[:Pm]))
-#         hist!(pm, bins=25, normalization=:pdf, color=:grey, label="Shuffled")
-#         hist!(pst3[:Pm] |> vec, bins=50, normalization=:pdf, color=(colors[2], 0.75), label=L"A\beta^+ \tau P^-")
-#         axislegend()
-#         f
-# end     
 
 #-------------------------------------------------------------------------------
 # Hierarchical Distributions -- Schaefer
