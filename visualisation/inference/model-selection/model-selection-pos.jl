@@ -30,7 +30,8 @@ neo = findall(x -> x ∈ neo_regions, get_label.(cortex))
 #-------------------------------------------------------------------------------
 # Data 
 #-------------------------------------------------------------------------------
-sub_data_path = projectdir("adni/data/new_data/UCBERKELEYAV1451_8mm_02_17_23_AB_Status.csv")
+sub_data_path = sub_data_path = projectdir("adni/data/UCBERKELEY_TAU_6MM_18Dec2023_AB_STATUS.csv")
+
 alldf = CSV.read(sub_data_path, DataFrame)
 
 posdf = filter(x -> x.AB_Status == 1, alldf)
@@ -62,7 +63,8 @@ cc = quantile.(upath, .99)
 _insample_subdata = [calc_suvr(insample_data, i) for i in insample_tau_pos]
 insample_pos_data = [normalise(sd, u0, cc) for sd in _insample_subdata]
 
-max_suvr = maximum(reduce(vcat, reduce(hcat, insample_pos_data)))
+min_suvr = minimum(u0)
+max_suvr = maximum(cc)
 
 insample_pos_initial_conditions = [sd[:,1] for sd in insample_pos_data]
 insample_pos_times =  [get_times(insample_data, i) for i in insample_tau_pos]
@@ -105,7 +107,7 @@ function NetworkLocalFKPP(du, u, p, t; Lv = Lv, u0 = u0, cc = cc)
 end
 
 function NetworkGlobalFKPP(du, u, p, t; Lv = Lv)
-    du .= -p[1] * Lv * u .+ p[2] .* u .* (1 .- ( u ./ p[3]))
+    du .= -p[1] * Lv * (u .- p[3]) .+ p[2] .* (u .- p[3]) .* ((p[4] .- p[3]) .- (u .- p[3]))
 end
 
 function NetworkDiffusion(du, u, p, t; Lv = Lv)
@@ -119,10 +121,10 @@ end
 #-------------------------------------------------------------------------------
 # Posteriors
 #-------------------------------------------------------------------------------
-local_pst = mean(deserialize(projectdir("adni/new-chains/local-fkpp/length-free/pst-taupos-4x2000.jls")));
-global_pst = mean(deserialize(projectdir("adni/new-chains/global-fkpp/length-free/pst-taupos-4x2000.jls")));
-diffusion_pst = mean(deserialize(projectdir("adni/new-chains/diffusion/length-free/pst-taupos-4x2000.jls")));
-logistic_pst = mean(deserialize(projectdir("adni/new-chains/logistic/pst-taupos-4x2000.jls")));
+local_pst = mean(deserialize(projectdir("adni/chains/local-fkpp/length-free/pst-taupos-4x2000.jls")));
+global_pst = mean(deserialize(projectdir("adni/chains/global-fkpp/scaled/pst-taupos-4x2000.jls")));
+diffusion_pst = mean(deserialize(projectdir("adni/chains/diffusion/length-free/pst-taupos-4x2000.jls")));
+logistic_pst = mean(deserialize(projectdir("adni/chains/logistic/pst-taupos-4x2000.jls")));
 #-------------------------------------------------------------------------------
 # Local model
 #-------------------------------------------------------------------------------
@@ -150,7 +152,7 @@ local_sols = simulate(NetworkLocalFKPP, insample_pos_initial_conditions, collect
 
 global_sols = simulate(NetworkGlobalFKPP, 
                        insample_pos_initial_conditions, 
-                       collect(zip(ρs, αs, ones(insample_n_pos) * max_suvr)), 
+                       collect(zip(ρs, αs, ones(insample_n_pos) * min_suvr, ones(insample_n_pos) * max_suvr)), 
                        insample_pos_times);
 #-------------------------------------------------------------------------------
 # Diffusion model

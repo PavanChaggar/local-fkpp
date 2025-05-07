@@ -27,19 +27,23 @@ docs/site/
 
 images/
 *zip
-adni/chains
+adni/chains/old
+adni/chains/mm
+adni/chains/local-fkpp/length-free/old
 *.mp4
 *.png
 *.jpeg
 *.pdf
 *.svg
-*.jls
+*normal.jls
 *.tif
 
 py-analysis/env
 
+biofinder/chains/old
 adni/old-scripts
 adni/old-data
+adni/data/pvc
 adni/data/UC*.csv
 adni/data/demographics.csv
 adni/data/ADNI*.csv

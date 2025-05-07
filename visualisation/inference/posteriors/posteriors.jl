@@ -14,10 +14,9 @@ using HypothesisTests
 #-------------------------------------------------------------------------------
 # Hierarchical Distributions -- ADNI
 #-------------------------------------------------------------------------------
-pst = deserialize(projectdir("adni/new-chains/local-fkpp/length-free/pst-taupos-1x2000-truncated-normal.jls"));
-pst2 = deserialize(projectdir("adni/new-chains/local-fkpp/length-free/pst-tauneg-1x2000-truncated-normal.jls"));
-pst3 = chainscat([deserialize(projectdir("adni/new-chains/local-fkpp/length-free/pst-abneg-$(i)-2000.jls")) for i in 1:4]...)
-pst3 = deserialize(projectdir("adni/new-chains/local-fkpp/length-free/pst-abneg-1x2000-truncated-normal.jls"))
+pst = deserialize(projectdir("adni/new-chains/local-fkpp/length-free/pst-taupos|-4x2000.jls"));
+pst2 = deserialize(projectdir("adni/new-chains/local-fkpp/length-free/pst-tauneg-4x2000.jls"));
+pst3 = deserialize(projectdir("adni/new-chains/local-fkpp/length-free/pst-abneg-4x2000.jls"));
 
 [p[:numerical_error] |> sum for p in [pst, pst2, pst3]]
 
@@ -203,7 +202,7 @@ end
 save(projectdir("visualisation/inference/posteriors/output/adni-parameter-correlation.pdf"), f)
 
 begin
-        n_samples = 2000
+        n_samples = 8000
         f = Figure(size=(2000, 750), fontsize=50)
         g1 = f[1, 1] = GridLayout()
         g2 = f[1, 2] = GridLayout()
@@ -267,7 +266,7 @@ begin
         colgap!(f.layout, 1, 50)
         f
 end
-save(projectdir("visualisation/inference/posteriors/output/adni-posteriors-with-sig-truncated-normal.pdf"), f)
+save(projectdir("visualisation/inference/posteriors/output/adni-posteriors-with-sig.pdf"), f)
 
 #-------------------------------------------------------------------------------
 # Hierarchical Distributions -- BF2
