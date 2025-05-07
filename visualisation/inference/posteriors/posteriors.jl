@@ -14,9 +14,10 @@ using HypothesisTests
 #-------------------------------------------------------------------------------
 # Hierarchical Distributions -- ADNI
 #-------------------------------------------------------------------------------
-pst = deserialize(projectdir("adni/new-chains/local-fkpp/length-free/pst-taupos-4x2000.jls"));
-pst2 = deserialize(projectdir("adni/new-chains/local-fkpp/length-free/pst-tauneg-4x2000.jls"));
+pst = deserialize(projectdir("adni/new-chains/local-fkpp/length-free/pst-taupos-1x2000-truncated-normal.jls"));
+pst2 = deserialize(projectdir("adni/new-chains/local-fkpp/length-free/pst-tauneg-1x2000-truncated-normal.jls"));
 pst3 = chainscat([deserialize(projectdir("adni/new-chains/local-fkpp/length-free/pst-abneg-$(i)-2000.jls")) for i in 1:4]...)
+pst3 = deserialize(projectdir("adni/new-chains/local-fkpp/length-free/pst-abneg-1x2000-truncated-normal.jls"))
 
 [p[:numerical_error] |> sum for p in [pst, pst2, pst3]]
 
@@ -202,7 +203,7 @@ end
 save(projectdir("visualisation/inference/posteriors/output/adni-parameter-correlation.pdf"), f)
 
 begin
-        n_samples = 8000
+        n_samples = 2000
         f = Figure(size=(2000, 750), fontsize=50)
         g1 = f[1, 1] = GridLayout()
         g2 = f[1, 2] = GridLayout()
@@ -216,7 +217,7 @@ begin
                 titlesize=40, title="Production", xticks=-0.2:0.1:0.2, 
                 xminorticks=-0.2:0.05:0.2, xminorticksvisible=true, 
                 xticksize=20, xminorticksize=15, xgridcolor=RGBAf(0, 0, 0, 0.25))
-        CairoMakie.xlims!(ax, -0.225, 0.225)
+        CairoMakie.xlims!(ax, -0.24, 0.24)
         CairoMakie.ylims!(ax, 0.75, 4)
         hideydecorations!(ax, label=false, ticklabels=false)
         hidexdecorations!(ax, grid=false, minorticks=false, label=false, ticks=false, ticklabels=false)
@@ -241,10 +242,10 @@ begin
         ax = Axis(g2[1,1], 
                 xticklabelsize=30, xlabelsize=30, xlabel="1 / yr", yticks=(1.5:1:3.5, [L"A^-T^-", L"A^+T^-", L"A^+T^+"]),
                 yticklabelsize=40,
-                titlesize=40, title="Transport", xticks=0.0:0.01:0.04,
-                xminorticks=0.0:0.005:1, xminorticksvisible=true, 
+                titlesize=40, title="Transport", xticks=0.0:0.015:0.06,
+                xminorticks=0.0:0.0075:1, xminorticksvisible=true, 
                 xticksize=20, xminorticksize=15, xgridcolor=RGBAf(0, 0, 0, 0.25))
-        CairoMakie.xlims!(ax, -0.005, 0.045)
+        CairoMakie.xlims!(ax, -0.006, 0.066)
         CairoMakie.ylims!(ax, 0.75, 4)
         hideydecorations!(ax)
         hidexdecorations!(ax, grid=false, minorticks=false, label=false, ticks=false, ticklabels=false)
@@ -266,7 +267,7 @@ begin
         colgap!(f.layout, 1, 50)
         f
 end
-save(projectdir("visualisation/inference/posteriors/output/adni-posteriors-with-sig.pdf"), f)
+save(projectdir("visualisation/inference/posteriors/output/adni-posteriors-with-sig-truncated-normal.pdf"), f)
 
 #-------------------------------------------------------------------------------
 # Hierarchical Distributions -- BF2
@@ -299,7 +300,7 @@ begin
         Label(g1[1,1:3], "Transport", fontsize=45, tellwidth=false, tellheight=true)
         Label(g3[1,1:3], "Production", fontsize=45, tellwidth=false)
         colors = reverse(alphacolor.(Makie.wong_colors(), 0.75)[1:3])
-        _category_label = reverse([L"A^-", L"A^+T^-", L"A^+T^+"])
+        _category_label = reverse([L"A^-T^-", L"A^+T^-", L"A^+T^+"])
         psts = [pst, pst2, pst3]
         for (i, (_label, pst, col)) in enumerate(zip(_category_label, psts, colors))
                 category_labels = fill(_label, n_samples)
@@ -444,10 +445,10 @@ begin
         ax = Axis(g2[1,1], 
                 xticklabelsize=30, xlabelsize=30, xlabel="1 / yr", 
                 yticklabelsize=40,
-                titlesize=40, title="Transport", xticks=0.0:0.025:0.075,
-                xminorticks=0.0:0.0125:1, xminorticksvisible=true, 
+                titlesize=40, title="Transport", xticks=0.0:0.015:0.06,
+                xminorticks=0.0:0.0075:1, xminorticksvisible=true, 
                 xticksize=20, xminorticksize=15, xgridcolor=RGBAf(0, 0, 0, 0.25))
-                CairoMakie.xlims!(ax, -0.005, 0.085)
+                CairoMakie.xlims!(ax, -0.006, 0.066)
                 CairoMakie.ylims!(ax, 0.75, 4)
 
         hideydecorations!(ax)
@@ -476,7 +477,7 @@ begin
                 xminorticks=-0.2:0.05:0.2, xminorticksvisible=true, 
                 xticksize=20, xminorticksize=15, xgridcolor=RGBAf(0, 0, 0, 0.25), 
                 xtickformat = "{:.2f}")
-        CairoMakie.xlims!(ax, -0.225, 0.225)
+        CairoMakie.xlims!(ax, -0.24, 0.24)
         CairoMakie.ylims!(ax, 0.75, 4)
         hideydecorations!(ax, label=false, ticklabels=false)
         hidexdecorations!(ax, grid=false, minorticks=false, label=false, 
@@ -601,7 +602,7 @@ save(projectdir("visualisation/inference/posteriors/output/bf-parameter-correlat
 #-------------------------------------------------------------------------------
 pst = deserialize(projectdir("adni/new-chains/local-fkpp/length-free/pst-taupos-4x2000.jls"));
 pst2 = deserialize(projectdir("adni/new-chains/local-fkpp/length-free/pst-tauneg-4x2000.jls"));
-pst3 = deserialize(projectdir("adni/new-chains/local-fkpp/length-free/pst-abneg-4x2000.jls"));
+pst3 = chainscat([deserialize(projectdir("adni/new-chains/local-fkpp/length-free/pst-abneg-$(i)-2000.jls")) for i in 1:4]...)
 
 _pos_shuffled = [deserialize(projectdir("adni/new-chains/old/local-fkpp/shuffled/pos/length-free/pst-taupos-1000-shuffled-$i.jls")) for i in 1:10];
 sh_idx = findall( x -> sum(x[:numerical_error]) == 0, _pos_shuffled)
