@@ -48,10 +48,11 @@ the scripts in `visualisation/models`.
 
 The panels in Figure 2 of the manuscript are created using [`visualisation/inference/model-selection/model-selection-pos.jl`](https://github.com/PavanChaggar/local-fkpp/blob/main/visualisation/inference/model-selection/model-selection-pos.jl). 
 
-The panels in Figure 3 of the manuscript for the ADNI posterior distributions
+The panels in Figure 3 of the manscripts are generated using ['visualisation/inference/model-selection/out-sample-three-pos.jl](https://github.com/PavanChaggar/local-fkpp/blob/main/visualisation/inference/model-selection/out-sample-three-pos.jl). 
+
+The panels in Figure 4 of the manuscript for the ADNI posterior distributions
 are created using [`visualisation/posteriors/posteriors.jl](https://github.com/PavanChaggar/local-fkpp/blob/main/visualisation/inference/posteriors/posteriors.jl). 
 
-The panels in Figure 4 of the manscripts are generated using ['visualisation/inference/model-selection/out-sample-three-pos.jl](https://github.com/PavanChaggar/local-fkpp/blob/main/visualisation/inference/model-selection/out-sample-three-pos.jl). 
 
 ## Revisions 
 
