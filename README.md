@@ -1,3 +1,5 @@
+[![DOI](https://zenodo.org/badge/578305848.svg)](https://doi.org/10.5281/zenodo.15376110)
+
 # Code for "Personalised Regional Modelling Predicts Tau Progression in the Human Brain", Chaggar et al 2024
 
 This repository contains the code used in the paper Chaggar et al., 2024 
