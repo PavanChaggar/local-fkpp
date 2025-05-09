@@ -275,13 +275,13 @@ save(projectdir("visualisation/inference/posteriors/output/adni-posteriors-with-
 #-------------------------------------------------------------------------------
 # Hierarchical Distributions -- BF2
 #-------------------------------------------------------------------------------
-pst = deserialize(projectdir("biofinder/chains/local-fkpp/03-06-24/pst-taupos-4x1000-vc.jls"));
-pst2 = deserialize(projectdir("biofinder/chains/local-fkpp/03-06-24/pst-tauneg-4x1000-vc.jls"));
-pst3 = deserialize(projectdir("biofinder/chains/local-fkpp/03-06-24/pst-abneg-4x1000-vc.jls"));
+pst = deserialize(projectdir("biofinder/chains/local-fkpp/pst-taupos-4x1000-vc.jls"));
+pst2 = deserialize(projectdir("biofinder/chains/local-fkpp/pst-tauneg-4x1000-vc.jls"));
+pst3 = deserialize(projectdir("biofinder/chains/local-fkpp/pst-abneg-4x1000-vc.jls"));
 
-CSV.write("adni/chains/csv/bf-pst-taupos-1x2000.csv", DataFrame(pst))
-CSV.write("adni/chains/csv/bf-pst-tauneg-1x2000.csv", DataFrame(pst2))
-CSV.write("adni/chains/csv/bf-pst-abneg-1x2000.csv", DataFrame(pst3))
+CSV.write("adni/chains/csv/bf-pst-taupos-4x2000.csv", DataFrame(pst))
+CSV.write("adni/chains/csv/bf-pst-tauneg-4x2000.csv", DataFrame(pst2))
+CSV.write("adni/chains/csv/bf-pst-abneg-4x2000.csv", DataFrame(pst3))
 
 [p[:numerical_error] |> sum for p in [pst, pst2, pst3]]
 
@@ -650,7 +650,6 @@ save(projectdir("visualisation/inference/posteriors/output/adni-pos-shuffled-wit
 _neg_shuffled = [deserialize(projectdir("adni/chains/local-fkpp/shuffled/neg/length-free/pst-tauneg-1000-shuffled-$i.jls")) for i in 1:10];
 sh_idx = findall( x -> sum(x[:numerical_error]) == 0, _neg_shuffled)
 neg_shuffled = chainscat(_neg_shuffled[sh_idx]...);
-
 CSV.write("adni/chains/csv/adni-pst-tauneg-shuffled-10x1000.csv", DataFrame(neg_shuffled))
 
 begin
