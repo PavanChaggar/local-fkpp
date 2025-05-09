@@ -1,0 +1,3 @@
+# ADNI Posterior Chains 
+
+Files contained here contain the population and individual level chains derived from ADNI data. Present here are chains for the A+T+, A+T-, A-T- biomarker groups using the standard inferior cerebellum reference region, white matter reference region `-wm`, PVC with inferior cerebellar reference `-pvc-ic` and shuffled analysis with inferior cerebellum reference `-shuffled`. The number of chains (N) and samples (S) is denoted `-NxS`. 
