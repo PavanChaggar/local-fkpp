@@ -14,9 +14,13 @@ using HypothesisTests
 #-------------------------------------------------------------------------------
 # Hierarchical Distributions -- ADNI
 #-------------------------------------------------------------------------------
-pst = deserialize(projectdir("adni/new-chains/local-fkpp/length-free/pst-taupos|-4x2000.jls"));
-pst2 = deserialize(projectdir("adni/new-chains/local-fkpp/length-free/pst-tauneg-4x2000.jls"));
-pst3 = deserialize(projectdir("adni/new-chains/local-fkpp/length-free/pst-abneg-4x2000.jls"));
+pst = deserialize(projectdir("adni/chains/local-fkpp/length-free/pst-taupos-4x2000.jls"));
+pst2 = deserialize(projectdir("adni/chains/local-fkpp/length-free/pst-tauneg-4x2000.jls"));
+pst3 = deserialize(projectdir("adni/chains/local-fkpp/length-free/pst-abneg-4x2000.jls"));
+
+CSV.write("adni/chains/csv/adni-pst-taupos-4x2000.csv", DataFrame(pst))
+CSV.write("adni/chains/csv/adni-pst-tauneg-4x2000.csv", DataFrame(pst2))
+CSV.write("adni/chains/csv/adni-pst-abneg-4x2000.csv", DataFrame(pst3))
 
 [p[:numerical_error] |> sum for p in [pst, pst2, pst3]]
 
@@ -274,6 +278,10 @@ save(projectdir("visualisation/inference/posteriors/output/adni-posteriors-with-
 pst = deserialize(projectdir("biofinder/chains/local-fkpp/03-06-24/pst-taupos-4x1000-vc.jls"));
 pst2 = deserialize(projectdir("biofinder/chains/local-fkpp/03-06-24/pst-tauneg-4x1000-vc.jls"));
 pst3 = deserialize(projectdir("biofinder/chains/local-fkpp/03-06-24/pst-abneg-4x1000-vc.jls"));
+
+CSV.write("adni/chains/csv/bf-pst-taupos-1x2000.csv", DataFrame(pst))
+CSV.write("adni/chains/csv/bf-pst-tauneg-1x2000.csv", DataFrame(pst2))
+CSV.write("adni/chains/csv/bf-pst-abneg-1x2000.csv", DataFrame(pst3))
 
 [p[:numerical_error] |> sum for p in [pst, pst2, pst3]]
 
@@ -599,9 +607,12 @@ pst = deserialize(projectdir("adni/new-chains/local-fkpp/length-free/pst-taupos-
 pst2 = deserialize(projectdir("adni/new-chains/local-fkpp/length-free/pst-tauneg-4x2000.jls"));
 pst3 = deserialize(projectdir("adni/new-chains/local-fkpp/length-free/pst-abneg-4x2000.jls"))
 
-_pos_shuffled = [deserialize(projectdir("adni/new-chains/old/local-fkpp/shuffled/pos/length-free/pst-taupos-1000-shuffled-$i.jls")) for i in 1:10];
+_pos_shuffled = [deserialize(projectdir("adni/chains/local-fkpp/shuffled/pos/length-free/pst-taupos-1000-shuffled-$i.jls")) for i in 1:10];
 sh_idx = findall( x -> sum(x[:numerical_error]) == 0, _pos_shuffled)
 pos_shuffled = chainscat(_pos_shuffled[sh_idx]...);
+
+CSV.write("adni/chains/csv/adni-pst-taupos-shuffled-10x1000.csv", DataFrame(pos_shuffled))
+
 begin
         colors = Makie.wong_colors()
 
@@ -636,9 +647,12 @@ end
 save(projectdir("visualisation/inference/posteriors/output/adni-pos-shuffled-with-sig.pdf"), f)
 
 
-_neg_shuffled = [deserialize(projectdir("adni/new-chains/old/local-fkpp/shuffled/neg/length-free/pst-tauneg-1000-shuffled-$i.jls")) for i in 1:10];
+_neg_shuffled = [deserialize(projectdir("adni/chains/local-fkpp/shuffled/neg/length-free/pst-tauneg-1000-shuffled-$i.jls")) for i in 1:10];
 sh_idx = findall( x -> sum(x[:numerical_error]) == 0, _neg_shuffled)
 neg_shuffled = chainscat(_neg_shuffled[sh_idx]...);
+
+CSV.write("adni/chains/csv/adni-pst-tauneg-shuffled-10x1000.csv", DataFrame(neg_shuffled))
+
 begin
         colors = Makie.wong_colors()
 
@@ -678,6 +692,11 @@ save(projectdir("visualisation/inference/posteriors/output/adni-neg-shuffled-wit
 pst = deserialize(projectdir("biofinder/schaefer/pst-taupos-1x2000.jls"));
 pst2 = deserialize(projectdir("biofinder/schaefer/pst-tauneg-1x2000.jls"));
 pst3 = deserialize(projectdir("biofinder/schaefer/pst-abneg-1x2000.jls"));
+
+CSV.write("adni/chains/csv/bf-pst-taupos-schaefer-1x2000.csv", DataFrame(pst))
+CSV.write("adni/chains/csv/bf-pst-tauneg-schaefer-1x2000.csv", DataFrame(pst2))
+CSV.write("adni/chains/csv/bf-pst-abneg-schaefer-1x2000.csv", DataFrame(pst3))
+
 
 for p in [:Am, :Pm]
         param_test(pst[p], pst2[p]) |> println
@@ -750,3 +769,23 @@ begin
         f
 end
 save(projectdir("visualisation/inference/posteriors/output/bf2-schaefer-with-sig.pdf"), f)
+
+
+#-------------------------------------------------------------------------------
+# Hierarchical Distributions -- Revisions PVC 
+#-------------------------------------------------------------------------------
+pst = deserialize(projectdir("adni/chains-revisions/local-fkpp/pvc-ic/pst-taupos-1x2000.jls"));
+pst2 = deserialize(projectdir("adni/chains-revisions/local-fkpp/pvc-ic/pst-tauneg-1x2000.jls"));
+pst3 = deserialize(projectdir("adni/chains-revisions/local-fkpp/pvc-ic/pst-abneg-1x2000.jls"))
+
+CSV.write("adni/chains/csv/adni-pst-taupos-pvc-ic-1x2000.csv", DataFrame(pst))
+CSV.write("adni/chains/csv/adni-pst-tauneg-pvc-ic-1x2000.csv", DataFrame(pst2))
+CSV.write("adni/chains/csv/adni-pst-abneg-pvc-ic-1x2000.csv", DataFrame(pst3))
+
+pst = deserialize(projectdir("adni/chains-revisions/local-fkpp/wm/pst-taupos-1x2000.jls"));
+pst2 = deserialize(projectdir("adni/chains-revisions/local-fkpp/wm/pst-tauneg-1x2000.jls"));
+pst3 = deserialize(projectdir("adni/chains-revisions/local-fkpp/wm/pst-abneg-1x2000.jls"))
+
+CSV.write("adni/chains/csv/adni-pst-taupos-wm-1x2000.csv", DataFrame(pst))
+CSV.write("adni/chains/csv/adni-pst-tauneg-wm-1x2000.csv", DataFrame(pst2))
+CSV.write("adni/chains/csv/adni-pst-abneg-wm-1x2000.csv", DataFrame(pst3))
