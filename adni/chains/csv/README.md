@@ -20,4 +20,4 @@ and `adni-pst-tauneg-shuffled-10x1000` correspond to to the shuffled posterior d
 
 The files `adni-pst-taupos-pvc-ic-1x2000`, `adni-pst-tauneg-pvc-ic-1x2000` and `adni-pst-abneg-pvc-ic-1x2000.csv` correspond to the ADNI posterior distributions in Figure S8a of the manuscript. Files `adni-pst-taupos-wm-1x2000`, `adni-pst-tauneg-wm-1x2000` and `adni-pst-abneg-wm-1x2000.csv` correspond to the posterior distributions in Figure S8b of the manuscript. 
 
-The ADNI data for Figure 4a, Figure 4c, Figure S5 and Figure S8 can be found [here](https://github.com/PavanChaggar/local-fkpp/tree/main/adni/chains/csv).
+The BioFINDER-2 data for Figure 4b, Figure S6 and Figure S9 can be found [here](https://github.com/PavanChaggar/local-fkpp/tree/main/biofinder/chains/csv).
