@@ -279,9 +279,9 @@ pst = deserialize(projectdir("biofinder/chains/local-fkpp/pst-taupos-4x1000-vc.j
 pst2 = deserialize(projectdir("biofinder/chains/local-fkpp/pst-tauneg-4x1000-vc.jls"));
 pst3 = deserialize(projectdir("biofinder/chains/local-fkpp/pst-abneg-4x1000-vc.jls"));
 
-CSV.write("adni/chains/csv/bf-pst-taupos-4x2000.csv", DataFrame(pst))
-CSV.write("adni/chains/csv/bf-pst-tauneg-4x2000.csv", DataFrame(pst2))
-CSV.write("adni/chains/csv/bf-pst-abneg-4x2000.csv", DataFrame(pst3))
+CSV.write("adni/chains/csv/bf-pst-taupos-4x1000.csv", DataFrame(pst))
+CSV.write("adni/chains/csv/bf-pst-tauneg-4x1000.csv", DataFrame(pst2))
+CSV.write("adni/chains/csv/bf-pst-abneg-4x1000.csv", DataFrame(pst3))
 
 [p[:numerical_error] |> sum for p in [pst, pst2, pst3]]
 
