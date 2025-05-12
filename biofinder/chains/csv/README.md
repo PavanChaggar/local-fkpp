@@ -18,4 +18,6 @@ The files `bf-pst-taupos-4x1000`, `bf-pst-tauneg-4x1000` and `bf-pst-abneg-4x100
 
 The files `bf-pst-taupos-schaefer-4x1000`, `bf-pst-tauneg-schaefer-4x1000` and `bf-pst-abneg-schaefer-4x1000`correspond to the BF posterior distributions in Figure S9 with the Schaefer-200 atlas, for the A+T+, A+T-, A-T- groups, respecitively.
 
+For all visualisations, the box plot show the median and 1.5 $\times$ interquartile range. 
+
 The ADNI data for Figure 4a, Figure 4c, Figure S5 and Figure S8 can be found [here](https://github.com/PavanChaggar/local-fkpp/tree/main/adni/chains/csv).
