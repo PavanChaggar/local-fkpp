@@ -58,7 +58,7 @@ are created using [`visualisation/posteriors/posteriors.jl](https://github.com/P
 
 ## Revisions 
 
-Code used for analysis stemming from the peer-review process is in the [`revisions`](https://github.com/PavanChaggar/local-fkpp/tree/revisions) branch. The posterior distributions stemming from this analysis are in the directors `adni/chains-revisions/local-fkpp` for `pvc-ic` and `wm`, corresponding to analysis on PVC data with inferior cerebllar reference reigion and non-PVC data with eroded white matter reference region, respecitvely.
+Code used for analysis stemming from the peer-review process is in the [`revisions`](https://github.com/PavanChaggar/local-fkpp/tree/revisions) branch. The posterior distributions stemming from this analysis are in the directors `adni/chains-revisions/local-fkpp` for `pvc-ic` and `wm`, corresponding to analysis on PVC data with inferior cerebllar reference reigion and non-PVC data with eroded white matter reference region, respecitvely. The data for these plots can be fonud [here](https://github.com/PavanChaggar/local-fkpp/tree/main/adni/chains/csv).
 
 Code for the reference region analysis is documented in the notebook [`reference_region_analysis`](https://github.com/PavanChaggar/local-fkpp/blob/revisions/adni/inference/analysis/notebooks/reference_region_analysis.ipynb).
 
