@@ -1,4 +1,5 @@
 using Connectomes
+using GLMakie, ColorSchemes, GraphMakie
 using DifferentialEquations
 using DrWatson
 using Distributions
@@ -106,3 +107,38 @@ begin
     f
 end
 save(projectdir("visualisation/models/output/diffusion.jpeg"), f)
+
+solt = solve(prob, Rodas4(), reltol=1e-12, saveat=range(0, 10, 480))
+
+_p = findall(x -> x > 0, UpperTriangular(adjacency_matrix(c)))
+
+(-L * diagm(Array(solt)[:, 2]))[_p]
+CairoMakie.activate!()
+maximum(log.(1 .+ (reduce(hcat, [(-L * diagm(Array(solt)[:, i]))[_p] for i in 1:480]))./ 0.13))
+heatmap((reduce(hcat, [(-L * diagm(Array(solt)[:, i]))[_p] for i in 1:480]))./ 0.13)
+begin
+    GLMakie.activate!()
+    f = Figure(size=(800, 800) )
+    ax = Axis3(f[1,1], aspect = :data, azimuth = pi, elevation=0.0pi)
+    hidedecorations!(ax)
+    hidespines!(ax)
+    plot_cortex!(:connectome)
+    p = plot_connectome!(c, edge_alpha=true)
+    p.edge_color[] = Colors.alphacolor.(get(ColorSchemes.Blues, fill(1.0, 622)), fill(1.0, 622))
+    p.edge_width[] = fill(2.0, 622)
+    # p.edge_alpha[] = get(ColorSchemes.Blues, fill(0., 622))
+    # p.edge_color[] .= Colors.alphacolor.(get(ColorSchemes.viridis, _w), _w)
+    f
+end
+frames = 10 * 48
+
+record(f, projectdir("visualisation/models/output/diffusion-graph-video.mp4"), 1:frames; framerate=48) do i
+    # p.edge_color[] = Colors.alphacolor.(get(ColorSchemes.viridis, (-L * diagm(Array(solt)[:, i]))[_p] ./ 0.13), (-L * diagm(Array(solt)[:, i]))[_p] ./ 0.13)    
+    _w =  log.( 1. .+ ((-L * diagm(Array(solt)[:, i]))[_p] ./ 0.13)) ./ 0.71
+    _w[_w .< 0.01] .= 0.0
+    # p.edge_color[] = Colors.alphacolor.(get(ColorSchemes.Blues, _w), _w)
+    # p.edge_alpha[] = Colors.alphacolor.(get(ColorSchemes.Blues, _w), _w)
+    p.edge_color[] =  get(ColorSchemes.Blues, _w)
+    p.edge_width[] =  _w * 15.0
+    # p.edge_color[] = get(ColorSchemes.viridis, rand(622))
+end
